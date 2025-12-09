@@ -1,0 +1,54 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: vodo-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - vodo-network
+    depends_on:
+      - mysql
+
+  nginx:
+    image: nginx:alpine
+    container_name: vodo-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - vodo-network
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.0
+    container_name: vodo-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: saas
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: laravel
+    ports:
+      - "3306:3306"
+    volumes:
+      - vodo-mysql-data:/var/lib/mysql
+    networks:
+      - vodo-network
+
+networks:
+  vodo-network:
+    driver: bridge
+
+volumes:
+  vodo-mysql-data:
+    driver: local
+
