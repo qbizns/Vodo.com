@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in - KERNEL Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            width: 100vw;
+            padding: var(--spacing-4);
+            background-color: var(--bg-window);
+            font-family: var(--font-family-base);
+            box-sizing: border-box;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 440px;
+            padding: var(--spacing-8);
+            background-color: var(--bg-surface-1);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--divider);
+            box-shadow: var(--elevation-2);
+        }
+
+        .login-logo {
+            margin: 0 auto var(--spacing-4);
+            width: 64px;
+            height: 64px;
+            border-radius: var(--border-radius);
+            background-color: var(--color-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-logo svg {
+            width: 32px;
+            height: 32px;
+            color: var(--text-inverse);
+        }
+
+        .login-title {
+            font-size: var(--text-title-large);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .login-subtitle {
+            font-size: var(--text-body);
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-2);
+        }
+
+        .form-label {
+            font-size: var(--text-body);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            width: 100%;
+            height: var(--button-height-medium);
+            padding: 0 var(--spacing-3);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--divider);
+            background-color: var(--bg-surface-1);
+            color: var(--text-primary);
+            font-size: var(--text-body);
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--color-accent);
+        }
+
+        .remember-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .remember-checkbox input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--color-accent);
+        }
+
+        .remember-checkbox label {
+            font-size: var(--text-body);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            font-size: var(--text-body);
+            color: var(--color-link);
+            text-decoration: none;
+            transition: text-decoration 0.15s ease;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            padding: var(--spacing-3);
+            background-color: #FEE;
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+            border-radius: var(--border-radius);
+            font-size: var(--text-body);
+            text-align: center;
+            display: none;
+        }
+
+        .dark .error-message {
+            background-color: rgba(241, 112, 123, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: var(--button-height-medium);
+            padding: 0 var(--spacing-6);
+            background-color: var(--color-accent);
+            color: var(--text-inverse);
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: var(--text-body);
+            font-weight: var(--font-weight-semibold);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            transition: background-color 0.15s ease;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+        }
+
+        .submit-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .signup-link {
+            margin-top: var(--spacing-6);
+            text-align: center;
+            font-size: var(--text-body);
+            color: var(--text-secondary);
+        }
+
+        .signup-link a {
+            color: var(--color-link);
+            font-weight: var(--font-weight-semibold);
+            text-decoration: none;
+            transition: text-decoration 0.15s ease;
+        }
+
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Logo and Title -->
+            <div style="margin-bottom: var(--spacing-8); text-align: center;">
+                <div class="login-logo">
+                    <!-- LogIn Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                </div>
+                <h2 class="login-title">Sign in</h2>
+                <p class="login-subtitle">Welcome back to Kernel Platform</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" style="display: flex; flex-direction: column; gap: var(--spacing-5);">
+                <!-- Email Field -->
+                <div class="form-group">
+                    <label for="email" class="form-label">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        class="form-input"
+                        placeholder="m@example.com"
+                        required
+                    >
+                </div>
+
+                <!-- Password Field -->
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="form-input"
+                        required
+                    >
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="remember-row">
+                    <div class="remember-checkbox">
+                        <input type="checkbox" id="remember" name="remember">
+                        <label for="remember">Remember me</label>
+                    </div>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message"></div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" class="submit-btn">
+                    <span id="btnText">Sign in</span>
+                </button>
+            </form>
+
+            <!-- Sign Up Link -->
+            <div class="signup-link">
+                Don't have an account? <a href="#">Sign up</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:1498';
+
+        $(document).ready(function() {
+            // Apply dark mode if enabled
+            const darkMode = localStorage.getItem('darkMode') === 'true';
+            if (darkMode) {
+                $('html').addClass('dark');
+            }
+
+            // Check if already logged in
+            const token = localStorage.getItem('token');
+            if (token) {
+                window.location.href = 'index.html#/dashboard';
+                return;
+            }
+
+            // Handle form submission
+            $('#loginForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const email = $('#email').val();
+                const password = $('#password').val();
+                const $submitBtn = $('#submitBtn');
+                const $btnText = $('#btnText');
+                const $errorMessage = $('#errorMessage');
+
+                // Hide error message
+                $errorMessage.hide();
+
+                // Show loading state
+                $submitBtn.prop('disabled', true);
+                $btnText.html(`
+                    <svg class="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Signing in...
+                `);
+
+                // Make API request
+                $.ajax({
+                    url: `${API_BASE_URL}/api/auth/login`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        email: email,
+                        password: password,
+                        tenant_slug: 'macber'
+                    }),
+                    success: function(response) {
+                        // Store token and user data
+                        localStorage.setItem('token', response.token);
+                        if (response.user) {
+                            localStorage.setItem('user', JSON.stringify(response.user));
+                        }
+                        
+                        // Redirect to dashboard
+                        window.location.href = 'index.html#/dashboard';
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'Invalid email or password';
+                        try {
+                            const errorData = JSON.parse(xhr.responseText);
+                            if (errorData.message) {
+                                errorMsg = errorData.message;
+                            }
+                        } catch (e) {}
+                        
+                        $errorMessage.text(errorMsg).show();
+                        
+                        // Reset button
+                        $submitBtn.prop('disabled', false);
+                        $btnText.text('Sign in');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

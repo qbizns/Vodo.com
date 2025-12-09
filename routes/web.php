@@ -2,6 +2,5 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// All routes are handled by the ModuleServiceProvider
+// See app/Modules/*/routes.php for subdomain-specific routes
