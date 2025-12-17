@@ -12,8 +12,8 @@
     <div id="notificationPanel" class="notification-panel" style="display: none;">
         <div class="notification-header">
             <div class="flex items-center" style="gap: var(--spacing-3);">
-                <button class="notification-tab active" data-tab="all">All</button>
-                <button class="notification-tab" data-tab="archived">Archived</button>
+                <button class="notification-tab active" data-tab="all">{{ __t('widgets.all') }}</button>
+                <button class="notification-tab" data-tab="archived">{{ __t('widgets.archived') }}</button>
             </div>
             <button class="topbar-icon-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -26,7 +26,7 @@
             {{-- Notifications will be rendered dynamically by JavaScript --}}
             <div class="notification-empty">
                 <div class="notification-empty-icon">📭</div>
-                <div>No notifications</div>
+                <div>{{ __t('widgets.no_notifications') }}</div>
             </div>
         </div>
         <div id="notificationFooter" class="notification-footer" style="display: none;">
@@ -34,7 +34,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-                <span>Mark all as read</span>
+                <span>{{ __t('widgets.mark_all_as_read') }}</span>
             </button>
         </div>
     </div>

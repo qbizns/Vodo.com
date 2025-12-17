@@ -1,9 +1,9 @@
 @extends('console::layouts.guest')
 
-@section('title', 'Login')
+@section('title', __t('auth.login'))
 
-@section('page-login-title', 'Sign in')
-@section('page-login-subtitle', 'SaaS Administration Portal')
+@section('page-login-title', __t('auth.sign_in'))
+@section('page-login-subtitle', __t('auth.login_subtitle'))
 
 @section('page-content')
     {{-- Login Form --}}
@@ -12,7 +12,7 @@
         
         {{-- Email Field --}}
         <div class="form-group">
-            <label for="email" class="form-label">Email</label>
+            <label for="email" class="form-label">{{ __t('auth.email') }}</label>
             <input
                 type="email"
                 id="email"
@@ -30,7 +30,7 @@
 
         {{-- Password Field --}}
         <div class="form-group">
-            <label for="password" class="form-label">Password</label>
+            <label for="password" class="form-label">{{ __t('auth.password') }}</label>
             <input
                 type="password"
                 id="password"
@@ -47,9 +47,9 @@
         <div class="remember-row">
             <div class="remember-checkbox">
                 <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
-                <label for="remember">Remember me</label>
+                <label for="remember">{{ __t('auth.remember_me') }}</label>
             </div>
-            <a href="#" class="forgot-link">Forgot password?</a>
+            <a href="#" class="forgot-link">{{ __t('auth.forgot_password') }}</a>
         </div>
 
         {{-- Error Message --}}
@@ -63,7 +63,7 @@
 
         {{-- Submit Button --}}
         <button type="submit" class="submit-btn">
-            <span>Sign in</span>
+            <span>{{ __t('auth.sign_in') }}</span>
         </button>
     </form>
 @endsection

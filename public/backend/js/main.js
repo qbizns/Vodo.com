@@ -79,6 +79,68 @@ const Icons = {
 window.Icons = Icons;
 
 // ============================================
+// CSS Loader for SPA Navigation
+// ============================================
+
+// Track loaded CSS files to avoid duplicates
+const loadedCss = new Set(['style', 'rtl']);
+
+/**
+ * Dynamically load a page-specific CSS file
+ * @param {string} cssName - Name of the CSS file (without .css extension)
+ * @returns {Promise} - Resolves when CSS is loaded
+ */
+function loadPageCss(cssName) {
+    if (!cssName || loadedCss.has(cssName)) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `/backend/css/pages/${cssName}.css`;
+        link.onload = () => {
+            loadedCss.add(cssName);
+            resolve();
+        };
+        link.onerror = () => {
+            console.warn(`Failed to load CSS: ${cssName}`);
+            resolve(); // Don't reject, just continue
+        };
+        document.head.appendChild(link);
+    });
+}
+
+/**
+ * Load multiple CSS files
+ * @param {string} cssNames - Comma-separated CSS file names
+ * @returns {Promise}
+ */
+function loadPageCssMultiple(cssNames) {
+    if (!cssNames) return Promise.resolve();
+    
+    const names = cssNames.split(',').map(s => s.trim()).filter(Boolean);
+    return Promise.all(names.map(loadPageCss));
+}
+
+/**
+ * Execute inline scripts from dynamically loaded content
+ * @param {jQuery} $container - Container with potential inline scripts
+ */
+function executeInlineScripts($container) {
+    $container.find('script').each(function() {
+        const script = document.createElement('script');
+        if (this.src) {
+            script.src = this.src;
+        } else {
+            script.textContent = this.textContent;
+        }
+        document.head.appendChild(script);
+        document.head.removeChild(script);
+    });
+}
+
+// ============================================
 // Tab Management
 // ============================================
 
@@ -116,27 +178,27 @@ function initTabs() {
     const dashboardUrl = baseUrl || '/';
     const dashboardExists = savedTabs.some(t => t.id === 'dashboard');
     if (!dashboardExists) {
-        savedTabs.unshift({ 
-            id: 'dashboard', 
-            label: 'Dashboard', 
-            icon: 'layoutDashboard', 
+        savedTabs.unshift({
+            id: 'dashboard',
+            label: 'Dashboard',
+            icon: 'layoutDashboard',
             url: dashboardUrl,
-            closable: false 
+            closable: false
         });
     }
 
     // Check if current page tab exists
     const currentTabExists = savedTabs.some(t => t.id === currentPageId);
-    
+
     if (!currentTabExists && currentPageId !== 'dashboard') {
         // Add current page as new tab
         const currentTabUrl = baseUrl + '/' + currentPageId;
-        savedTabs.push({ 
-            id: currentPageId, 
-            label: currentPageLabel, 
-            icon: currentPageIcon, 
+        savedTabs.push({
+            id: currentPageId,
+            label: currentPageLabel,
+            icon: currentPageIcon,
             url: currentTabUrl,
-            closable: true 
+            closable: true
         });
     }
 
@@ -167,7 +229,7 @@ function renderTabs() {
     const $container = $(container);
     const baseUrl = container.getAttribute('data-base-url') || '';
     const tabCount = AppState.openTabs.length;
-    
+
     let tabClass = '';
     if (tabCount > 8) {
         tabClass = 'tabs-icon-only';
@@ -194,13 +256,13 @@ function renderTabs() {
                 <button class="tab-close-btn ${tab.closable === false ? 'disabled' : ''}">×</button>
             </div>
         `;
-        
+
         const $tab = $(tabHtml);
         // Set data using attr for consistency
         $tab.attr('data-tab-id', tabId);
         $tab.find('.tab-btn').attr('data-tab-id', tabId);
         $tab.find('.tab-close-btn').attr('data-tab-id', tabId);
-        
+
         $container.append($tab);
     });
 }
@@ -227,7 +289,7 @@ function closeTab(tabId) {
 
     // Remove the tab
     AppState.openTabs.splice(tabIndex, 1);
-    
+
     // Save to session storage immediately
     const storageKey = getTabStorageKey();
     sessionStorage.setItem(storageKey, JSON.stringify(AppState.openTabs));
@@ -336,7 +398,7 @@ function initSidebar() {
     if (AppState.isSidebarCollapsed) {
         $('#sidebar').addClass('collapsed');
     }
-    
+
     // Render sidebar with visibility filtering
     renderSidebar();
 }
@@ -354,9 +416,9 @@ function initSplash() {
 
     let progress = 0;
     const progressBar = $('#splashProgressBar');
-    
+
     // Animate progress bar over 3 seconds
-    const progressInterval = setInterval(function() {
+    const progressInterval = setInterval(function () {
         if (progress >= 100) {
             clearInterval(progressInterval);
             return;
@@ -370,13 +432,13 @@ function initSplash() {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, minDisplayTime - elapsed);
 
-        setTimeout(function() {
+        setTimeout(function () {
             clearInterval(progressInterval);
             progressBar.css('width', '100%');
-            
-            setTimeout(function() {
+
+            setTimeout(function () {
                 $splash.addClass('splash-hidden');
-                setTimeout(function() {
+                setTimeout(function () {
                     $splash.remove();
                 }, 500);
             }, 200);
@@ -400,7 +462,7 @@ function initDashboardSlider() {
     if (!$slides.length) return;
 
     // Auto-rotate slider
-    setInterval(function() {
+    setInterval(function () {
         if (document.hidden) return;
         const slideCount = $slides.length;
         const newIndex = (AppState.dashboardSlideIndex + 1) % slideCount;
@@ -417,58 +479,274 @@ function changeSlide(index) {
 }
 
 // ============================================
+// SPA Navigation
+// ============================================
+
+let isNavigating = false;
+
+function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
+    if (isNavigating) return;
+
+    isNavigating = true;
+
+    // Show loading state
+    const $pageContent = $('#pageContent');
+    const $pageTitle = $('#pageTitle');
+
+    $pageContent.css('opacity', '0.5');
+
+    // Make AJAX request
+    $.ajax({
+        url: url,
+        type: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-PJAX': 'true'
+        },
+        success: function (response) {
+            // Parse response
+            let content = response;
+            let title = pageLabel;
+            let hidePageTitle = false;
+            let requiredCss = '';
+
+            // If response is HTML, try to extract content
+            if (typeof response === 'string') {
+                const $response = $('<div>').html(response);
+
+                // Check for PJAX response first (preferred)
+                const $pjaxContent = $response.find('#pjax-content');
+                if ($pjaxContent.length) {
+                    // PJAX response - includes inline styles and content
+                    content = $pjaxContent.html();
+                    
+                    // Get page title from PJAX data attribute
+                    const pjaxTitle = $pjaxContent.attr('data-page-title');
+                    if (pjaxTitle) {
+                        title = pjaxTitle;
+                    }
+                    
+                    // Get required CSS from PJAX data attribute
+                    requiredCss = $pjaxContent.attr('data-require-css') || '';
+                    
+                    // PJAX responses typically hide the page title bar
+                    hidePageTitle = true;
+                } else {
+                    // Fallback: Try to find page-content section
+                    const $content = $response.find('#pageContent');
+                    if ($content.length) {
+                        content = $content.html();
+                    } else {
+                        // Use entire response
+                        content = response;
+                    }
+
+                    // Check if page title should be hidden
+                    const $titleBar = $response.find('.page-title-bar');
+                    hidePageTitle = $titleBar.length === 0;
+                    
+                    // Try to extract required CSS from head (fallback)
+                    const $requireCssMeta = $response.find('meta[name="require-css"]');
+                    if ($requireCssMeta.length) {
+                        requiredCss = $requireCssMeta.attr('content') || '';
+                    }
+                }
+            }
+
+            // Load required CSS files before updating content
+            const cssLoadPromise = requiredCss ? loadPageCssMultiple(requiredCss) : Promise.resolve();
+            
+            cssLoadPromise.then(() => {
+                // Update page content
+                $pageContent.html(content);
+
+                // Update page title
+                if (!hidePageTitle && $pageTitle.length) {
+                    $pageTitle.text(title);
+                    $('.page-title-bar').show();
+                } else {
+                    $('.page-title-bar').hide();
+                }
+
+                // Update document title
+                const brandName = window.BackendConfig?.brandName || 'VODO Admin';
+                document.title = `${title} - ${brandName}`;
+
+                // Update BackendConfig
+                if (window.BackendConfig) {
+                    window.BackendConfig.currentPage = pageId;
+                    window.BackendConfig.currentPageLabel = pageLabel;
+                    window.BackendConfig.currentPageIcon = pageIcon;
+                }
+
+                // Update browser history
+                if (pushState) {
+                    const state = {
+                        pageId: pageId,
+                        pageLabel: pageLabel,
+                        pageIcon: pageIcon,
+                        url: url
+                    };
+                    history.pushState(state, title, url);
+                }
+
+                // Update active tab
+                AppState.activeTabId = pageId;
+
+                // Update tabs
+                renderTabs();
+
+                // Update sidebar active state
+                $('.nav-item').removeClass('active');
+                $(`.nav-item[data-nav-id="${pageId}"]`).addClass('active');
+
+                // Restore opacity
+                $pageContent.css('opacity', '1');
+
+                // Scroll to top
+                $pageContent.scrollTop(0);
+
+                // Re-initialize any page-specific scripts
+                if (typeof initDashboardSlider === 'function') {
+                    initDashboardSlider();
+                }
+                
+                // Execute any inline scripts from the loaded content
+                executeInlineScripts($pageContent);
+
+                isNavigating = false;
+            });
+        },
+        error: function (xhr, status, error) {
+            console.error('Navigation error:', error);
+
+            // Show error message
+            $pageContent.html(`
+                <div style="padding: var(--spacing-6); text-align: center;">
+                    <div style="color: var(--text-error); margin-bottom: var(--spacing-4);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                    <h3 style="margin-bottom: var(--spacing-2);">Failed to load page</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-4);">
+                        ${xhr.status === 404 ? 'Page not found' : 'An error occurred while loading the page'}
+                    </p>
+                    <button onclick="location.reload()" class="btn-primary" style="padding: var(--spacing-2) var(--spacing-4); background: var(--bg-primary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                        Reload Page
+                    </button>
+                </div>
+            `);
+
+            $pageContent.css('opacity', '1');
+            isNavigating = false;
+        }
+    });
+}
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', function (event) {
+    if (event.state) {
+        const { pageId, pageLabel, pageIcon, url } = event.state;
+        navigateToPage(url, pageId, pageLabel, pageIcon, false);
+    }
+});
+
+// ============================================
 // Event Handlers
 // ============================================
 
 function initEventHandlers() {
-    // Tab button click - handle tab activation
-    $(document).on('click', '.tab-btn', function(e) {
-        // Use attr instead of data to avoid jQuery caching issues
+    // Tab button click - handle tab activation with AJAX
+    $(document).on('click', '.tab-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
         const tabId = String($(this).attr('data-tab-id'));
-        
-        // If this tab is already active, prevent navigation (no need to reload)
+
+        // If this tab is already active, do nothing
         if (isTabActive(tabId)) {
-            e.preventDefault();
-            e.stopPropagation();
             return false;
         }
-        
-        // Tab exists but not active - let navigation happen, page will activate it
-        // Don't prevent default, let the link navigate
+
+        // Find the tab
+        const tab = getTabById(tabId);
+        if (tab) {
+            navigateToPage(tab.url, tab.id, tab.label, tab.icon);
+        }
+
+        return false;
     });
 
     // Tab close
-    $(document).on('click', '.tab-close-btn:not(.disabled)', function(e) {
+    $(document).on('click', '.tab-close-btn:not(.disabled)', function (e) {
         e.preventDefault();
         e.stopPropagation();
         const tabId = String($(this).attr('data-tab-id'));
         closeTab(tabId);
     });
 
-    // Sidebar nav item click - check if already on this page
-    $(document).on('click', '.nav-item', function(e) {
+    // Sidebar nav item click - use AJAX navigation
+    $(document).on('click', '.nav-item', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
         const navId = String($(this).attr('data-nav-id'));
-        
+        const navUrl = $(this).attr('href');
+        const navLabel = $(this).find('span').last().text();
+
         // Check if already on this page
         if (isTabActive(navId)) {
-            // Already on this page, prevent navigation
-            e.preventDefault();
-            e.stopPropagation();
             return false;
         }
-        
-        // Let navigation happen - page will create or activate tab
+
+        // Get icon from the nav item
+        const navIcon = getIconNameFromNav(navId);
+
+        // Check if tab exists
+        if (!isTabOpen(navId)) {
+            // Add new tab
+            const container = document.getElementById('tabsContainer');
+            const baseUrl = container?.getAttribute('data-base-url') || '';
+
+            AppState.openTabs.push({
+                id: navId,
+                label: navLabel,
+                icon: navIcon,
+                url: navUrl,
+                closable: true
+            });
+
+            // Save to storage
+            const storageKey = getTabStorageKey();
+            sessionStorage.setItem(storageKey, JSON.stringify(AppState.openTabs));
+        }
+
+        // Navigate to page
+        navigateToPage(navUrl, navId, navLabel, navIcon);
+
+        return false;
+    });
+
+    // Nav board button - use AJAX navigation
+    $(document).on('click', '#navBoardBtn', function (e) {
+        e.preventDefault();
+        const url = $(this).attr('href');
+        navigateToPage(url, 'navigation-board', 'Navigation Board', 'layoutDashboard');
+        return false;
     });
 
     // Sidebar collapse
-    $('#collapseBtn').on('click', function() {
+    $('#collapseBtn').on('click', function () {
         AppState.isSidebarCollapsed = !AppState.isSidebarCollapsed;
         localStorage.setItem('sidebarCollapsed', AppState.isSidebarCollapsed);
         $('#sidebar').toggleClass('collapsed', AppState.isSidebarCollapsed);
     });
 
     // Notification button
-    $('#notificationBtn').on('click', function(e) {
+    $('#notificationBtn').on('click', function (e) {
         e.stopPropagation();
         const $panel = $('#notificationPanel');
         const isVisible = $panel.is(':visible');
@@ -481,7 +759,7 @@ function initEventHandlers() {
     });
 
     // Notification tabs
-    $(document).on('click', '.notification-tab', function() {
+    $(document).on('click', '.notification-tab', function () {
         const tab = $(this).data('tab');
         AppState.notificationTab = tab;
         $('.notification-tab').removeClass('active');
@@ -490,7 +768,7 @@ function initEventHandlers() {
     });
 
     // Mark notification as read
-    $(document).on('click', '.notification-item', function() {
+    $(document).on('click', '.notification-item', function () {
         const id = $(this).data('id');
         const notification = AppState.notifications.find(n => n.id === id);
         if (notification) {
@@ -501,14 +779,14 @@ function initEventHandlers() {
     });
 
     // Mark all as read
-    $('#markAllReadBtn').on('click', function() {
+    $('#markAllReadBtn').on('click', function () {
         AppState.notifications.forEach(n => n.unread = false);
         renderNotifications();
         updateNotificationBadge();
     });
 
     // User menu button
-    $('#userMenuBtn').on('click', function(e) {
+    $('#userMenuBtn').on('click', function (e) {
         e.stopPropagation();
         const $panel = $('#userMenuPanel');
         const isVisible = $panel.is(':visible');
@@ -521,12 +799,47 @@ function initEventHandlers() {
     });
 
     // Dark mode toggle
-    $('#darkModeToggle').on('change', function() {
+    $('#darkModeToggle').on('change', function () {
         toggleDarkMode();
     });
 
+    // Language selector toggle
+    $('#languageToggle').on('click', function (e) {
+        e.stopPropagation();
+        const $dropdown = $('#languageDropdown');
+        const $selector = $(this).closest('.language-selector');
+        const isVisible = $dropdown.is(':visible');
+        
+        $dropdown.toggle();
+        $selector.toggleClass('open', !isVisible);
+    });
+
+    // Language option click - set cookie and reload
+    $(document).on('click', '.language-option', function (e) {
+        e.preventDefault();
+        const lang = $(this).data('lang');
+        
+        // Set cookie for 1 year
+        const expires = new Date();
+        expires.setFullYear(expires.getFullYear() + 1);
+        document.cookie = `locale=${lang}; expires=${expires.toUTCString()}; path=/`;
+        
+        // Reload page with lang parameter (middleware will handle it)
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.location.href = url.toString();
+    });
+
+    // Close language dropdown when clicking outside
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.language-selector').length) {
+            $('#languageDropdown').hide();
+            $('.language-selector').removeClass('open');
+        }
+    });
+
     // Close dropdowns when clicking overlay
-    $('#overlay').on('click', function() {
+    $('#overlay').on('click', function () {
         $('#notificationPanel').hide();
         $('#userMenuPanel').hide();
         $('#userMenuBtn').removeClass('active');
@@ -534,7 +847,7 @@ function initEventHandlers() {
     });
 
     // Close dropdowns when clicking outside
-    $(document).on('click', function(e) {
+    $(document).on('click', function (e) {
         if (!$(e.target).closest('#notificationPanel, #notificationBtn').length) {
             $('#notificationPanel').hide();
         }
@@ -548,19 +861,19 @@ function initEventHandlers() {
     });
 
     // Slider navigation
-    $(document).on('click', '.slider-btn.prev', function() {
+    $(document).on('click', '.slider-btn.prev', function () {
         const slideCount = $('.slide').length;
         const newIndex = (AppState.dashboardSlideIndex - 1 + slideCount) % slideCount;
         changeSlide(newIndex);
     });
 
-    $(document).on('click', '.slider-btn.next', function() {
+    $(document).on('click', '.slider-btn.next', function () {
         const slideCount = $('.slide').length;
         const newIndex = (AppState.dashboardSlideIndex + 1) % slideCount;
         changeSlide(newIndex);
     });
 
-    $(document).on('click', '.slider-indicator', function() {
+    $(document).on('click', '.slider-indicator', function () {
         const index = parseInt($(this).data('index'));
         changeSlide(index);
     });
@@ -568,23 +881,23 @@ function initEventHandlers() {
     // Widget drag and drop
     let draggedWidget = null;
 
-    $(document).on('dragstart', '.widget', function(e) {
+    $(document).on('dragstart', '.widget', function (e) {
         draggedWidget = this;
         $(this).addClass('dragging');
         e.originalEvent.dataTransfer.effectAllowed = 'move';
     });
 
-    $(document).on('dragend', '.widget', function() {
+    $(document).on('dragend', '.widget', function () {
         $(this).removeClass('dragging');
         draggedWidget = null;
     });
 
-    $(document).on('dragover', '.widget', function(e) {
+    $(document).on('dragover', '.widget', function (e) {
         e.preventDefault();
         e.originalEvent.dataTransfer.dropEffect = 'move';
     });
 
-    $(document).on('drop', '.widget', function(e) {
+    $(document).on('drop', '.widget', function (e) {
         e.preventDefault();
         if (draggedWidget && draggedWidget !== this) {
             const $dragged = $(draggedWidget);
@@ -602,25 +915,25 @@ function initEventHandlers() {
     });
 
     // Search functionality
-    $(document).on('input', '.search-input', function() {
+    $(document).on('input', '.search-input', function () {
         const query = $(this).val().toLowerCase();
         const $table = $(this).closest('.page-container').find('.data-table');
 
-        $table.find('tbody tr').each(function() {
+        $table.find('tbody tr').each(function () {
             const text = $(this).text().toLowerCase();
             $(this).toggle(text.includes(query));
         });
     });
 
     // Navigation board item toggle
-    $(document).on('click', '.nav-board-item', function() {
+    $(document).on('click', '.nav-board-item', function () {
         const itemId = $(this).data('item-id');
         const $item = $(this);
         const $star = $item.find('.star-icon');
-        
+
         // Get current visible items
         const visibleItems = getVisibleNavItems();
-        
+
         // Toggle visibility
         if (visibleItems.has(itemId)) {
             visibleItems.delete(itemId);
@@ -631,10 +944,10 @@ function initEventHandlers() {
             $item.addClass('visible');
             $star.attr('fill', 'currentColor');
         }
-        
+
         // Save to localStorage
         localStorage.setItem('visibleNavItems', JSON.stringify([...visibleItems]));
-        
+
         // Update sidebar to reflect changes immediately
         renderSidebar();
     });
@@ -653,7 +966,7 @@ function getVisibleNavItems() {
         if (saved) {
             visibleNavItems = new Set(JSON.parse(saved));
         }
-    } catch (e) {}
+    } catch (e) { }
     return visibleNavItems;
 }
 
@@ -664,30 +977,30 @@ function getVisibleNavItems() {
 function renderSidebar() {
     const $nav = $('#sidebarNav');
     if (!$nav.length) return;
-    
+
     // Get navGroups from BackendConfig
     const navGroups = window.BackendConfig?.navGroups || [];
     if (navGroups.length === 0) return;
-    
+
     const visibleNavItems = getVisibleNavItems();
     const currentPage = window.BackendConfig?.currentPage || 'dashboard';
-    
+
     // Clear existing nav items
     $nav.empty();
-    
+
     let hasVisibleItems = false;
-    
+
     navGroups.forEach((group, groupIndex) => {
         // Filter items by visibility
         const visibleItems = group.items.filter(item => visibleNavItems.has(item.id));
-        
+
         // Skip group if no visible items
         if (visibleItems.length === 0) {
             return;
         }
-        
+
         hasVisibleItems = true;
-        
+
         // Category divider
         if (groupIndex > 0 || group.category) {
             $nav.append(`
@@ -697,12 +1010,12 @@ function renderSidebar() {
                 </div>
             `);
         }
-        
+
         // Navigation items (only visible ones)
         visibleItems.forEach(item => {
             const isActive = currentPage === item.id;
             const iconHtml = getNavIcon(item.icon);
-            
+
             $nav.append(`
                 <a href="${item.url}" class="nav-item ${isActive ? 'active' : ''}" data-nav-id="${item.id}">
                     <span class="nav-icon">${iconHtml}</span>
@@ -711,7 +1024,7 @@ function renderSidebar() {
             `);
         });
     });
-    
+
     // Show message if no items visible
     if (!hasVisibleItems) {
         $nav.append(`
@@ -720,6 +1033,60 @@ function renderSidebar() {
             </div>
         `);
     }
+}
+
+function getIconNameFromNav(navId) {
+    // Map common nav IDs to icon names
+    const iconMap = {
+        'dashboard': 'layoutDashboard',
+        'sites': 'globe',
+        'databases': 'database',
+        'ssl': 'fileLock',
+        'dns': 'network',
+        'firewall': 'ban',
+        'backups': 'fileArchive',
+        'files': 'folderTree',
+        'cron': 'clock',
+        'security': 'shieldCheck',
+        'users': 'users',
+        'admins': 'userCheck',
+        'ssh': 'fileCode',
+        'api': 'key',
+        'logs': 'fileInput',
+        'packages': 'package',
+        'services': 'shield',
+        'plugins': 'plug',
+        'updates': 'fileCheck',
+        'monitoring': 'fileBarChart',
+        'performance': 'zap',
+        'analytics': 'activity',
+        'integrations': 'plugZap',
+        'alerts': 'alertCircle',
+        'metrics': 'gauge',
+        'reports': 'barChart3',
+        'developers': 'code',
+        'modules': 'boxes',
+        'settings': 'settings',
+        'network': 'wifi',
+        'audit': 'shieldAlert',
+        'system': 'power',
+        'info': 'info',
+        'cli': 'terminal',
+        'documentation': 'fileText',
+        'guides': 'bookOpen',
+        'changelog': 'listTree',
+        'themes': 'palette',
+        'notifications': 'bellRing',
+        'templates': 'fileEdit',
+        'permissions': 'lock',
+        'webhooks': 'bell',
+        'code': 'code2',
+        'support': 'smile',
+        'feedback': 'messageSquare',
+        'home': 'home'
+    };
+
+    return iconMap[navId] || 'layoutDashboard';
 }
 
 function getNavIcon(iconName) {
@@ -771,9 +1138,12 @@ function getNavIcon(iconName) {
         fileEdit: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-5.5"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M10.42 12.61a2.1 2.1 0 1 1 2.97 2.97L7.95 21 4 22l.99-3.95 5.43-5.44Z"></path></svg>',
         lock: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>',
         bell: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>',
-        code2: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"></path><path d="m6 8-4 4 4 4"></path><path d="m14.5 4-5 16"></path></svg>'
+        code2: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"></path><path d="m6 8-4 4 4 4"></path><path d="m14.5 4-5 16"></path></svg>',
+        smile: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
+        messageSquare: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+        home: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'
     };
-    
+
     return icons[iconName] || icons.layoutDashboard;
 }
 
@@ -781,7 +1151,7 @@ function getNavIcon(iconName) {
 // Set Notifications from Server
 // ============================================
 
-window.setNotifications = function(notifications) {
+window.setNotifications = function (notifications) {
     AppState.notifications = notifications;
     renderNotifications();
     updateNotificationBadge();
@@ -791,7 +1161,7 @@ window.setNotifications = function(notifications) {
 // Application Initialization
 // ============================================
 
-$(document).ready(function() {
+$(document).ready(function () {
     // Initialize splash screen first
     initSplash();
 
@@ -813,4 +1183,15 @@ $(document).ready(function() {
 
     // Initialize event handlers
     initEventHandlers();
+
+    // Initialize history state for SPA
+    if (window.BackendConfig && !history.state) {
+        const initialState = {
+            pageId: window.BackendConfig.currentPage,
+            pageLabel: window.BackendConfig.currentPageLabel,
+            pageIcon: window.BackendConfig.currentPageIcon,
+            url: window.location.href
+        };
+        history.replaceState(initialState, document.title, window.location.href);
+    }
 });

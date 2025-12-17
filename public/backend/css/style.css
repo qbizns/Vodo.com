@@ -503,7 +503,7 @@ body {
     border-radius: var(--border-radius);
     box-shadow: var(--elevation-3);
     z-index: 999;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .user-profile-section {
@@ -610,6 +610,143 @@ body {
 
 .toggle-switch input:checked + .toggle-slider::before {
     transform: translateX(20px);
+}
+
+/* ============================================
+   Language Selector
+   ============================================ */
+
+.language-selector {
+    position: relative;
+    padding: var(--spacing-2) var(--spacing-4);
+}
+
+.language-current {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.language-current:hover {
+    background-color: #3D3D3D;
+}
+
+.language-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: #C8C8C8;
+    font-size: var(--text-body);
+}
+
+.language-label svg {
+    color: #A0A0A0;
+}
+
+.language-value {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: #FFFFFF;
+    font-size: var(--text-caption);
+}
+
+.language-value .lang-flag {
+    font-size: 14px;
+}
+
+.language-value .lang-name {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.language-value .chevron {
+    color: #A0A0A0;
+    transition: transform 0.2s ease;
+}
+
+.language-selector.open .language-value .chevron {
+    transform: rotate(90deg);
+}
+
+/* Language dropdown - slides LEFT in LTR (towards screen center) */
+.language-dropdown {
+    position: absolute;
+    top: 0;
+    right: 100%;
+    margin-right: 4px;
+    width: 200px;
+    max-height: 320px;
+    overflow-y: auto;
+    background-color: #2E2E2E;
+    border-radius: var(--border-radius);
+    box-shadow: var(--elevation-3);
+    z-index: 1001;
+    border: 1px solid #404040;
+}
+
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    color: #C8C8C8;
+    text-decoration: none;
+    font-size: var(--text-caption);
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.language-option:hover {
+    background-color: #3D3D3D;
+    color: #FFFFFF;
+}
+
+.language-option.active {
+    background-color: rgba(0, 120, 215, 0.2);
+    color: #0078D7;
+}
+
+.language-option .lang-flag {
+    font-size: 16px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.language-option .lang-native {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.language-option .check-icon {
+    color: #0078D7;
+    flex-shrink: 0;
+}
+
+/* Language dropdown scrollbar */
+.language-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.language-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.language-dropdown::-webkit-scrollbar-thumb {
+    background: #4A4A4A;
+    border-radius: 3px;
+}
+
+.language-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #5A5A5A;
 }
 
 /* ============================================

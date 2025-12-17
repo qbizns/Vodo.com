@@ -1,0 +1,623 @@
+/**
+ * RTL (Right-to-Left) Stylesheet
+ * 
+ * This stylesheet provides RTL-specific overrides for languages like:
+ * Arabic, Hebrew, Persian/Farsi, Urdu, Pashto, etc.
+ */
+
+/* ==========================================================================
+   Base RTL Adjustments
+   ========================================================================== */
+
+html[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="rtl"] body {
+    direction: rtl;
+    text-align: right;
+}
+
+/* ==========================================================================
+   Flexbox Direction Reversal
+   ========================================================================== */
+
+/* html[dir="rtl"] .flex-row,
+html[dir="rtl"] .flex {
+    flex-direction: row-reverse;
+} */
+
+html[dir="rtl"] .flex-col {
+    flex-direction: column;
+}
+
+html[dir="rtl"] .flex-row-reverse {
+    flex-direction: row;
+}
+
+/* ==========================================================================
+   Text Alignment
+   ========================================================================== */
+
+html[dir="rtl"] .text-left {
+    text-align: right;
+}
+
+html[dir="rtl"] .text-right {
+    text-align: left;
+}
+
+html[dir="rtl"] .text-start {
+    text-align: right;
+}
+
+html[dir="rtl"] .text-end {
+    text-align: left;
+}
+
+/* ==========================================================================
+   Margins and Padding
+   ========================================================================== */
+
+/* Swap margin-left and margin-right */
+html[dir="rtl"] .ml-auto {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+html[dir="rtl"] .mr-auto {
+    margin-right: 0;
+    margin-left: auto;
+}
+
+html[dir="rtl"] .ml-1 { margin-left: 0; margin-right: 0.25rem; }
+html[dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+html[dir="rtl"] .ml-3 { margin-left: 0; margin-right: 0.75rem; }
+html[dir="rtl"] .ml-4 { margin-left: 0; margin-right: 1rem; }
+html[dir="rtl"] .ml-5 { margin-left: 0; margin-right: 1.25rem; }
+html[dir="rtl"] .ml-6 { margin-left: 0; margin-right: 1.5rem; }
+
+html[dir="rtl"] .mr-1 { margin-right: 0; margin-left: 0.25rem; }
+html[dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
+html[dir="rtl"] .mr-3 { margin-right: 0; margin-left: 0.75rem; }
+html[dir="rtl"] .mr-4 { margin-right: 0; margin-left: 1rem; }
+html[dir="rtl"] .mr-5 { margin-right: 0; margin-left: 1.25rem; }
+html[dir="rtl"] .mr-6 { margin-right: 0; margin-left: 1.5rem; }
+
+/* Swap padding-left and padding-right */
+html[dir="rtl"] .pl-1 { padding-left: 0; padding-right: 0.25rem; }
+html[dir="rtl"] .pl-2 { padding-left: 0; padding-right: 0.5rem; }
+html[dir="rtl"] .pl-3 { padding-left: 0; padding-right: 0.75rem; }
+html[dir="rtl"] .pl-4 { padding-left: 0; padding-right: 1rem; }
+html[dir="rtl"] .pl-5 { padding-left: 0; padding-right: 1.25rem; }
+html[dir="rtl"] .pl-6 { padding-left: 0; padding-right: 1.5rem; }
+
+html[dir="rtl"] .pr-1 { padding-right: 0; padding-left: 0.25rem; }
+html[dir="rtl"] .pr-2 { padding-right: 0; padding-left: 0.5rem; }
+html[dir="rtl"] .pr-3 { padding-right: 0; padding-left: 0.75rem; }
+html[dir="rtl"] .pr-4 { padding-right: 0; padding-left: 1rem; }
+html[dir="rtl"] .pr-5 { padding-right: 0; padding-left: 1.25rem; }
+html[dir="rtl"] .pr-6 { padding-right: 0; padding-left: 1.5rem; }
+
+/* ==========================================================================
+   Borders
+   ========================================================================== */
+
+html[dir="rtl"] .border-l { border-left: none; border-right: 1px solid; }
+html[dir="rtl"] .border-r { border-right: none; border-left: 1px solid; }
+
+html[dir="rtl"] .border-l-2 { border-left: none; border-right: 2px solid; }
+html[dir="rtl"] .border-r-2 { border-right: none; border-left: 2px solid; }
+
+html[dir="rtl"] .rounded-l { border-radius: 0 0.25rem 0.25rem 0; }
+html[dir="rtl"] .rounded-r { border-radius: 0.25rem 0 0 0.25rem; }
+
+html[dir="rtl"] .rounded-l-lg { border-radius: 0 0.5rem 0.5rem 0; }
+html[dir="rtl"] .rounded-r-lg { border-radius: 0.5rem 0 0 0.5rem; }
+
+/* ==========================================================================
+   Positioning
+   ========================================================================== */
+
+html[dir="rtl"] .left-0 { left: auto; right: 0; }
+html[dir="rtl"] .right-0 { right: auto; left: 0; }
+
+html[dir="rtl"] .left-1 { left: auto; right: 0.25rem; }
+html[dir="rtl"] .right-1 { right: auto; left: 0.25rem; }
+
+html[dir="rtl"] .left-2 { left: auto; right: 0.5rem; }
+html[dir="rtl"] .right-2 { right: auto; left: 0.5rem; }
+
+html[dir="rtl"] .left-4 { left: auto; right: 1rem; }
+html[dir="rtl"] .right-4 { right: auto; left: 1rem; }
+
+/* ==========================================================================
+   Transforms
+   ========================================================================== */
+
+html[dir="rtl"] .translate-x-1 { transform: translateX(-0.25rem); }
+html[dir="rtl"] .translate-x-2 { transform: translateX(-0.5rem); }
+html[dir="rtl"] .-translate-x-1 { transform: translateX(0.25rem); }
+html[dir="rtl"] .-translate-x-2 { transform: translateX(0.5rem); }
+
+/* ==========================================================================
+   Sidebar
+   ========================================================================== */
+
+html[dir="rtl"] .sidebar {
+    border-right: none;
+    border-left: 1px solid var(--border-color);
+}
+
+html[dir="rtl"] .sidebar-nav-item {
+    text-align: right;
+}
+
+html[dir="rtl"] .sidebar-nav-item .nav-icon {
+    margin-left: var(--spacing-3);
+    margin-right: 0;
+}
+
+html[dir="rtl"] .sidebar-submenu {
+    padding-left: 0;
+    padding-right: var(--spacing-6);
+}
+
+/* ==========================================================================
+   Icons
+   ========================================================================== */
+
+/* Flip directional icons */
+html[dir="rtl"] .icon-arrow-right,
+html[dir="rtl"] .icon-chevron-right,
+html[dir="rtl"] .icon-arrow-left,
+html[dir="rtl"] .icon-chevron-left {
+    transform: scaleX(-1);
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+    text-align: right;
+    direction: rtl;
+}
+
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="url"],
+html[dir="rtl"] input[type="number"] {
+    direction: ltr;
+    text-align: left;
+}
+
+html[dir="rtl"] .input-group {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .input-group-prepend {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+html[dir="rtl"] .input-group-append {
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+html[dir="rtl"] .form-check {
+    padding-left: 0;
+    padding-right: 1.5rem;
+}
+
+html[dir="rtl"] .form-check-input {
+    margin-left: 0;
+    margin-right: -1.5rem;
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+html[dir="rtl"] table {
+    direction: rtl;
+}
+
+html[dir="rtl"] th,
+html[dir="rtl"] td {
+    text-align: right;
+}
+
+html[dir="rtl"] th:first-child,
+html[dir="rtl"] td:first-child {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+html[dir="rtl"] th:last-child,
+html[dir="rtl"] td:last-child {
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+/* ==========================================================================
+   Lists
+   ========================================================================== */
+
+html[dir="rtl"] ul,
+html[dir="rtl"] ol {
+    padding-left: 0;
+    padding-right: 2rem;
+}
+
+html[dir="rtl"] li {
+    text-align: right;
+}
+
+/* ==========================================================================
+   Dropdowns
+   ========================================================================== */
+
+html[dir="rtl"] .dropdown-menu {
+    right: 0;
+    left: auto;
+    text-align: right;
+}
+
+html[dir="rtl"] .dropdown-menu-left {
+    right: auto;
+    left: 0;
+}
+
+/* Language Selector - slide RIGHT in RTL (towards screen center) */
+html[dir="rtl"] .language-dropdown {
+    right: auto;
+    left: 100%;
+    margin-right: 0;
+    margin-left: 4px;
+}
+
+html[dir="rtl"] .language-selector.open .language-value .chevron {
+    transform: rotate(-90deg);
+}
+
+/* html[dir="rtl"] .language-option {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .language-current {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .language-label {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .language-value {
+    flex-direction: row-reverse;
+} */
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+html[dir="rtl"] .modal-header {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .modal-footer {
+    flex-direction: row-reverse;
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+html[dir="rtl"] .card-header,
+html[dir="rtl"] .card-footer {
+    text-align: right;
+}
+
+/* ==========================================================================
+   Buttons with Icons
+   ========================================================================== */
+
+html[dir="rtl"] .btn-icon-left .btn-icon {
+    margin-left: var(--spacing-2);
+    margin-right: 0;
+}
+
+html[dir="rtl"] .btn-icon-right .btn-icon {
+    margin-right: var(--spacing-2);
+    margin-left: 0;
+}
+
+/* ==========================================================================
+   Breadcrumbs
+   ========================================================================== */
+
+html[dir="rtl"] .breadcrumb {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+    content: "\\";
+    padding-left: 0.5rem;
+    padding-right: 0;
+}
+
+/* ==========================================================================
+   Progress Bars
+   ========================================================================== */
+
+html[dir="rtl"] .progress-bar {
+    direction: rtl;
+}
+
+/* ==========================================================================
+   Notifications/Alerts
+   ========================================================================== */
+
+html[dir="rtl"] .alert {
+    text-align: right;
+}
+
+html[dir="rtl"] .alert-icon {
+    margin-left: var(--spacing-3);
+    margin-right: 0;
+}
+
+html[dir="rtl"] .alert-close {
+    left: var(--spacing-3);
+    right: auto;
+}
+
+/* ==========================================================================
+   Tooltips
+   ========================================================================== */
+
+html[dir="rtl"] .tooltip-left {
+    left: auto;
+    right: 100%;
+}
+
+html[dir="rtl"] .tooltip-right {
+    right: auto;
+    left: 100%;
+}
+
+/* ==========================================================================
+   Custom Scrollbar
+   ========================================================================== */
+
+html[dir="rtl"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html[dir="rtl"] ::-webkit-scrollbar-track {
+    background: var(--bg-surface-2);
+}
+
+html[dir="rtl"] ::-webkit-scrollbar-thumb {
+    background: var(--text-disabled);
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   Plugin Cards
+   ========================================================================== */
+
+html[dir="rtl"] .plugin-card {
+    text-align: right;
+}
+
+html[dir="rtl"] .plugin-card-header {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .plugin-stat-card {
+    text-align: right;
+}
+
+/* ==========================================================================
+   Navigation Board
+   ========================================================================== */
+
+html[dir="rtl"] .nav-board-item {
+    text-align: right;
+}
+
+/* ==========================================================================
+   RTL Utility Classes
+   ========================================================================== */
+
+/* Use these to force LTR in RTL context */
+html[dir="rtl"] .ltr {
+    direction: ltr;
+    text-align: left;
+}
+
+/* Use these to force RTL in LTR context */
+html[dir="ltr"] .rtl {
+    direction: rtl;
+    text-align: right;
+}
+
+/* Bidirectional text handling */
+.bdi {
+    unicode-bidi: isolate;
+}
+
+.bdo-rtl {
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
+
+.bdo-ltr {
+    unicode-bidi: bidi-override;
+    direction: ltr;
+}
+
+/* ==========================================================================
+   Language-Specific Font Families
+   ========================================================================== */
+
+/* Arabic (ar) - Cairo, Noto Sans Arabic */
+html.lang-ar,
+html.lang-ar body {
+    font-family: 'Cairo', 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Hebrew (he) - Heebo, Noto Sans Hebrew */
+html.lang-he,
+html.lang-he body {
+    font-family: 'Heebo', 'Noto Sans Hebrew', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Persian/Farsi (fa) - Vazirmatn, Noto Sans Arabic */
+html.lang-fa,
+html.lang-fa body {
+    font-family: 'Vazirmatn', 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Urdu (ur) - Noto Nastaliq Urdu */
+html.lang-ur,
+html.lang-ur body {
+    font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Pashto (ps) - Noto Sans Arabic */
+html.lang-ps,
+html.lang-ps body {
+    font-family: 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Kurdish (ku) - Noto Sans Arabic */
+html.lang-ku,
+html.lang-ku body {
+    font-family: 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Sindhi (sd) - Noto Sans Arabic */
+html.lang-sd,
+html.lang-sd body {
+    font-family: 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Chinese Simplified (zh) */
+html.lang-zh,
+html.lang-zh body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', sans-serif;
+}
+
+/* Chinese Traditional (zh_TW) */
+html.lang-zh_TW,
+html.lang-zh_TW body {
+    font-family: 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', 'Segoe UI', sans-serif;
+}
+
+/* Japanese (ja) */
+html.lang-ja,
+html.lang-ja body {
+    font-family: 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', 'Segoe UI', sans-serif;
+}
+
+/* Korean (ko) */
+html.lang-ko,
+html.lang-ko body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', 'Segoe UI', sans-serif;
+}
+
+/* Thai (th) */
+html.lang-th,
+html.lang-th body {
+    font-family: 'Noto Sans Thai', 'Tahoma', 'Segoe UI', sans-serif;
+}
+
+/* Hindi (hi) */
+html.lang-hi,
+html.lang-hi body {
+    font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
+}
+
+/* Russian (ru), Ukrainian (uk) - Cyrillic */
+html.lang-ru,
+html.lang-ru body,
+html.lang-uk,
+html.lang-uk body {
+    font-family: 'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Greek (el) */
+html.lang-el,
+html.lang-el body {
+    font-family: 'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Default RTL font fallback */
+html[dir="rtl"] {
+    font-family: 'Cairo', 'Noto Sans Arabic', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ==========================================================================
+   RTL Typography Enhancements
+   ========================================================================== */
+
+/* Increase line height for better RTL readability */
+html[dir="rtl"] p,
+html[dir="rtl"] li,
+html[dir="rtl"] td {
+    line-height: 1.8;
+}
+
+/* Ensure proper letter spacing for Arabic script */
+html.lang-ar,
+html.lang-fa,
+html.lang-ur {
+    letter-spacing: 0;
+}
+
+/* ==========================================================================
+   Google Fonts Import (Optional - Load via CDN)
+   ========================================================================== */
+
+/* 
+ * For production, consider adding these fonts via Google Fonts in your layout:
+ * 
+ * Arabic: https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap
+ * Hebrew: https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap
+ * Persian: https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap
+ * 
+ * Example:
+ * <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+ */
+
+/* ==========================================================================
+   Print Styles for RTL
+   ========================================================================== */
+
+@media print {
+    html[dir="rtl"] {
+        direction: rtl;
+        text-align: right;
+    }
+}
+
+
+.nav-item {
+    border-right: 3px solid transparent;
+    border-left: 0px solid transparent;
+}
+.nav-item.active {
+    background-color: var(--bg-surface-hover);
+    border-right-color: var(--color-accent);
+    border-left-color: transparent;
+}
+.user-menu-panel,.notification-panel {
+    left: 0;
+    right: inherit;
+}
+
+.tab-btn {
+    padding: 6px var(--spacing-4) 6px 0!important;
+}

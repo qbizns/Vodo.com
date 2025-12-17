@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_locale() }}" dir="{{ text_direction() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Sign in') - {{ $brandName ?? 'VODO' }}</title>
+    <title>@yield('title', __t('auth.sign_in')) - {{ $brandName ?? 'VODO' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('backend/css/style.css') }}">
     <style>
@@ -227,8 +227,8 @@
                         </svg>
                     @endif
                 </div>
-                <h2 class="login-title">@yield('login-title', 'Sign in')</h2>
-                <p class="login-subtitle">@yield('login-subtitle', 'Welcome back to ' . ($brandName ?? 'VODO'))</p>
+                <h2 class="login-title">@yield('login-title', __t('auth.sign_in'))</h2>
+                <p class="login-subtitle">@yield('login-subtitle', __t('auth.login_subtitle'))</p>
             </div>
 
             @yield('content')

@@ -28,38 +28,113 @@
     </div>
 </div>
 
+@push('styles')
+<style>
+.nav-board-item {
+    cursor: pointer;
+    user-select: none;
+}
+
+.nav-board-item .star-icon {
+    pointer-events: none;
+}
+</style>
+@endpush
+
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // Initialize visibility state from localStorage
-    initNavBoardVisibility();
-});
-
-function initNavBoardVisibility() {
-    // Get visible items from localStorage
-    let visibleItems = new Set(['dashboard', 'sites', 'databases']); // Default
-    try {
-        const saved = localStorage.getItem('visibleNavItems');
-        if (saved) {
-            visibleItems = new Set(JSON.parse(saved));
-        }
-    } catch (e) {}
+(function() {
+    'use strict';
     
-    // Update each nav board item's state
-    $('.nav-board-item').each(function() {
-        const itemId = $(this).data('item-id');
-        const isVisible = visibleItems.has(itemId);
-        const $item = $(this);
-        const $star = $item.find('.star-icon');
+    function getVisibleNavItems() {
+        let visibleItems = new Set(['dashboard', 'sites', 'databases']);
+        try {
+            const saved = localStorage.getItem('visibleNavItems');
+            if (saved) {
+                visibleItems = new Set(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error('Error reading visible nav items:', e);
+        }
+        return visibleItems;
+    }
+    
+    function saveVisibleNavItems(visibleItems) {
+        try {
+            localStorage.setItem('visibleNavItems', JSON.stringify(Array.from(visibleItems)));
+        } catch (e) {
+            console.error('Failed to save visible nav items:', e);
+        }
+    }
+    
+    function updateNavBoardItem(item, itemId, isVisible) {
+        const star = item.querySelector('.star-icon');
+        if (!star) return;
         
         if (isVisible) {
-            $item.addClass('visible');
-            $star.attr('fill', 'currentColor');
+            item.classList.add('visible');
+            star.setAttribute('fill', 'currentColor');
         } else {
-            $item.removeClass('visible');
-            $star.attr('fill', 'none');
+            item.classList.remove('visible');
+            star.setAttribute('fill', 'none');
         }
-    });
-}
+    }
+    
+    function initNavBoardVisibility() {
+        const visibleItems = getVisibleNavItems();
+        const items = document.querySelectorAll('.nav-board-item');
+        
+        items.forEach(function(item) {
+            const itemId = item.getAttribute('data-item-id');
+            if (itemId) {
+                const isVisible = visibleItems.has(itemId);
+                updateNavBoardItem(item, itemId, isVisible);
+            }
+        });
+    }
+    
+    function handleItemClick(e) {
+        const item = e.currentTarget;
+        const itemId = item.getAttribute('data-item-id');
+        
+        if (!itemId) {
+            console.warn('No item-id found on clicked element');
+            return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        let visibleItems = getVisibleNavItems();
+        
+        if (visibleItems.has(itemId)) {
+            visibleItems.delete(itemId);
+        } else {
+            visibleItems.add(itemId);
+        }
+        
+        saveVisibleNavItems(visibleItems);
+        updateNavBoardItem(item, itemId, visibleItems.has(itemId));
+        
+        if (typeof renderSidebar === 'function') {
+            renderSidebar();
+        }
+    }
+    
+    function initNavBoard() {
+        initNavBoardVisibility();
+        
+        const items = document.querySelectorAll('.nav-board-item');
+        items.forEach(function(item) {
+            item.addEventListener('click', handleItemClick);
+        });
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNavBoard);
+    } else {
+        setTimeout(initNavBoard, 100);
+    }
+})();
 </script>
 @endpush

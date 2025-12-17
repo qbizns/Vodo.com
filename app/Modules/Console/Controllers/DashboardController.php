@@ -3,166 +3,282 @@
 namespace App\Modules\Console\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\DashboardService;
+use App\Services\NavigationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     /**
-     * Get the full navigation groups for the navigation board
+     * The navigation service instance.
      */
-    protected function getAllNavGroups(): array
+    protected NavigationService $navigationService;
+
+    /**
+     * The dashboard service instance.
+     */
+    protected DashboardService $dashboardService;
+
+    /**
+     * Create a new controller instance.
+     */
+    public function __construct(NavigationService $navigationService, DashboardService $dashboardService)
     {
+        $this->navigationService = $navigationService;
+        $this->dashboardService = $dashboardService;
+    }
+
+    /**
+     * Get user type and ID for the current authenticated user.
+     */
+    protected function getUserContext(): array
+    {
+        $user = Auth::guard('console')->user();
         return [
-            [
-                'category' => 'Website management',
-                'items' => [
-                    ['id' => 'dashboard', 'icon' => 'layoutDashboard', 'label' => 'Dashboard'],
-                    ['id' => 'sites', 'icon' => 'globe2', 'label' => 'Sites'],
-                ]
-            ],
-            [
-                'category' => 'DB',
-                'items' => [
-                    ['id' => 'databases', 'icon' => 'database', 'label' => 'Databases'],
-                    ['id' => 'db-servers', 'icon' => 'server', 'label' => 'Database servers'],
-                ]
-            ],
-            [
-                'category' => 'SSL',
-                'items' => [
-                    ['id' => 'ssl-certs', 'icon' => 'fileKey', 'label' => 'SSL certificates'],
-                    ['id' => 'csr', 'icon' => 'fileLock', 'label' => 'CSR-requests'],
-                ]
-            ],
-            [
-                'category' => 'DNS',
-                'items' => [
-                    ['id' => 'dns', 'icon' => 'network', 'label' => 'DNS management'],
-                    ['id' => 'slave-servers', 'icon' => 'serverStack', 'label' => 'Slave servers'],
-                    ['id' => 'reserved-names', 'icon' => 'ban', 'label' => 'Reserved names'],
-                    ['id' => 'technical-domains', 'icon' => 'network', 'label' => 'Technical domains'],
-                ]
-            ],
-            [
-                'category' => 'Tools',
-                'items' => [
-                    ['id' => 'backup', 'icon' => 'fileArchive', 'label' => 'Backup copies'],
-                    ['id' => 'file-manager', 'icon' => 'folderTree', 'label' => 'File manager'],
-                    ['id' => 'cron', 'icon' => 'clock', 'label' => 'CRON jobs'],
-                ]
-            ],
-            [
-                'category' => 'Accounts',
-                'items' => [
-                    ['id' => 'administrators', 'icon' => 'shieldCheck', 'label' => 'Administrators'],
-                    ['id' => 'resellers', 'icon' => 'users', 'label' => 'Resellers'],
-                    ['id' => 'users', 'icon' => 'user', 'label' => 'Users'],
-                    ['id' => 'ftp-users', 'icon' => 'userCheck', 'label' => 'FTP users'],
-                    ['id' => 'templates', 'icon' => 'fileCode', 'label' => 'Templates'],
-                    ['id' => 'access-functions', 'icon' => 'key', 'label' => 'Access to functions'],
-                    ['id' => 'data-import', 'icon' => 'fileInput', 'label' => 'Data import'],
-                ]
-            ],
-            [
-                'category' => 'Integration',
-                'items' => [
-                    ['id' => 'modules', 'icon' => 'package', 'label' => 'Modules'],
-                    ['id' => 'antivirus', 'icon' => 'shield', 'label' => 'ImunifyAV'],
-                    ['id' => 'extensions', 'icon' => 'plug', 'label' => 'Extensions'],
-                ]
-            ],
-            [
-                'category' => 'Logs',
-                'items' => [
-                    ['id' => 'action-log', 'icon' => 'fileCheck', 'label' => 'Action log'],
-                    ['id' => 'access-log', 'icon' => 'fileBarChart', 'label' => 'Access log'],
-                    ['id' => 'www-logs', 'icon' => 'globe', 'label' => 'WWW request logs'],
-                ]
-            ],
-            [
-                'category' => 'Monitoring',
-                'items' => [
-                    ['id' => 'background-tasks', 'icon' => 'zap', 'label' => 'Background tasks'],
-                    ['id' => 'active-sessions', 'icon' => 'activity', 'label' => 'Active sessions'],
-                    ['id' => 'active-connections', 'icon' => 'plugZap', 'label' => 'Active connections'],
-                    ['id' => 'notifications-panel', 'icon' => 'alertCircle', 'label' => 'Notifications'],
-                    ['id' => 'resource-monitoring', 'icon' => 'gauge', 'label' => 'Resource monitoring'],
-                    ['id' => 'server-resources', 'icon' => 'barChart3', 'label' => 'Server resources'],
-                ]
-            ],
-            [
-                'category' => 'Statistics',
-                'items' => [
-                    ['id' => 'limitations', 'icon' => 'ban', 'label' => 'Limitations'],
-                    ['id' => 'user-traffic', 'icon' => 'activity', 'label' => 'User traffic'],
-                ]
-            ],
-            [
-                'category' => 'Web server',
-                'items' => [
-                    ['id' => 'php', 'icon' => 'code', 'label' => 'PHP'],
-                    ['id' => 'web-scripts', 'icon' => 'boxes', 'label' => 'Web scripts'],
-                    ['id' => 'web-server', 'icon' => 'server', 'label' => 'Web server settings'],
-                ]
-            ],
-            [
-                'category' => 'Manage server',
-                'items' => [
-                    ['id' => 'software-config', 'icon' => 'settings', 'label' => 'Software configuration'],
-                    ['id' => 'ip-addresses', 'icon' => 'wifi', 'label' => 'IP addresses'],
-                    ['id' => 'firewall', 'icon' => 'shieldAlert', 'label' => 'Firewall'],
-                    ['id' => 'services', 'icon' => 'power', 'label' => 'Services'],
-                    ['id' => 'network-services', 'icon' => 'network', 'label' => 'Network services'],
-                    ['id' => 'system-info', 'icon' => 'info', 'label' => 'System information'],
-                    ['id' => 'system-settings', 'icon' => 'settings', 'label' => 'System settings'],
-                    ['id' => 'execute-command', 'icon' => 'terminal', 'label' => 'Execute command'],
-                    ['id' => 'reboot', 'icon' => 'power', 'label' => 'Reboot server'],
-                    ['id' => 'shell', 'icon' => 'terminal', 'label' => 'Shell-client'],
-                ]
-            ],
-            [
-                'category' => 'Panel',
-                'items' => [
-                    ['id' => 'license', 'icon' => 'fileText', 'label' => 'License management'],
-                    ['id' => 'software-info', 'icon' => 'bookOpen', 'label' => 'Software info'],
-                    ['id' => 'changelog', 'icon' => 'listTree', 'label' => 'Changelog'],
-                    ['id' => 'panel-settings', 'icon' => 'settings', 'label' => 'Panel settings'],
-                    ['id' => 'branding', 'icon' => 'palette', 'label' => 'Branding settings'],
-                    ['id' => 'email-notifications', 'icon' => 'bellRing', 'label' => 'Notifications'],
-                    ['id' => 'logging', 'icon' => 'fileEdit', 'label' => 'Logging settings'],
-                    ['id' => 'policies', 'icon' => 'fileCheck', 'label' => 'Policies'],
-                ]
-            ],
-            [
-                'category' => 'Demo Pages',
-                'items' => [
-                    ['id' => 'general', 'icon' => 'settings', 'label' => 'General Settings'],
-                    ['id' => 'security', 'icon' => 'lock', 'label' => 'Security & Login'],
-                    ['id' => 'language', 'icon' => 'globe', 'label' => 'Language & Region'],
-                    ['id' => 'notifications', 'icon' => 'bell', 'label' => 'Notifications'],
-                    ['id' => 'connected', 'icon' => 'plug', 'label' => 'Connected Apps'],
-                    ['id' => 'designsystem', 'icon' => 'code2', 'label' => 'Design System'],
-                    ['id' => 'crud', 'icon' => 'database', 'label' => 'Crud System'],
-                ]
-            ],
+            'type' => 'console',
+            'id' => $user ? $user->id : 0,
         ];
     }
 
-    public function index()
+    /**
+     * Get the full navigation groups for the navigation board.
+     */
+    protected function getAllNavGroups(): array
     {
-        return view('console::dashboard');
+        return $this->navigationService->getNavGroupsForNavBoard('console');
     }
 
-    public function navigationBoard()
+    /**
+     * Display the main dashboard.
+     */
+    public function index(): View
     {
-        return view('console::navigation-board', [
-            'allNavGroups' => $this->getAllNavGroups(),
-            'visibleItems' => ['dashboard', 'sites', 'databases'], // Default visible items
+        $userContext = $this->getUserContext();
+        $widgets = $this->dashboardService->getMainDashboardWidgets($userContext['type'], $userContext['id']);
+        $unusedWidgets = $this->dashboardService->getUnusedWidgets('main', $userContext['type'], $userContext['id']);
+
+        return view('console::dashboard', [
+            'widgets' => $widgets,
+            'unusedWidgets' => $unusedWidgets,
+            'currentDashboard' => 'main',
         ]);
     }
 
-    public function placeholder(string $page)
+    /**
+     * Display a plugin-specific dashboard.
+     */
+    public function pluginDashboard(string $slug): View
     {
-        // Convert slug to title
+        $userContext = $this->getUserContext();
+        $widgets = $this->dashboardService->getPluginDashboardWidgets($slug, $userContext['type'], $userContext['id']);
+        $unusedWidgets = $this->dashboardService->getUnusedWidgets($slug, $userContext['type'], $userContext['id']);
+
+        // Get plugin info for title
+        $plugin = \App\Models\Plugin::where('slug', $slug)->first();
+        $currentPlugin = null;
+        
+        if ($plugin) {
+            $instance = $this->dashboardService->getPluginsWithDashboards();
+            $currentPlugin = collect($instance)->firstWhere('slug', $slug);
+        }
+
+        return view('console::dashboard-plugin', [
+            'widgets' => $widgets,
+            'unusedWidgets' => $unusedWidgets,
+            'currentDashboard' => $slug,
+            'currentPlugin' => $currentPlugin,
+        ]);
+    }
+
+    /**
+     * Get widgets for main dashboard (AJAX).
+     */
+    public function getWidgets(): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $widgets = $this->dashboardService->getMainDashboardWidgets($userContext['type'], $userContext['id']);
+        
+        return response()->json([
+            'success' => true,
+            'widgets' => $widgets,
+        ]);
+    }
+
+    /**
+     * Get widgets for plugin dashboard (AJAX).
+     */
+    public function getPluginWidgets(string $slug): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $widgets = $this->dashboardService->getPluginDashboardWidgets($slug, $userContext['type'], $userContext['id']);
+        
+        return response()->json([
+            'success' => true,
+            'widgets' => $widgets,
+        ]);
+    }
+
+    /**
+     * Save widget layout (AJAX).
+     */
+    public function saveLayout(Request $request): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $widgets = $request->input('widgets', []);
+        $dashboard = $request->input('dashboard', 'main');
+
+        $success = $this->dashboardService->saveWidgetLayout($dashboard, $widgets, $userContext['type'], $userContext['id']);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Layout saved successfully' : 'Failed to save layout',
+        ]);
+    }
+
+    /**
+     * Save plugin dashboard widget layout (AJAX).
+     */
+    public function savePluginLayout(Request $request, string $slug): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $widgets = $request->input('widgets', []);
+
+        $success = $this->dashboardService->saveWidgetLayout($slug, $widgets, $userContext['type'], $userContext['id']);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Layout saved successfully' : 'Failed to save layout',
+        ]);
+    }
+
+    /**
+     * Add a widget to dashboard (AJAX).
+     */
+    public function addWidget(Request $request): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $widgetId = $request->input('widget_id');
+        $dashboard = $request->input('dashboard', 'main');
+        $pluginSlug = $request->input('plugin_slug');
+
+        $widget = $this->dashboardService->addWidget($dashboard, $widgetId, $userContext['type'], $userContext['id'], $pluginSlug);
+
+        if ($widget) {
+            $availableWidgets = $this->dashboardService->getAvailableWidgets($dashboard);
+            $widget->definition = $availableWidgets[$widgetId] ?? [];
+
+            return response()->json([
+                'success' => true,
+                'widget' => $widget,
+                'message' => 'Widget added successfully',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to add widget',
+        ], 400);
+    }
+
+    /**
+     * Remove a widget from dashboard (AJAX).
+     */
+    public function removeWidget(Request $request, string $widgetId): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $dashboard = $request->input('dashboard', 'main');
+
+        $success = $this->dashboardService->removeWidget($dashboard, $widgetId, $userContext['type'], $userContext['id']);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Widget removed successfully' : 'Failed to remove widget',
+        ]);
+    }
+
+    /**
+     * Get widget data (AJAX).
+     */
+    public function getWidgetData(Request $request, string $widgetId): JsonResponse
+    {
+        $pluginSlug = $request->input('plugin_slug');
+        
+        $data = $this->dashboardService->getWidgetData($widgetId, $pluginSlug);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Update widget settings (AJAX).
+     */
+    public function updateWidgetSettings(Request $request, string $widgetId): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $dashboard = $request->input('dashboard', 'main');
+        $settings = $request->input('settings', []);
+
+        $success = $this->dashboardService->updateWidgetSettings($dashboard, $widgetId, $settings, $userContext['type'], $userContext['id']);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Settings updated successfully' : 'Failed to update settings',
+        ]);
+    }
+
+    /**
+     * Reset dashboard to defaults (AJAX).
+     */
+    public function resetDashboard(Request $request): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $dashboard = $request->input('dashboard', 'main');
+
+        $success = $this->dashboardService->resetDashboard($dashboard, $userContext['type'], $userContext['id']);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Dashboard reset successfully' : 'Failed to reset dashboard',
+        ]);
+    }
+
+    /**
+     * Get available widgets that can be added (AJAX).
+     */
+    public function getAvailableWidgets(Request $request): JsonResponse
+    {
+        $userContext = $this->getUserContext();
+        $dashboard = $request->input('dashboard', 'main');
+
+        $unused = $this->dashboardService->getUnusedWidgets($dashboard, $userContext['type'], $userContext['id']);
+
+        return response()->json([
+            'success' => true,
+            'widgets' => $unused,
+        ]);
+    }
+
+    /**
+     * Display the navigation board.
+     */
+    public function navigationBoard(): View
+    {
+        return view('console::navigation-board', [
+            'allNavGroups' => $this->getAllNavGroups(),
+            'visibleItems' => ['dashboard', 'sites', 'databases'],
+        ]);
+    }
+
+    /**
+     * Display placeholder pages.
+     */
+    public function placeholder(string $page): View
+    {
         $pageTitle = ucwords(str_replace('-', ' ', $page));
         
         return view('console::placeholder', [

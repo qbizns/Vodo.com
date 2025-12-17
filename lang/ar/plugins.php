@@ -1,0 +1,191 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | ترجمات الإضافات
+    |--------------------------------------------------------------------------
+    */
+
+    // الصفحة
+    'title' => 'الإضافات',
+    'subtitle' => 'قم بتوسيع تطبيقك باستخدام الإضافات',
+    'installed' => 'المثبتة',
+    'marketplace' => 'المتجر',
+    'updates' => 'التحديثات',
+    'developer' => 'المطور',
+    'management' => 'إدارة الإضافات',
+
+    // قائمة الإضافات
+    'all_plugins' => 'جميع الإضافات',
+    'active_plugins' => 'الإضافات النشطة',
+    'inactive_plugins' => 'الإضافات غير النشطة',
+    'search_plugins' => 'البحث في الإضافات...',
+    'no_plugins' => 'لا توجد إضافات مثبتة',
+    'no_plugins_found' => 'لم يتم العثور على إضافات',
+    'install_first_plugin' => 'قم بتثبيت أول إضافة من المتجر',
+
+    // تفاصيل الإضافة
+    'plugin_details' => 'تفاصيل الإضافة',
+    'plugin_information' => 'معلومات الإضافة',
+    'version' => 'الإصدار',
+    'author' => 'المؤلف',
+    'description' => 'الوصف',
+    'website' => 'الموقع',
+    'documentation' => 'التوثيق',
+    'support' => 'الدعم',
+    'changelog' => 'سجل التغييرات',
+    'requirements' => 'المتطلبات',
+    'dependencies' => 'التبعيات',
+    'installed_on' => 'تاريخ التثبيت',
+    'last_updated' => 'آخر تحديث',
+    'size' => 'الحجم',
+    'license' => 'الترخيص',
+    'category' => 'التصنيف',
+    'tags' => 'الوسوم',
+    'rating' => 'التقييم',
+    'reviews' => 'المراجعات',
+    'downloads' => 'التنزيلات',
+    'name' => 'الاسم',
+    'slug' => 'الاسم المختصر',
+    'path' => 'المسار',
+    'activated' => 'تاريخ التنشيط',
+    'migrations' => 'الترحيلات',
+    'no_migrations' => 'لا توجد ترحيلات لهذه الإضافة.',
+    'batch' => 'الدفعة',
+    'pending' => 'قيد الانتظار',
+
+    // إجراءات الإضافة
+    'install' => 'تثبيت',
+    'installing' => 'جاري التثبيت...',
+    'activate' => 'تنشيط',
+    'activating' => 'جاري التنشيط...',
+    'deactivate' => 'إلغاء التنشيط',
+    'deactivating' => 'جاري إلغاء التنشيط...',
+    'deactivated' => 'غير نشط',
+    'uninstall' => 'إلغاء التثبيت',
+    'uninstalling' => 'جاري إلغاء التثبيت...',
+    'uninstalled' => 'تم إلغاء التثبيت',
+    'update' => 'تحديث',
+    'updating' => 'جاري التحديث...',
+    'update_all' => 'تحديث الكل',
+    'configure' => 'تكوين',
+    'settings' => 'الإعدادات',
+    'permissions' => 'الصلاحيات',
+    'view_details' => 'عرض التفاصيل',
+    'rate_plugin' => 'تقييم الإضافة',
+    'activate_plugin' => 'تنشيط الإضافة',
+    'deactivate_plugin' => 'إلغاء تنشيط الإضافة',
+    'uninstall_plugin' => 'إلغاء تثبيت الإضافة',
+    'back_to_plugins' => 'العودة للإضافات',
+
+    // حالة الإضافة
+    'status' => 'الحالة',
+    'active' => 'نشط',
+    'inactive' => 'غير نشط',
+    'needs_update' => 'يحتاج تحديث',
+    'incompatible' => 'غير متوافق',
+    'error' => 'خطأ',
+
+    // التثبيت
+    'install_plugin' => 'تثبيت إضافة',
+    'upload_plugin' => 'رفع إضافة',
+    'drag_drop_zip' => 'اسحب وأفلت ملف ZIP للإضافة هنا',
+    'or_click_browse' => 'أو انقر للتصفح',
+    'select_zip_file' => 'اختر ملف ZIP',
+    'install_from_url' => 'التثبيت من رابط',
+    'enter_plugin_url' => 'أدخل رابط الإضافة',
+    'install_from_marketplace' => 'التثبيت من المتجر',
+    'upload_install' => 'رفع وتثبيت',
+    'max_file_size' => 'الحد الأقصى لحجم الملف',
+
+    // المتجر
+    'browse_marketplace' => 'تصفح المتجر',
+    'featured_plugins' => 'الإضافات المميزة',
+    'popular_plugins' => 'الإضافات الشائعة',
+    'new_plugins' => 'الإضافات الجديدة',
+    'free_plugins' => 'الإضافات المجانية',
+    'premium_plugins' => 'الإضافات المدفوعة',
+    'categories' => 'التصنيفات',
+    'all_categories' => 'جميع التصنيفات',
+    'sort_by' => 'ترتيب حسب',
+    'sort_popular' => 'الأكثر شعبية',
+    'sort_rating' => 'الأعلى تقييماً',
+    'sort_newest' => 'الأحدث',
+    'sort_name' => 'الاسم (أ-ي)',
+    'price' => 'السعر',
+    'free' => 'مجاني',
+    'buy_now' => 'اشتري الآن',
+    'add_to_cart' => 'أضف للسلة',
+    'already_purchased' => 'تم الشراء مسبقاً',
+
+    // التحديثات
+    'available_updates' => 'التحديثات المتاحة',
+    'no_updates' => 'جميع الإضافات محدثة',
+    'check_updates' => 'التحقق من التحديثات',
+    'checking_updates' => 'جاري التحقق من التحديثات...',
+    'update_available' => 'تحديث متاح',
+    'current_version' => 'الإصدار الحالي',
+    'new_version' => 'الإصدار الجديد',
+    'auto_updates' => 'التحديثات التلقائية',
+    'enable_auto_updates' => 'تفعيل التحديثات التلقائية',
+    'update_notes' => 'ملاحظات التحديث',
+    'backup_before_update' => 'إنشاء نسخة احتياطية قبل التحديث',
+
+    // المطور
+    'developer_tools' => 'أدوات المطور',
+    'create_plugin' => 'إنشاء إضافة',
+    'plugin_name' => 'اسم الإضافة',
+    'plugin_slug' => 'الاسم المختصر',
+    'plugin_description' => 'وصف الإضافة',
+    'plugin_template' => 'قالب الإضافة',
+    'template_basic' => 'إضافة أساسية',
+    'template_crud' => 'إضافة CRUD',
+    'template_widget' => 'إضافة ودجت',
+    'template_integration' => 'إضافة تكامل',
+    'generate' => 'إنشاء',
+    'debug_mode' => 'وضع التصحيح',
+    'enable_debug' => 'تفعيل تصحيح الإضافات',
+    'view_logs' => 'عرض سجلات الإضافات',
+    'clear_logs' => 'مسح السجلات',
+
+    // إعدادات الإضافة
+    'plugin_settings' => 'إعدادات الإضافة',
+    'general_settings' => 'الإعدادات العامة',
+    'no_settings' => 'لا تحتوي هذه الإضافة على إعدادات قابلة للتكوين',
+
+    // التأكيدات
+    'confirm_activate' => 'هل أنت متأكد من تنشيط هذه الإضافة؟',
+    'confirm_deactivate' => 'هل أنت متأكد من إلغاء تنشيط هذه الإضافة؟',
+    'confirm_uninstall' => 'هل أنت متأكد من إلغاء تثبيت هذه الإضافة؟ سيتم حذف جميع بيانات الإضافة.',
+    'confirm_uninstall_warning' => 'هل أنت متأكد من إلغاء تثبيت هذه الإضافة؟ لا يمكن التراجع عن هذا الإجراء.',
+    'confirm_update' => 'هل أنت متأكد من تحديث هذه الإضافة؟',
+
+    // الرسائل
+    'install_success' => 'تم تثبيت الإضافة بنجاح.',
+    'install_error' => 'فشل تثبيت الإضافة.',
+    'activate_success' => 'تم تنشيط الإضافة بنجاح.',
+    'activate_error' => 'فشل تنشيط الإضافة.',
+    'deactivate_success' => 'تم إلغاء تنشيط الإضافة بنجاح.',
+    'deactivate_error' => 'فشل إلغاء تنشيط الإضافة.',
+    'uninstall_success' => 'تم إلغاء تثبيت الإضافة بنجاح.',
+    'uninstall_error' => 'فشل إلغاء تثبيت الإضافة.',
+    'update_success' => 'تم تحديث الإضافة بنجاح.',
+    'update_error' => 'فشل تحديث الإضافة.',
+    'settings_saved' => 'تم حفظ إعدادات الإضافة.',
+    'invalid_plugin' => 'ملف إضافة غير صالح.',
+    'incompatible_version' => 'تتطلب هذه الإضافة إصداراً أحدث من المنصة.',
+    'missing_dependencies' => 'التبعيات المطلوبة غير موجودة: :dependencies',
+    'dependency_conflict' => 'الإضافة تتعارض مع: :conflicts',
+
+    // الصلاحيات
+    'manage_plugins' => 'إدارة الإضافات',
+    'install_plugins' => 'تثبيت الإضافات',
+    'activate_plugins' => 'تنشيط الإضافات',
+    'deactivate_plugins' => 'إلغاء تنشيط الإضافات',
+    'uninstall_plugins' => 'إلغاء تثبيت الإضافات',
+    'update_plugins' => 'تحديث الإضافات',
+    'configure_plugins' => 'تكوين الإضافات',
+
+];

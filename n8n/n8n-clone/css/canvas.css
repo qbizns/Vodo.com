@@ -1,0 +1,314 @@
+/* ============================================
+   Canvas Styles - Workflow Area
+   ============================================ */
+
+/* ===== Canvas Container ===== */
+.canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-canvas);
+    cursor: grab;
+}
+
+.canvas-container:active {
+    cursor: grabbing;
+}
+
+.canvas-container.connecting {
+    cursor: crosshair;
+}
+
+/* ===== Canvas Viewport (Pannable/Zoomable) ===== */
+.canvas-viewport {
+    position: absolute;
+    width: 10000px;
+    height: 10000px;
+    left: -5000px;
+    top: -5000px;
+    transform-origin: center center;
+}
+
+/* ===== Grid Background ===== */
+.canvas-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px),
+        linear-gradient(var(--grid-color-strong) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color-strong) 1px, transparent 1px);
+    background-size: 
+        var(--grid-size) var(--grid-size),
+        var(--grid-size) var(--grid-size),
+        calc(var(--grid-size) * 5) calc(var(--grid-size) * 5),
+        calc(var(--grid-size) * 5) calc(var(--grid-size) * 5);
+    pointer-events: none;
+}
+
+/* ===== Connections SVG Layer ===== */
+.connections-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: var(--z-connections);
+    overflow: visible;
+}
+
+#connections-group {
+    pointer-events: none;
+}
+
+/* ===== Connection Lines ===== */
+.connection {
+    fill: none;
+    stroke: var(--connection-line);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: stroke;
+    cursor: pointer;
+    transition: stroke var(--transition-fast), stroke-width var(--transition-fast);
+}
+
+.connection:hover {
+    stroke: var(--connection-line-hover);
+    stroke-width: 3;
+}
+
+.connection.selected {
+    stroke: var(--connection-line-active);
+    stroke-width: 3;
+}
+
+.connection.success {
+    stroke: var(--connection-line-success);
+}
+
+.connection.error {
+    stroke: var(--connection-line-error);
+}
+
+.connection.animated {
+    stroke-dasharray: 5;
+    animation: connection-flow 0.5s linear infinite;
+}
+
+@keyframes connection-flow {
+    from { stroke-dashoffset: 10; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* Temporary connection while dragging */
+.connection.temp {
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-dasharray: 5 5;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Connection delete button (on hover) */
+.connection-delete {
+    position: absolute;
+    display: none;
+    width: 20px;
+    height: 20px;
+    background: var(--error);
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: calc(var(--z-connections) + 1);
+    align-items: center;
+    justify-content: center;
+}
+
+.connection-delete.visible {
+    display: flex;
+}
+
+/* ===== Nodes Layer ===== */
+.nodes-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: var(--z-nodes);
+}
+
+/* ===== Canvas Controls Overlay ===== */
+.canvas-controls {
+    position: absolute;
+    bottom: var(--space-4);
+    left: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    z-index: calc(var(--z-canvas) + 50);
+}
+
+.canvas-controls .btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+}
+
+/* ===== Minimap ===== */
+.minimap {
+    position: absolute;
+    bottom: var(--space-4);
+    right: var(--space-4);
+    width: var(--minimap-width);
+    height: var(--minimap-height);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    z-index: calc(var(--z-canvas) + 50);
+    display: none;
+}
+
+.minimap.visible {
+    display: block;
+}
+
+.minimap-content {
+    position: absolute;
+    inset: 0;
+    transform-origin: top left;
+}
+
+.minimap-node {
+    position: absolute;
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: 0.7;
+}
+
+.minimap-viewport {
+    position: absolute;
+    border: 2px solid var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 2px;
+    cursor: move;
+}
+
+/* ===== Empty State ===== */
+.canvas-empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: calc(var(--z-canvas) + 10);
+}
+
+.canvas-empty-state.hidden {
+    display: none;
+}
+
+.empty-state-content {
+    text-align: center;
+    pointer-events: auto;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+    border-radius: var(--radius-2xl);
+}
+
+.empty-state-icon i {
+    font-size: 36px;
+    color: var(--text-muted);
+}
+
+.empty-state-content h3 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.empty-state-content p {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-6);
+}
+
+/* ===== Selection Box ===== */
+.selection-box {
+    position: fixed;
+    border: 1px solid var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+    pointer-events: none;
+    z-index: calc(var(--z-nodes) + 10);
+    display: none;
+}
+
+.selection-box.visible {
+    display: block;
+}
+
+/* ===== Drag Preview ===== */
+.drag-preview {
+    position: fixed;
+    pointer-events: none;
+    z-index: var(--z-modal);
+    opacity: 0.8;
+    transform: translate(-50%, -50%);
+}
+
+/* ===== Canvas Modifiers ===== */
+.canvas-container.is-panning {
+    cursor: grabbing;
+}
+
+.canvas-container.is-connecting .node-handle {
+    transform: scale(1.5);
+}
+
+.canvas-container.is-connecting .node-handle.valid-target {
+    background: var(--handle-valid-target);
+    border-color: var(--handle-valid-target);
+    box-shadow: 0 0 10px var(--handle-valid-target);
+}
+
+.canvas-container.is-connecting .node-handle.invalid-target {
+    opacity: 0.3;
+}
+
+/* ===== Touch Support ===== */
+@media (pointer: coarse) {
+    .canvas-container {
+        touch-action: none;
+    }
+    
+    .node-handle {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* ===== Performance Optimization ===== */
+.canvas-viewport {
+    will-change: transform;
+}
+
+.nodes-layer {
+    contain: layout style;
+}
+
+/* Disable pointer events during pan/zoom for performance */
+.canvas-container.is-transforming .nodes-layer,
+.canvas-container.is-transforming .connections-layer {
+    pointer-events: none;
+}

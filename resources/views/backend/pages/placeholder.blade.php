@@ -8,6 +8,6 @@
             <circle cx="12" cy="12" r="3"></circle>
         </svg>
     </div>
-    <h2 class="placeholder-title">{{ $pageTitle ?? 'Page' }}</h2>
-    <p class="placeholder-desc">This page is under development. Check back soon for updates.</p>
+    <h2 class="placeholder-title">{{ $pageTitle ?? __t('common.page') }}</h2>
+    <p class="placeholder-desc">{{ __t('messages.under_development') }}</p>
 </div>

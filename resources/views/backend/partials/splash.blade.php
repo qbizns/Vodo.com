@@ -160,7 +160,7 @@
                 <h1 class="splash-title">{{ $splashTitle ?? 'VODO' }}</h1>
                 
                 {{-- Subtitle --}}
-                <p class="splash-subtitle">{{ $splashSubtitle ?? 'Platform' }}</p>
+                <p class="splash-subtitle">{{ $splashSubtitle ?? __t('common.loading') }}</p>
             </div>
             
             {{-- Bottom Section --}}

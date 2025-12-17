@@ -1,0 +1,455 @@
+/* ============================================
+   Node Styles - Workflow Nodes
+   ============================================ */
+
+/* ===== Base Node ===== */
+.workflow-node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    min-width: var(--node-min-width);
+    max-width: var(--node-max-width);
+    background: var(--node-bg);
+    border: 2px solid var(--node-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--node-shadow);
+    cursor: move;
+    pointer-events: auto;
+    user-select: none;
+    transition: 
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        transform var(--transition-fast);
+}
+
+.workflow-node:hover {
+    border-color: var(--node-border-hover);
+    background: var(--node-bg-hover);
+}
+
+.workflow-node.selected {
+    border-color: var(--node-selected);
+    box-shadow: var(--node-shadow-selected);
+}
+
+.workflow-node.dragging {
+    z-index: var(--z-node-dragging);
+    cursor: grabbing;
+    opacity: 0.9;
+}
+
+.workflow-node.disabled {
+    opacity: var(--node-disabled-opacity);
+}
+
+.workflow-node.disabled::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 5px,
+        rgba(0, 0, 0, 0.1) 5px,
+        rgba(0, 0, 0, 0.1) 10px
+    );
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* ===== Node Header ===== */
+.node-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border);
+}
+
+.node-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.node-icon i {
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+.node-icon img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+/* Node type-specific icon colors */
+.workflow-node[data-category="trigger"] .node-icon {
+    background: var(--success-bg);
+}
+
+.workflow-node[data-category="trigger"] .node-icon i {
+    color: var(--success);
+}
+
+.workflow-node[data-category="action"] .node-icon {
+    background: var(--info-bg);
+}
+
+.workflow-node[data-category="action"] .node-icon i {
+    color: var(--info);
+}
+
+.workflow-node[data-category="logic"] .node-icon {
+    background: var(--warning-bg);
+}
+
+.workflow-node[data-category="logic"] .node-icon i {
+    color: var(--warning);
+}
+
+.workflow-node[data-category="output"] .node-icon {
+    background: var(--accent-subtle);
+}
+
+.workflow-node[data-category="output"] .node-icon i {
+    color: var(--accent);
+}
+
+/* Custom node colors (user-set) */
+.workflow-node[data-color] .node-icon {
+    background-color: var(--custom-color);
+    opacity: 0.2;
+}
+
+.node-title {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.node-menu-btn {
+    opacity: 0;
+    padding: var(--space-1);
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.workflow-node:hover .node-menu-btn,
+.workflow-node.selected .node-menu-btn {
+    opacity: 1;
+}
+
+.node-menu-btn:hover {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+/* ===== Node Content ===== */
+.node-content {
+    padding: var(--space-3);
+}
+
+.node-subtitle {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.node-preview {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    background: var(--bg-surface);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ===== Node Footer / Status ===== */
+.node-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.node-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.node-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.node-status-dot.success { background: var(--success); }
+.node-status-dot.error { background: var(--error); }
+.node-status-dot.running { 
+    background: var(--warning);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.node-execution-time {
+    font-family: var(--font-mono);
+}
+
+/* ===== Node Handles (Input/Output Ports) ===== */
+.node-handle {
+    position: absolute;
+    width: var(--handle-size);
+    height: var(--handle-size);
+    background: var(--handle-bg);
+    border: 2px solid var(--handle-border);
+    border-radius: 50%;
+    cursor: crosshair;
+    z-index: 10;
+    transition: 
+        transform var(--transition-fast),
+        background var(--transition-fast),
+        border-color var(--transition-fast);
+}
+
+.node-handle:hover {
+    transform: scale(1.3);
+    background: var(--handle-hover);
+    border-color: var(--handle-hover);
+}
+
+.node-handle.connected {
+    background: var(--handle-connected);
+    border-color: var(--handle-connected);
+}
+
+/* Input handle (left side) */
+.node-handle-input {
+    left: 0;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.node-handle-input:hover {
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+/* Output handle (right side) */
+.node-handle-output {
+    right: 0;
+    top: 50%;
+    transform: translate(50%, -50%);
+}
+
+.node-handle-output:hover {
+    transform: translate(50%, -50%) scale(1.3);
+}
+
+/* Multiple handles (stacked) */
+.workflow-node.multi-output .node-handle-output:nth-child(1) { top: 30%; }
+.workflow-node.multi-output .node-handle-output:nth-child(2) { top: 70%; }
+
+.workflow-node.multi-input .node-handle-input:nth-child(1) { top: 30%; }
+.workflow-node.multi-input .node-handle-input:nth-child(2) { top: 70%; }
+
+/* Handle labels */
+.handle-label {
+    position: absolute;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.node-handle-input .handle-label {
+    left: calc(var(--handle-size) + 4px);
+}
+
+.node-handle-output .handle-label {
+    right: calc(var(--handle-size) + 4px);
+}
+
+/* ===== Trigger Node (Special Start Node) ===== */
+.workflow-node.trigger {
+    border-color: var(--success);
+}
+
+.workflow-node.trigger .node-icon {
+    background: var(--success-bg);
+}
+
+.workflow-node.trigger .node-icon i {
+    color: var(--success);
+}
+
+/* ===== Node States ===== */
+/* Success state */
+.workflow-node.success {
+    border-color: var(--success);
+}
+
+.workflow-node.success .node-header {
+    background: var(--success-bg);
+}
+
+/* Error state */
+.workflow-node.error {
+    border-color: var(--error);
+}
+
+.workflow-node.error .node-header {
+    background: var(--error-bg);
+}
+
+/* Running state */
+.workflow-node.running {
+    border-color: var(--warning);
+    animation: node-running 1.5s ease-in-out infinite;
+}
+
+@keyframes node-running {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
+/* ===== Add Node Button (inline) ===== */
+.add-node-btn {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--bg-elevated);
+    border: 2px dashed var(--border);
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(-50%);
+    transition: var(--transition-fast);
+    z-index: 5;
+}
+
+.workflow-node:hover + .add-node-btn,
+.add-node-btn:hover {
+    opacity: 1;
+}
+
+.add-node-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    border-style: solid;
+    color: white;
+}
+
+/* ===== Node Badges ===== */
+.node-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 var(--space-1);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: white;
+    background: var(--error);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-sm);
+}
+
+.node-badge.success { background: var(--success); }
+.node-badge.warning { background: var(--warning); }
+
+/* ===== Pinned Data Indicator ===== */
+.node-pinned-indicator {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    background: var(--accent);
+    color: white;
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-sm);
+}
+
+.node-pinned-indicator i {
+    font-size: 10px;
+}
+
+/* ===== Sticky Note Node ===== */
+.workflow-node.sticky-note {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    min-height: 100px;
+    resize: both;
+    overflow: hidden;
+}
+
+.workflow-node.sticky-note .node-content {
+    flex: 1;
+}
+
+.workflow-node.sticky-note textarea {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    resize: none;
+    font-size: var(--font-size-sm);
+    color: #78350f;
+    outline: none;
+}
+
+/* ===== Node Selection Outline ===== */
+.workflow-node.selected::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px solid var(--node-selected);
+    border-radius: calc(var(--radius-lg) + 2px);
+    pointer-events: none;
+    animation: selection-pulse 2s ease-in-out infinite;
+}
+
+@keyframes selection-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

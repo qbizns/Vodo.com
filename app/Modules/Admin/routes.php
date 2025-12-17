@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Controllers\AuthController;
 use App\Modules\Admin\Controllers\DashboardController;
+use App\Modules\Admin\Controllers\PluginController;
+use App\Modules\Admin\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes
@@ -15,7 +17,46 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/navigation-board', [DashboardController::class, 'navigationBoard'])->name('admin.navigation-board');
     Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+
+    // Dashboard API Routes
+    Route::prefix('dashboard')->name('admin.dashboard.')->group(function () {
+        Route::get('/widgets', [DashboardController::class, 'getWidgets'])->name('widgets');
+        Route::post('/widgets/layout', [DashboardController::class, 'saveLayout'])->name('widgets.layout');
+        Route::post('/widgets/add', [DashboardController::class, 'addWidget'])->name('widgets.add');
+        Route::delete('/widgets/{widgetId}', [DashboardController::class, 'removeWidget'])->name('widgets.remove');
+        Route::get('/widgets/{widgetId}/data', [DashboardController::class, 'getWidgetData'])->name('widgets.data');
+        Route::put('/widgets/{widgetId}/settings', [DashboardController::class, 'updateWidgetSettings'])->name('widgets.settings');
+        Route::post('/reset', [DashboardController::class, 'resetDashboard'])->name('reset');
+        Route::get('/available-widgets', [DashboardController::class, 'getAvailableWidgets'])->name('available-widgets');
+        
+        // Plugin-specific dashboards
+        Route::get('/{slug}', [DashboardController::class, 'pluginDashboard'])->name('plugin');
+        Route::get('/{slug}/widgets', [DashboardController::class, 'getPluginWidgets'])->name('plugin.widgets');
+        Route::post('/{slug}/widgets/layout', [DashboardController::class, 'savePluginLayout'])->name('plugin.widgets.layout');
+    });
+
+    // Plugin Management Routes
+    Route::prefix('system/plugins')->name('admin.plugins.')->group(function () {
+        Route::get('/', [PluginController::class, 'index'])->name('index');
+        Route::post('/upload', [PluginController::class, 'upload'])->name('upload');
+        Route::get('/{slug}', [PluginController::class, 'show'])->name('show');
+        Route::post('/{slug}/activate', [PluginController::class, 'activate'])->name('activate');
+        Route::post('/{slug}/deactivate', [PluginController::class, 'deactivate'])->name('deactivate');
+        Route::delete('/{slug}', [PluginController::class, 'destroy'])->name('destroy');
+    });
+
+    // Settings Routes
+    Route::prefix('system/settings')->name('admin.settings.')->group(function () {
+        Route::get('/', [SettingsController::class, 'index'])->name('index');
+        Route::get('/general', [SettingsController::class, 'general'])->name('general');
+        Route::post('/general', [SettingsController::class, 'saveGeneral'])->name('general.save');
+        Route::get('/plugin/{slug}', [SettingsController::class, 'plugin'])->name('plugin');
+        Route::post('/plugin/{slug}', [SettingsController::class, 'savePlugin'])->name('plugin.save');
+    });
     
     // Catch-all route for placeholder pages (must be last)
-    Route::get('/{page}', [DashboardController::class, 'placeholder'])->name('admin.placeholder')->where('page', '.*');
+    // Excludes 'plugins', 'system', and 'dashboard' paths which are handled by specific routes
+    Route::get('/{page}', [DashboardController::class, 'placeholder'])
+        ->name('admin.placeholder')
+        ->where('page', '^(?!plugins|system|dashboard).*$');
 });
