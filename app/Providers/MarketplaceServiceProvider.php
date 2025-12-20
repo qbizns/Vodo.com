@@ -8,15 +8,15 @@ use App\Services\Marketplace\MarketplaceClient;
 use App\Services\Marketplace\PluginManager;
 use App\Services\Marketplace\LicenseManager;
 use App\Services\Marketplace\UpdateManager;
-use App\Console\Commands\PluginList;
-use App\Console\Commands\PluginActivate;
-use App\Console\Commands\PluginDeactivate;
-use App\Console\Commands\PluginInstall;
-use App\Console\Commands\PluginUninstall;
-use App\Console\Commands\PluginUpdate;
-use App\Console\Commands\LicenseActivate;
-use App\Console\Commands\LicenseVerify;
-use App\Console\Commands\MarketplaceSync;
+use App\Console\Commands\PluginListCommand;
+use App\Console\Commands\PluginActivateCommand;
+use App\Console\Commands\PluginDeactivateCommand;
+use App\Console\Commands\PluginInstallCommand;
+use App\Console\Commands\PluginUninstallCommand;
+use App\Console\Commands\PluginUpdateCommand;
+use App\Console\Commands\LicenseActivateCommand;
+use App\Console\Commands\LicenseVerifyCommand;
+use App\Console\Commands\MarketplaceSyncCommand;
 
 class MarketplaceServiceProvider extends ServiceProvider
 {
@@ -71,15 +71,15 @@ class MarketplaceServiceProvider extends ServiceProvider
         // Register commands
         if ($this->app->runningInConsole()) {
             $this->commands([
-                PluginList::class,
-                PluginActivate::class,
-                PluginDeactivate::class,
-                PluginInstall::class,
-                PluginUninstall::class,
-                PluginUpdate::class,
-                LicenseActivate::class,
-                LicenseVerify::class,
-                MarketplaceSync::class,
+                PluginListCommand::class,
+                PluginActivateCommand::class,
+                PluginDeactivateCommand::class,
+                PluginInstallCommand::class,
+                PluginUninstallCommand::class,
+                PluginUpdateCommand::class,
+                LicenseActivateCommand::class,
+                LicenseVerifyCommand::class,
+                MarketplaceSyncCommand::class,
             ]);
         }
 
