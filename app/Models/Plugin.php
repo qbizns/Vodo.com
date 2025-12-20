@@ -6,15 +6,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Exceptions\Security\SecurityException;
 
 /**
  * Plugin Model - Represents an installed plugin.
  * 
- * Phase 10 Improvements:
- * - Path traversal protection in getFullPath()
- * - Strict type declarations
- * - Additional helper methods
+ * Enhanced for Plugin Management System per DATABASE.md specification.
  */
 class Plugin extends Model
 {
@@ -30,12 +28,25 @@ class Plugin extends Model
         'description',
         'author',
         'author_url',
+        'homepage',
         'status',
+        'category',
+        'icon',
+        'is_core',
+        'is_premium',
+        'requires_license',
+        'min_system_version',
+        'min_php_version',
+        'path',
+        'namespace',
+        'entry_class',
+        'checksum',
+        'error_message',
         'settings',
         'requires',
         'main_class',
-        'path',
         'activated_at',
+        'installed_at',
     ];
 
     /**
@@ -46,7 +57,11 @@ class Plugin extends Model
     protected $casts = [
         'settings' => 'array',
         'requires' => 'array',
+        'is_core' => 'boolean',
+        'is_premium' => 'boolean',
+        'requires_license' => 'boolean',
         'activated_at' => 'datetime',
+        'installed_at' => 'datetime',
     ];
 
     /**
@@ -55,6 +70,7 @@ class Plugin extends Model
     public const STATUS_INACTIVE = 'inactive';
     public const STATUS_ACTIVE = 'active';
     public const STATUS_ERROR = 'error';
+    public const STATUS_UPDATING = 'updating';
 
     /**
      * Valid slug pattern.
@@ -71,6 +87,8 @@ class Plugin extends Model
      */
     public const SLUG_MAX_LENGTH = 64;
 
+    // ==================== Relationships ====================
+
     /**
      * Get the migrations for this plugin.
      */
@@ -78,6 +96,211 @@ class Plugin extends Model
     {
         return $this->hasMany(PluginMigration::class);
     }
+
+    /**
+     * Get the settings for this plugin.
+     */
+    public function pluginSettings(): HasMany
+    {
+        return $this->hasMany(PluginSetting::class);
+    }
+
+    /**
+     * Get the license for this plugin.
+     */
+    public function license(): HasOne
+    {
+        return $this->hasOne(PluginLicense::class);
+    }
+
+    /**
+     * Get the available update for this plugin.
+     */
+    public function availableUpdate(): HasOne
+    {
+        return $this->hasOne(PluginUpdate::class);
+    }
+
+    /**
+     * Get the dependencies for this plugin.
+     */
+    public function dependencies(): HasMany
+    {
+        return $this->hasMany(PluginDependency::class);
+    }
+
+    /**
+     * Get the events/audit log for this plugin.
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(PluginEvent::class);
+    }
+
+    // ==================== Scopes ====================
+
+    /**
+     * Scope to get only active plugins.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    /**
+     * Scope to get only inactive plugins.
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('status', self::STATUS_INACTIVE);
+    }
+
+    /**
+     * Scope to get plugins with errors.
+     */
+    public function scopeWithErrors($query)
+    {
+        return $query->where('status', self::STATUS_ERROR);
+    }
+
+    /**
+     * Scope to get plugins that have updates available.
+     */
+    public function scopeHasUpdate($query)
+    {
+        return $query->whereHas('availableUpdate');
+    }
+
+    /**
+     * Scope to get core plugins.
+     */
+    public function scopeCore($query)
+    {
+        return $query->where('is_core', true);
+    }
+
+    /**
+     * Scope to get premium plugins.
+     */
+    public function scopePremium($query)
+    {
+        return $query->where('is_premium', true);
+    }
+
+    /**
+     * Scope to filter by category.
+     */
+    public function scopeByCategory($query, string $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    /**
+     * Scope to find by slug.
+     */
+    public function scopeBySlug($query, string $slug)
+    {
+        return $query->where('slug', $slug);
+    }
+
+    /**
+     * Scope to search plugins.
+     */
+    public function scopeSearch($query, string $term)
+    {
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+              ->orWhere('description', 'like', "%{$term}%")
+              ->orWhere('slug', 'like', "%{$term}%");
+        });
+    }
+
+    // ==================== Accessors ====================
+
+    /**
+     * Check if plugin is active.
+     */
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    /**
+     * Check if plugin has an update available.
+     */
+    public function getHasUpdateAttribute(): bool
+    {
+        return $this->availableUpdate !== null;
+    }
+
+    /**
+     * Get the latest available version.
+     */
+    public function getLatestVersionAttribute(): ?string
+    {
+        return $this->availableUpdate?->latest_version;
+    }
+
+    /**
+     * Check if plugin has a valid license.
+     */
+    public function getHasValidLicenseAttribute(): bool
+    {
+        if (!$this->requires_license) {
+            return true;
+        }
+        return $this->license?->isValid() ?? false;
+    }
+
+    /**
+     * Check if plugin has settings configured.
+     */
+    public function getHasSettingsAttribute(): bool
+    {
+        // Check if plugin provides a getSettingsFields method
+        try {
+            $instance = app('plugins.manager')->getLoadedPlugin($this->slug);
+            return $instance && method_exists($instance, 'getSettingsFields');
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get the plugin icon URL.
+     * 
+     * Converts the relative icon path from plugin.json to a proper URL
+     * that can be used in templates.
+     */
+    public function getIconUrlAttribute(): ?string
+    {
+        if (empty($this->icon)) {
+            return null;
+        }
+
+        // If it's already a full URL, return as-is
+        if (str_starts_with($this->icon, 'http://') || str_starts_with($this->icon, 'https://')) {
+            return $this->icon;
+        }
+
+        // If it's a public asset path (starts with /), return as-is
+        if (str_starts_with($this->icon, '/')) {
+            return $this->icon;
+        }
+
+        // Build URL using the plugin asset route
+        try {
+            return route('admin.plugins.asset', [
+                'slug' => $this->slug,
+                'path' => $this->icon,
+            ]);
+        } catch (\Exception $e) {
+            // Fallback if route doesn't exist
+            return "/admin/plugins/{$this->slug}/assets/{$this->icon}";
+        }
+    }
+
+    // ==================== Status Methods ====================
 
     /**
      * Check if the plugin is active.
@@ -102,6 +325,182 @@ class Plugin extends Model
     {
         return $this->status === self::STATUS_ERROR;
     }
+
+    /**
+     * Check if the plugin is updating.
+     */
+    public function isUpdating(): bool
+    {
+        return $this->status === self::STATUS_UPDATING;
+    }
+
+    // ==================== Capability Methods ====================
+
+    /**
+     * Check if plugin can be activated.
+     */
+    public function canActivate(): bool
+    {
+        if ($this->status === self::STATUS_ACTIVE) {
+            return false;
+        }
+
+        if ($this->requires_license && !$this->has_valid_license) {
+            return false;
+        }
+
+        // Check dependencies
+        foreach ($this->dependencies as $dep) {
+            if (!$dep->is_optional && !$dep->isSatisfied()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if plugin can be deactivated.
+     */
+    public function canDeactivate(): bool
+    {
+        if ($this->is_core) {
+            return false;
+        }
+
+        // Check if other plugins depend on this one
+        $dependents = PluginDependency::where('dependency_slug', $this->slug)
+            ->whereHas('plugin', fn($q) => $q->active())
+            ->count();
+
+        return $dependents === 0;
+    }
+
+    /**
+     * Check if plugin can be uninstalled.
+     */
+    public function canUninstall(): bool
+    {
+        return !$this->is_core && $this->canDeactivate();
+    }
+
+    // ==================== Settings Methods ====================
+
+    /**
+     * Get a setting value from the plugin_settings table.
+     */
+    public function getPluginSetting(string $key, mixed $default = null): mixed
+    {
+        $setting = $this->pluginSettings()->where('key', $key)->first();
+        
+        if (!$setting) {
+            return $default;
+        }
+
+        return $this->castSettingValue($setting);
+    }
+
+    /**
+     * Set a setting value in the plugin_settings table.
+     */
+    public function setPluginSetting(string $key, mixed $value, string $group = 'general'): void
+    {
+        $this->pluginSettings()->updateOrCreate(
+            ['key' => $key],
+            [
+                'value' => is_array($value) ? json_encode($value) : (string) $value,
+                'group' => $group,
+                'type' => $this->getSettingType($value),
+            ]
+        );
+    }
+
+    /**
+     * Get all settings for a group.
+     */
+    public function getPluginSettings(?string $group = null): array
+    {
+        $query = $this->pluginSettings();
+        
+        if ($group) {
+            $query->where('group', $group);
+        }
+
+        return $query->get()
+            ->mapWithKeys(fn($s) => [$s->key => $this->castSettingValue($s)])
+            ->toArray();
+    }
+
+    /**
+     * Cast a setting value based on its type.
+     */
+    protected function castSettingValue(PluginSetting $setting): mixed
+    {
+        $value = $setting->value;
+
+        return match ($setting->type) {
+            'integer' => (int) $value,
+            'float' => (float) $value,
+            'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+            'array', 'json' => json_decode($value, true),
+            default => $value,
+        };
+    }
+
+    /**
+     * Determine the type of a setting value.
+     */
+    protected function getSettingType(mixed $value): string
+    {
+        return match (true) {
+            is_int($value) => 'integer',
+            is_float($value) => 'float',
+            is_bool($value) => 'boolean',
+            is_array($value) => 'array',
+            default => 'string',
+        };
+    }
+
+    /**
+     * Get a setting value (legacy - from settings JSON column).
+     */
+    public function getSetting(string $key, mixed $default = null): mixed
+    {
+        $settings = $this->settings ?? [];
+        return $settings[$key] ?? $default;
+    }
+
+    /**
+     * Set a setting value (legacy - to settings JSON column).
+     */
+    public function setSetting(string $key, mixed $value): static
+    {
+        $settings = $this->settings ?? [];
+        $settings[$key] = $value;
+        $this->settings = $settings;
+        return $this;
+    }
+
+    // ==================== Event Logging ====================
+
+    /**
+     * Log a plugin event.
+     */
+    public function logEvent(string $event, array $payload = [], ?string $previousVersion = null): void
+    {
+        $this->events()->create([
+            'plugin_slug' => $this->slug,
+            'event' => $event,
+            'version' => $this->version,
+            'previous_version' => $previousVersion,
+            'user_id' => auth()->id(),
+            'payload' => $payload,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+    }
+
+    // ==================== Path Methods ====================
 
     /**
      * Get the full path to the plugin directory.
@@ -152,7 +551,6 @@ class Plugin extends Model
         }
 
         // For non-existent paths, ensure they would be within the base directory
-        // by checking the normalized path
         $normalizedPath = $this->normalizePath($fullPath);
         
         if (!str_starts_with($normalizedPath, $realBase)) {
@@ -217,6 +615,10 @@ class Plugin extends Model
         if ($this->main_class) {
             return $this->main_class;
         }
+
+        if ($this->entry_class) {
+            return $this->entry_class;
+        }
         
         // Convert slug to valid PHP namespace (hyphens to underscores)
         $namespaceSlug = str_replace('-', '_', $this->slug);
@@ -256,25 +658,7 @@ class Plugin extends Model
         return json_decode($content, true);
     }
 
-    /**
-     * Get a setting value.
-     */
-    public function getSetting(string $key, mixed $default = null): mixed
-    {
-        $settings = $this->settings ?? [];
-        return $settings[$key] ?? $default;
-    }
-
-    /**
-     * Set a setting value.
-     */
-    public function setSetting(string $key, mixed $value): static
-    {
-        $settings = $this->settings ?? [];
-        $settings[$key] = $value;
-        $this->settings = $settings;
-        return $this;
-    }
+    // ==================== Dependency Methods ====================
 
     /**
      * Check if a dependency is required.
@@ -295,34 +679,13 @@ class Plugin extends Model
     }
 
     /**
-     * Scope to get only active plugins.
+     * Get dependent plugins (plugins that require this plugin).
      */
-    public function scopeActive($query)
+    public function getDependentPlugins(): \Illuminate\Database\Eloquent\Collection
     {
-        return $query->where('status', self::STATUS_ACTIVE);
-    }
-
-    /**
-     * Scope to get only inactive plugins.
-     */
-    public function scopeInactive($query)
-    {
-        return $query->where('status', self::STATUS_INACTIVE);
-    }
-
-    /**
-     * Scope to get plugins with errors.
-     */
-    public function scopeWithErrors($query)
-    {
-        return $query->where('status', self::STATUS_ERROR);
-    }
-
-    /**
-     * Scope to find by slug.
-     */
-    public function scopeBySlug($query, string $slug)
-    {
-        return $query->where('slug', $slug);
+        $dependentIds = PluginDependency::where('dependency_slug', $this->slug)
+            ->pluck('plugin_id');
+        
+        return Plugin::whereIn('id', $dependentIds)->get();
     }
 }

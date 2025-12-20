@@ -33,7 +33,7 @@ class PluginUpdate extends Model
 
     public function plugin(): BelongsTo
     {
-        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
+        return $this->belongsTo(Plugin::class, 'plugin_id');
     }
 
     // =========================================================================
@@ -148,7 +148,7 @@ class PluginUpdateHistory extends Model
 
     public function plugin(): BelongsTo
     {
-        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
+        return $this->belongsTo(Plugin::class, 'plugin_id');
     }
 
     public function isSuccess(): bool
@@ -166,7 +166,7 @@ class PluginUpdateHistory extends Model
         return $this->status === self::STATUS_ROLLED_BACK;
     }
 
-    public static function recordStart(InstalledPlugin $plugin, string $fromVersion, string $toVersion): self
+    public static function recordStart(Plugin $plugin, string $fromVersion, string $toVersion): self
     {
         return static::create([
             'plugin_id' => $plugin->id,
@@ -302,12 +302,12 @@ class MarketplacePlugin extends Model
 
     public function isInstalled(): bool
     {
-        return InstalledPlugin::where('marketplace_id', $this->marketplace_id)->exists();
+        return Plugin::where('marketplace_id', $this->marketplace_id)->exists();
     }
 
-    public function getInstalledPlugin(): ?InstalledPlugin
+    public function getPlugin(): ?Plugin
     {
-        return InstalledPlugin::where('marketplace_id', $this->marketplace_id)->first();
+        return Plugin::where('marketplace_id', $this->marketplace_id)->first();
     }
 
     public function getPriceFormatted(): string

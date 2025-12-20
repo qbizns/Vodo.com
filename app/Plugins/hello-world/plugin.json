@@ -1,20 +1,42 @@
 {
-    "name": "Hello World",
-    "slug": "hello-world",
-    "version": "1.0.0",
+    "name": "hello-world",
+    "title": "Hello World",
     "description": "A sample plugin demonstrating the plugin system capabilities including routes, views, migrations, navigation, and hooks.",
-    "author": "Vodo",
-    "author_url": "https://vodo.com",
-    "main": "HelloWorldPlugin.php",
-    "requires": {
-        "php": ">=8.2",
-        "laravel": ">=12.0"
+    "version": "1.0.0",
+    "author": {
+        "name": "Vodo",
+        "email": "support@vodo.com",
+        "url": "https://vodo.com"
     },
-    "hooks": [
-        "navigation",
-        "routes",
-        "views"
+    "homepage": "https://vodo.com/plugins/hello-world",
+    "documentation": "https://docs.vodo.com/plugins/hello-world",
+    "license": "MIT",
+    "category": "utilities",
+    "tags": ["demo", "sample", "greetings", "hello-world"],
+    "icon": "resources/assets/icon.png",
+    "screenshots": [],
+    "requirements": {
+        "php": "^8.2",
+        "system": "^1.0",
+        "extensions": []
+    },
+    "dependencies": {},
+    "optional_dependencies": {},
+    "autoload": {
+        "psr-4": {
+            "HelloWorld\\": "src/"
+        }
+    },
+    "providers": [
+        "HelloWorld\\Providers\\HelloWorldServiceProvider"
     ],
+    "entry_class": "HelloWorldPlugin",
+    "is_premium": false,
+    "requires_license": false,
+    "settings": {
+        "has_settings_page": true,
+        "settings_route": "admin.plugins.hello-world.settings"
+    },
     "navigation": {
         "categories": [],
         "items": [
@@ -23,15 +45,15 @@
                 "label": "Dashboard",
                 "icon": "layoutDashboard",
                 "url": "/dashboard/hello-world",
-                "category": "Accounting",
+                "category": "Utilities",
                 "order": 1
             },
             {
                 "id": "hello-world",
-                "label": "Chart of Accounts",
+                "label": "Hello World",
                 "icon": "smile",
                 "route": "index",
-                "category": "Accounting",
+                "category": "Utilities",
                 "order": 10
             },
             {
@@ -39,7 +61,7 @@
                 "label": "Greetings",
                 "icon": "messageSquare",
                 "route": "greetings",
-                "category": "Accounting",
+                "category": "Utilities",
                 "order": 11
             }
         ]

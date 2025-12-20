@@ -467,8 +467,9 @@ class PluginManager
         Cache::forget("plugin:{$slug}:entities");
         Cache::forget("plugin:{$slug}:permissions");
         Cache::forget('plugins:active');
+        Cache::forget('plugins_manifest_synced'); // Force re-sync on next list load
         Cache::forget('plugins:all');
-        Cache::tags(['plugins', "plugin:{$slug}"])->flush();
+        // Cache::tags(['plugins', "plugin:{$slug}"])->flush(); // Tagging not supported by file/database drivers
     }
 
     /**
@@ -567,6 +568,7 @@ class PluginManager
                 'description' => $manifest['description'] ?? $plugin->description,
                 'author' => $manifest['author'] ?? $plugin->author,
                 'author_url' => $manifest['author_url'] ?? $plugin->author_url,
+                'category' => $manifest['category'] ?? $plugin->category,
                 'requires' => $manifest['requires'] ?? $plugin->requires,
             ]);
         }
@@ -619,5 +621,95 @@ class PluginManager
         }
 
         return $status;
+    }
+
+    /**
+     * Sync all plugins' metadata from their manifest files.
+     * This ensures database records stay in sync with plugin.json files.
+     * 
+     * @param bool $force Force sync even if data appears unchanged
+     * @return array List of synced plugin slugs
+     */
+    public function syncAllFromManifest(bool $force = false): array
+    {
+        $synced = [];
+        $plugins = Plugin::all();
+
+        foreach ($plugins as $plugin) {
+            if ($this->syncFromManifest($plugin, $force)) {
+                $synced[] = $plugin->slug;
+            }
+        }
+
+        return $synced;
+    }
+
+    /**
+     * Sync a single plugin's metadata from its manifest file.
+     * 
+     * @param Plugin $plugin The plugin to sync
+     * @param bool $force Force sync even if data appears unchanged
+     * @return bool True if any data was updated
+     */
+    public function syncFromManifest(Plugin $plugin, bool $force = false): bool
+    {
+        $manifestPath = $plugin->getFullPath() . '/plugin.json';
+        
+        if (!file_exists($manifestPath)) {
+            return false;
+        }
+
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        
+        if (!is_array($manifest)) {
+            return false;
+        }
+
+        // Build update data from manifest
+        $updates = [];
+        $fields = [
+            'name' => 'name',
+            'title' => 'name',  // title in manifest maps to name in DB
+            'version' => 'version',
+            'description' => 'description',
+            'category' => 'category',
+            'icon' => 'icon',
+            'homepage' => 'homepage',
+        ];
+
+        // Handle author (can be string or object)
+        if (isset($manifest['author'])) {
+            if (is_array($manifest['author'])) {
+                $updates['author'] = $manifest['author']['name'] ?? null;
+                $updates['author_url'] = $manifest['author']['url'] ?? null;
+            } else {
+                $updates['author'] = $manifest['author'];
+            }
+        }
+
+        foreach ($fields as $manifestKey => $dbKey) {
+            if (isset($manifest[$manifestKey])) {
+                $newValue = $manifest[$manifestKey];
+                $currentValue = $plugin->{$dbKey};
+                
+                // Only update if value is different or force is true
+                if ($force || $newValue !== $currentValue) {
+                    $updates[$dbKey] = $newValue;
+                }
+            }
+        }
+
+        // Handle requirements
+        if (isset($manifest['requirements'])) {
+            $updates['requires'] = $manifest['requirements'];
+        }
+
+        // Only update if there are changes
+        if (!empty($updates)) {
+            $plugin->update($updates);
+            return true;
+        }
+
+        return false;
     }
 }

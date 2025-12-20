@@ -107,7 +107,11 @@ return [
         ['slug' => 'plugins.view', 'name' => 'View Plugins', 'group' => 'plugins'],
         ['slug' => 'plugins.install', 'name' => 'Install Plugins', 'group' => 'plugins'],
         ['slug' => 'plugins.activate', 'name' => 'Activate/Deactivate Plugins', 'group' => 'plugins'],
-        ['slug' => 'plugins.delete', 'name' => 'Delete Plugins', 'group' => 'plugins'],
+        ['slug' => 'plugins.update', 'name' => 'Update Plugins', 'group' => 'plugins'],
+        ['slug' => 'plugins.settings', 'name' => 'Configure Plugin Settings', 'group' => 'plugins'],
+        ['slug' => 'plugins.delete', 'name' => 'Uninstall Plugins', 'group' => 'plugins'],
+        ['slug' => 'plugins.marketplace', 'name' => 'Access Marketplace', 'group' => 'plugins'],
+        ['slug' => 'plugins.licenses', 'name' => 'Manage Licenses', 'group' => 'plugins'],
         ['slug' => 'plugins.*', 'name' => 'Full Plugin Management', 'group' => 'plugins'],
     ],
 

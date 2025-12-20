@@ -259,6 +259,7 @@ class PluginInstaller
             'description' => $manifest['description'] ?? null,
             'author' => $manifest['author'] ?? null,
             'author_url' => $manifest['author_url'] ?? null,
+            'category' => $manifest['category'] ?? null,
             'status' => Plugin::STATUS_INACTIVE,
             'requires' => $manifest['requires'] ?? null,
             'main_class' => $fullClassName,
@@ -334,6 +335,7 @@ class PluginInstaller
                     'description' => $manifest['description'] ?? null,
                     'author' => $manifest['author'] ?? null,
                     'author_url' => $manifest['author_url'] ?? null,
+                    'category' => $manifest['category'] ?? null,
                     'requires' => $manifest['requires'] ?? null,
                 ]);
 

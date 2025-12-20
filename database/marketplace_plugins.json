@@ -1,0 +1,159 @@
+{
+    "invoice-manager": {
+        "name": "Invoice Manager",
+        "slug": "invoice-manager",
+        "version": "2.1.0",
+        "description": "Invoice Manager is a comprehensive invoicing solution that allows you to create, send, and track invoices with ease. Features include:\n\n• Create professional invoices with customizable templates\n• Send invoices via email directly from the system\n• Track payment status and send reminders\n• Generate financial reports and analytics\n• Multi-currency support\n• Integration with popular payment gateways",
+        "author": "Vendor Name",
+        "author_url": "https://vendor.com",
+        "homepage": "https://vendor.com/invoice-manager",
+        "status": "active",
+        "category": "accounting",
+        "icon": "https://wperp-com.s3.amazonaws.com/uploads/2025/04/Best-WooCommerce-Accounting-Plugins.png",
+        "is_core": false,
+        "is_premium": true,
+        "requires_license": true,
+        "has_valid_license": true,
+        "min_system_version": "2.0.0",
+        "min_php_version": "8.1",
+        "installed_at": "2024-12-10 10:00:00",
+        "activated_at": "2024-12-15 10:05:00",
+        "latest_version": "2.2.0",
+        "has_update": true,
+        "manifest": {
+            "description": "Manage invoices, payments, and billing...",
+            "features": [
+                "Create professional invoices with customizable templates",
+                "Send invoices via email directly from the system",
+                "Track payment status and send reminders",
+                "Generate financial reports and analytics",
+                "Multi-currency support",
+                "Integration with popular payment gateways"
+            ],
+            "docs_url": "https://docs.vendor.com/invoice-manager",
+            "support_url": "https://support.vendor.com/forums/invoice-manager",
+            "support_email": "support@vendor.com"
+        },
+        "screenshots": [
+            {
+                "url": "https://placehold.co/600x400?text=Invoice+List",
+                "caption": "Invoice List Management"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Create+Invoice",
+                "caption": "Create New Invoice Interface"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Payment+Tracking",
+                "caption": "Payment Tracking Dashboard"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Reports",
+                "caption": "Financial Reports"
+            }
+        ],
+        "changelog": [
+            {
+                "version": "2.1.0",
+                "date": "Dec 10, 2024",
+                "changes": [
+                    "Added: Multi-currency support",
+                    "Added: PayPal integration",
+                    "Fixed: PDF generation on large invoices",
+                    "Improved: Invoice list performance"
+                ]
+            },
+            {
+                "version": "2.0.0",
+                "date": "Nov 1, 2024",
+                "changes": [
+                    "Breaking: Updated to new plugin architecture",
+                    "Added: Recurring invoices",
+                    "Added: Customer portal"
+                ]
+            }
+        ],
+        "permissions": [
+            {
+                "name": "invoices.view",
+                "description": "View invoices",
+                "default": "All users"
+            },
+            {
+                "name": "invoices.create",
+                "description": "Create new invoices",
+                "default": "Editors"
+            },
+            {
+                "name": "invoices.edit",
+                "description": "Edit existing invoices",
+                "default": "Editors"
+            },
+            {
+                "name": "invoices.delete",
+                "description": "Delete invoices",
+                "default": "Admins"
+            },
+            {
+                "name": "invoices.send",
+                "description": "Send invoices via email",
+                "default": "Editors"
+            },
+            {
+                "name": "invoices.export",
+                "description": "Export invoice data",
+                "default": "Managers"
+            },
+            {
+                "name": "invoices.reports",
+                "description": "Access invoice reports",
+                "default": "Managers"
+            },
+            {
+                "name": "invoices.settings",
+                "description": "Configure plugin settings",
+                "default": "Admins"
+            }
+        ],
+        "dependencies": [
+            {
+                "name": "core-finance",
+                "required_version": "^1.5.0",
+                "installed_version": "1.6.2",
+                "status": "satisfied"
+            },
+            {
+                "name": "pdf-generator",
+                "required_version": "^2.0.0",
+                "installed_version": "2.1.0",
+                "status": "satisfied"
+            },
+            {
+                "name": "email-service",
+                "required_version": "^1.0.0",
+                "installed_version": "1.2.0",
+                "status": "satisfied"
+            }
+        ],
+        "dependents": [
+            {
+                "slug": "subscription-billing",
+                "name": "Subscription Billing"
+            },
+            {
+                "slug": "customer-portal",
+                "name": "Customer Portal"
+            }
+        ],
+        "components": {
+            "permissions": 12,
+            "widgets": 3,
+            "entities": 4,
+            "tasks": 2,
+            "endpoints": 8,
+            "menus": 5,
+            "workflows": 2,
+            "shortcodes": 0
+        }
+    }
+}

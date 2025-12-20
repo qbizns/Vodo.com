@@ -52,7 +52,7 @@ class PluginLicense extends Model
 
     public function plugin(): BelongsTo
     {
-        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
+        return $this->belongsTo(Plugin::class);
     }
 
     // =========================================================================

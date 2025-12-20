@@ -15,13 +15,31 @@
     {{-- These are loaded dynamically via JS during AJAX navigation, but need to be included for initial page loads --}}
     @php
         $currentPage = $currentPage ?? 'dashboard';
+        
+        // Direct page mappings
         $pageCssMap = [
             'system/settings' => 'settings',
             'system/plugins' => 'plugins',
             'settings' => 'settings',
             'plugins' => 'plugins',
         ];
+        
+        // First check direct mapping
         $requiredCss = $pageCssMap[$currentPage] ?? null;
+        
+        // If no direct mapping, check prefix-based mapping for sub-pages
+        if (!$requiredCss) {
+            $prefixCssMap = [
+                'system/plugins/' => 'plugins',  // system/plugins/marketplace, system/plugins/install, etc.
+                'system/settings/' => 'settings',
+            ];
+            foreach ($prefixCssMap as $prefix => $css) {
+                if (str_starts_with($currentPage, $prefix)) {
+                    $requiredCss = $css;
+                    break;
+                }
+            }
+        }
     @endphp
     @if($requiredCss)
     <link rel="stylesheet" href="{{ asset('backend/css/pages/' . $requiredCss . '.css') }}">
@@ -46,11 +64,9 @@
                 @if(!($hidePageTitle ?? false))
                 <div class="page-title-bar flex items-center justify-between">
                     <h2 id="pageTitle" class="page-title">@yield('header', __t('dashboard.title'))</h2>
-                    @hasSection('header-actions')
-                        <div class="flex items-center" style="gap: var(--spacing-3);">
-                            @yield('header-actions')
-                        </div>
-                    @endif
+                        <div class="header-actions-container flex items-center" style="gap: var(--spacing-3);">
+                        @yield('header-actions')
+                    </div>
                 </div>
                 @endif
 
@@ -93,6 +109,7 @@
     <script src="{{ asset('backend/js/translations.js') }}"></script>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="{{ asset('backend/js/plugins.js') }}"></script>
     <script src="{{ asset('backend/js/main.js') }}"></script>
     
     {{-- Pass notifications to JS if available --}}
@@ -105,5 +122,8 @@
     @endif
 
     @stack('scripts')
+    
+    {{-- Inline scripts from page views (used by plugins, settings, etc.) --}}
+    @stack('inline-scripts')
 </body>
 </html>

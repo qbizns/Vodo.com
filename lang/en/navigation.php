@@ -94,7 +94,12 @@ return [
     'plugins' => 'Plugins',
     'installed_plugins' => 'Installed Plugins',
     'marketplace' => 'Marketplace',
-    'updates' => 'Updates',
+    'plugin_updates' => 'Plugin Updates',
+    'plugin_licenses' => 'Licenses',
+    'plugin_dependencies' => 'Dependencies',
+    'plugin_settings' => 'Plugin Settings',
+    'install_plugin' => 'Install Plugin',
+    'navigation' => 'Navigation',
 
     // System
     'system' => 'System',

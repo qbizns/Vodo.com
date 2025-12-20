@@ -3,8 +3,14 @@
 use App\Modules\Admin\Controllers\AuthController;
 use App\Modules\Admin\Controllers\DashboardController;
 use App\Modules\Admin\Controllers\PluginController;
+use App\Modules\Admin\Controllers\PluginInstallController;
 use App\Modules\Admin\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
+
+// Plugin assets route (public, no auth required)
+Route::get('/plugins/{slug}/assets/{path}', [PluginController::class, 'serveAsset'])
+    ->name('admin.plugins.asset')
+    ->where('path', '.*');
 
 // Guest routes
 Route::middleware('guest:admin')->group(function () {
@@ -37,11 +43,37 @@ Route::middleware('auth:admin')->group(function () {
 
     // Plugin Management Routes
     Route::prefix('system/plugins')->name('admin.plugins.')->group(function () {
+        // Main screens
         Route::get('/', [PluginController::class, 'index'])->name('index');
+        Route::get('/marketplace', [PluginController::class, 'marketplace'])->name('marketplace');
+        Route::get('/updates', [PluginController::class, 'updates'])->name('updates');
+        Route::post('/updates/check', [PluginController::class, 'checkUpdates'])->name('updates.check');
+        Route::get('/dependencies', [PluginController::class, 'dependencies'])->name('dependencies');
+        Route::get('/licenses', [PluginController::class, 'licenses'])->name('licenses');
+        Route::post('/licenses/activate', [PluginController::class, 'activateLicense'])->name('licenses.activate');
+        Route::post('/licenses/{slug}/deactivate', [PluginController::class, 'deactivateLicense'])->name('licenses.deactivate');
+        
+        // Installation wizard
+        Route::get('/install', [PluginInstallController::class, 'create'])->name('install');
+        Route::post('/install/requirements', [PluginInstallController::class, 'checkRequirements'])->name('install.requirements');
+        Route::post('/install/dependencies', [PluginInstallController::class, 'checkDependencies'])->name('install.dependencies');
+        Route::post('/install/permissions', [PluginInstallController::class, 'getPermissions'])->name('install.permissions');
+        Route::post('/install/install', [PluginInstallController::class, 'install'])->name('install.install');
+        Route::post('/install/activate', [PluginInstallController::class, 'activate'])->name('install.activate');
+        Route::get('/install/{slug}/progress', [PluginInstallController::class, 'progress'])->name('install.progress');
+        
+        // Bulk actions
+        Route::post('/bulk', [PluginController::class, 'bulkAction'])->name('bulk');
         Route::post('/upload', [PluginController::class, 'upload'])->name('upload');
+        
+        // Single plugin routes (must be last due to {slug} parameter)
         Route::get('/{slug}', [PluginController::class, 'show'])->name('show');
+        Route::get('/{slug}/settings', [PluginController::class, 'settings'])->name('settings');
+        Route::post('/{slug}/settings', [PluginController::class, 'saveSettings'])->name('settings.save');
+        Route::get('/{slug}/dependencies', [PluginController::class, 'dependencies'])->name('dependencies.detail');
         Route::post('/{slug}/activate', [PluginController::class, 'activate'])->name('activate');
         Route::post('/{slug}/deactivate', [PluginController::class, 'deactivate'])->name('deactivate');
+        Route::post('/{slug}/update', [PluginController::class, 'update'])->name('update');
         Route::delete('/{slug}', [PluginController::class, 'destroy'])->name('destroy');
     });
 
@@ -53,6 +85,12 @@ Route::middleware('auth:admin')->group(function () {
         Route::get('/plugin/{slug}', [SettingsController::class, 'plugin'])->name('plugin');
         Route::post('/plugin/{slug}', [SettingsController::class, 'savePlugin'])->name('plugin.save');
     });
+
+    // System Routes
+    Route::prefix('system')->name('admin.system.')->group(function () {
+        Route::get('/logs', [App\Modules\Admin\Controllers\SystemController::class, 'logs'])->name('logs');
+    });
+    
     
     // Catch-all route for placeholder pages (must be last)
     // Excludes 'plugins', 'system', and 'dashboard' paths which are handled by specific routes

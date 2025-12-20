@@ -118,7 +118,7 @@ function loadPageCss(cssName) {
  */
 function loadPageCssMultiple(cssNames) {
     if (!cssNames) return Promise.resolve();
-    
+
     const names = cssNames.split(',').map(s => s.trim()).filter(Boolean);
     return Promise.all(names.map(loadPageCss));
 }
@@ -128,7 +128,7 @@ function loadPageCssMultiple(cssNames) {
  * @param {jQuery} $container - Container with potential inline scripts
  */
 function executeInlineScripts($container) {
-    $container.find('script').each(function() {
+    $container.find('script').each(function () {
         const script = document.createElement('script');
         if (this.src) {
             script.src = this.src;
@@ -491,7 +491,7 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
 
     // Show loading state
     const $pageContent = $('#pageContent');
-    const $pageTitle = $('#pageTitle');
+    let $pageTitle = $('#pageTitle');
 
     $pageContent.css('opacity', '0.5');
 
@@ -507,7 +507,8 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
             // Parse response
             let content = response;
             let title = pageLabel;
-            let hidePageTitle = false;
+            let pageHeader = '';
+            let headerActions = '';
             let requiredCss = '';
 
             // If response is HTML, try to extract content
@@ -517,20 +518,33 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
                 // Check for PJAX response first (preferred)
                 const $pjaxContent = $response.find('#pjax-content');
                 if ($pjaxContent.length) {
-                    // PJAX response - includes inline styles and content
-                    content = $pjaxContent.html();
-                    
+                    console.log('[PJAX] Found pjax-content');
+
                     // Get page title from PJAX data attribute
                     const pjaxTitle = $pjaxContent.attr('data-page-title');
                     if (pjaxTitle) {
                         title = pjaxTitle;
                     }
-                    
+
+                    // Get page header (may be different from title)
+                    pageHeader = $pjaxContent.attr('data-page-header') || title;
+                    console.log('[PJAX] Page header:', pageHeader);
+
                     // Get required CSS from PJAX data attribute
                     requiredCss = $pjaxContent.attr('data-require-css') || '';
-                    
-                    // PJAX responses typically hide the page title bar
-                    hidePageTitle = true;
+
+                    // Extract header-actions from div if present
+                    const $headerActionsDiv = $pjaxContent.find('#pjax-header-actions');
+                    console.log('[PJAX] Header actions div found:', $headerActionsDiv.length > 0);
+                    if ($headerActionsDiv.length) {
+                        headerActions = $headerActionsDiv.html();
+                        console.log('[PJAX] Header actions HTML length:', headerActions.length);
+                        // Remove the div from content
+                        $headerActionsDiv.remove();
+                    }
+
+                    // Get the remaining content
+                    content = $pjaxContent.html();
                 } else {
                     // Fallback: Try to find page-content section
                     const $content = $response.find('#pageContent');
@@ -541,10 +555,6 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
                         content = response;
                     }
 
-                    // Check if page title should be hidden
-                    const $titleBar = $response.find('.page-title-bar');
-                    hidePageTitle = $titleBar.length === 0;
-                    
                     // Try to extract required CSS from head (fallback)
                     const $requireCssMeta = $response.find('meta[name="require-css"]');
                     if ($requireCssMeta.length) {
@@ -555,66 +565,120 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
 
             // Load required CSS files before updating content
             const cssLoadPromise = requiredCss ? loadPageCssMultiple(requiredCss) : Promise.resolve();
-            
+
             cssLoadPromise.then(() => {
-                // Update page content
-                $pageContent.html(content);
+                try {
+                    // Update page content
+                    $pageContent.html(content);
 
-                // Update page title
-                if (!hidePageTitle && $pageTitle.length) {
-                    $pageTitle.text(title);
-                    $('.page-title-bar').show();
-                } else {
-                    $('.page-title-bar').hide();
+                    // Update page title bar
+                    let $pageTitleBar = $('.page-title-bar');
+                    console.log('[PJAX] Page title bar found:', $pageTitleBar.length > 0);
+
+                    // Robustness: If main layout doesn't have page title bar (e.g. Dashboard), create it
+                    if (!$pageTitleBar.length && (pageHeader || title)) {
+                        const $contentArea = $('.flex-1.flex.flex-col');
+                        if ($contentArea.length) {
+                            $pageTitleBar = $(`
+                                <div class="page-title-bar flex items-center justify-between">
+                                    <h2 id="pageTitle" class="page-title"></h2>
+                                    <div class="header-actions-container flex items-center" style="gap: var(--spacing-3);"></div>
+                                </div>
+                            `);
+                            // Insert before pageContent
+                            $('#pageContent').before($pageTitleBar);
+
+                            // Re-query elements
+                            $pageTitle = $pageTitleBar.find('#pageTitle');
+                            console.log('[PJAX] Created missing page title bar');
+                        }
+                    }
+
+                    if ($pageTitleBar.length) {
+                        // Update page title text
+                        if ($pageTitle.length) {
+                            $pageTitle.text(pageHeader || title);
+                            console.log('[PJAX] Set page title to:', pageHeader || title);
+                        } else {
+                            // In case we created it or it was there but $pageTitle ref is stale
+                            $pageTitleBar.find('.page-title').text(pageHeader || title);
+                        }
+
+                        // Update header actions
+                        let $headerActionsContainer = $pageTitleBar.find('.header-actions-container');
+                        console.log('[PJAX] Header actions container found:', $headerActionsContainer.length > 0);
+                        if (!$headerActionsContainer.length) {
+                            // Create container if it doesn't exist
+                            $headerActionsContainer = $('<div class="header-actions-container flex items-center" style="gap: var(--spacing-3);"></div>');
+                            $pageTitleBar.append($headerActionsContainer);
+                            console.log('[PJAX] Created header actions container');
+                        }
+
+                        if (headerActions) {
+                            $headerActionsContainer.html(headerActions).show();
+                            console.log('[PJAX] Updated header actions');
+                        } else {
+                            $headerActionsContainer.empty().hide();
+                            console.log('[PJAX] No header actions, hiding container');
+                        }
+
+                        // Show the page title bar (it might be hidden by CSS or previous page)
+                        $pageTitleBar.css('display', 'flex'); // Force flex display
+                        console.log('[PJAX] Showing page title bar');
+                    }
+
+                    // Update document title
+                    const brandName = window.BackendConfig?.brandName || 'VODO Admin';
+                    document.title = `${title} - ${brandName}`;
+
+                    // Update BackendConfig
+                    if (window.BackendConfig) {
+                        window.BackendConfig.currentPage = pageId;
+                        window.BackendConfig.currentPageLabel = pageLabel;
+                        window.BackendConfig.currentPageIcon = pageIcon;
+                    }
+
+                    // Update browser history
+                    if (pushState) {
+                        const state = {
+                            pageId: pageId,
+                            pageLabel: pageLabel,
+                            pageIcon: pageIcon,
+                            url: url
+                        };
+                        history.pushState(state, title, url);
+                    }
+
+                    // Update active tab
+                    AppState.activeTabId = pageId;
+
+                    // Update tabs
+                    renderTabs();
+
+                    // Update sidebar active state
+                    $('.nav-item').removeClass('active');
+                    $(`.nav-item[data-nav-id="${pageId}"]`).addClass('active');
+
+                    // Scroll to top
+                    $pageContent.scrollTop(0);
+
+                    // Re-initialize any page-specific scripts
+                    if (typeof initDashboardSlider === 'function') {
+                        initDashboardSlider();
+                    }
+
+                    // Execute any inline scripts from the loaded content
+                    executeInlineScripts($pageContent);
+
+                } catch (err) {
+                    console.error('[PJAX] Error in success handler:', err);
+                    // Force a reload as fallback if PJAX fails hard 
+                    // location.href = url; // Optional: fallback to hard navigation
+                } finally {
+                    // Restore opacity and navigation flag
+                    $pageContent.css('opacity', '1');
+                    isNavigating = false;
                 }
-
-                // Update document title
-                const brandName = window.BackendConfig?.brandName || 'VODO Admin';
-                document.title = `${title} - ${brandName}`;
-
-                // Update BackendConfig
-                if (window.BackendConfig) {
-                    window.BackendConfig.currentPage = pageId;
-                    window.BackendConfig.currentPageLabel = pageLabel;
-                    window.BackendConfig.currentPageIcon = pageIcon;
-                }
-
-                // Update browser history
-                if (pushState) {
-                    const state = {
-                        pageId: pageId,
-                        pageLabel: pageLabel,
-                        pageIcon: pageIcon,
-                        url: url
-                    };
-                    history.pushState(state, title, url);
-                }
-
-                // Update active tab
-                AppState.activeTabId = pageId;
-
-                // Update tabs
-                renderTabs();
-
-                // Update sidebar active state
-                $('.nav-item').removeClass('active');
-                $(`.nav-item[data-nav-id="${pageId}"]`).addClass('active');
-
-                // Restore opacity
-                $pageContent.css('opacity', '1');
-
-                // Scroll to top
-                $pageContent.scrollTop(0);
-
-                // Re-initialize any page-specific scripts
-                if (typeof initDashboardSlider === 'function') {
-                    initDashboardSlider();
-                }
-                
-                // Execute any inline scripts from the loaded content
-                executeInlineScripts($pageContent);
-
-                isNavigating = false;
             });
         },
         error: function (xhr, status, error) {
@@ -809,7 +873,7 @@ function initEventHandlers() {
         const $dropdown = $('#languageDropdown');
         const $selector = $(this).closest('.language-selector');
         const isVisible = $dropdown.is(':visible');
-        
+
         $dropdown.toggle();
         $selector.toggleClass('open', !isVisible);
     });
@@ -818,12 +882,12 @@ function initEventHandlers() {
     $(document).on('click', '.language-option', function (e) {
         e.preventDefault();
         const lang = $(this).data('lang');
-        
+
         // Set cookie for 1 year
         const expires = new Date();
         expires.setFullYear(expires.getFullYear() + 1);
         document.cookie = `locale=${lang}; expires=${expires.toUTCString()}; path=/`;
-        
+
         // Reload page with lang parameter (middleware will handle it)
         const url = new URL(window.location.href);
         url.searchParams.set('lang', lang);
