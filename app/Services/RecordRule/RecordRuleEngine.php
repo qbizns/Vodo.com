@@ -103,13 +103,13 @@ class RecordRuleEngine
     /**
      * Apply record rules to a query.
      */
-    public function applyRules(Builder $query, string $entityName, string $permission = 'read'): Builder
+    public function applyRules(Builder $query, string $entityName, string $permission = 'read', ?object $user = null): Builder
     {
         if ($this->bypassRules) {
             return $query;
         }
 
-        $user = Auth::user();
+        $user = $user ?? Auth::user();
         if (!$user) {
             // No user, apply strictest rules (no access)
             return $query->whereRaw('1 = 0');
@@ -206,11 +206,37 @@ class RecordRuleEngine
     }
 
     /**
+     * Apply read rules to a query (convenience method).
+     */
+    public function applyReadRules(Builder $query, string $entityName, ?object $user = null): Builder
+    {
+        return $this->applyRules($query, $entityName, 'read', $user);
+    }
+
+    /**
+     * Apply write rules to a query (convenience method).
+     */
+    public function applyWriteRules(Builder $query, string $entityName, ?object $user = null): Builder
+    {
+        return $this->applyRules($query, $entityName, 'write', $user);
+    }
+
+    /**
+     * Apply delete rules to a query (convenience method).
+     */
+    public function applyDeleteRules(Builder $query, string $entityName, ?object $user = null): Builder
+    {
+        return $this->applyRules($query, $entityName, 'delete', $user);
+    }
+
+    /**
      * Get applicable rules for entity and permission.
      */
     protected function getApplicableRules(string $entityName, string $permission, object $user): \Illuminate\Support\Collection
     {
-        $cacheKey = "record_rules:{$entityName}:{$permission}:{$user->id}";
+        // Include tenant_id in cache key to prevent cross-tenant cache collision
+        $tenantId = $user->tenant_id ?? 'global';
+        $cacheKey = "record_rules:{$tenantId}:{$entityName}:{$permission}:{$user->id}";
         $userGroups = $this->getUserGroups($user);
         $permissionField = "perm_{$permission}";
 

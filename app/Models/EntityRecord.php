@@ -414,13 +414,17 @@ class EntityRecord extends Model
 
     /**
      * Scope: Search in title and content.
+     * SQL wildcards are escaped to prevent injection attacks.
      */
     public function scopeSearch(Builder $query, string $term): Builder
     {
-        return $query->where(function ($q) use ($term) {
-            $q->where('title', 'LIKE', "%{$term}%")
-              ->orWhere('content', 'LIKE', "%{$term}%")
-              ->orWhere('excerpt', 'LIKE', "%{$term}%");
+        // Escape SQL wildcards to prevent malicious patterns
+        $escapedTerm = str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $term);
+
+        return $query->where(function ($q) use ($escapedTerm) {
+            $q->where('title', 'LIKE', "%{$escapedTerm}%")
+              ->orWhere('content', 'LIKE', "%{$escapedTerm}%")
+              ->orWhere('excerpt', 'LIKE', "%{$escapedTerm}%");
         });
     }
 
