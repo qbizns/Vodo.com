@@ -1,22 +1,56 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Entity\EntityRegistry;
+use App\Services\RecordRule\RecordRuleEngine;
 use App\Models\EntityRecord;
 use App\Models\EntityDefinition;
+use App\Traits\AuthorizesApiRequests;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Entity API Controller - CRUD operations for dynamic entities.
+ *
+ * Security Features:
+ * - Permission-based authorization for all actions
+ * - Record rules (row-level security) enforcement
+ * - Tenant isolation via model scopes
+ * - Audit logging for all modifications
+ */
 class EntityApiController extends Controller
 {
-    protected EntityRegistry $registry;
+    use AuthorizesApiRequests;
 
-    public function __construct()
+    protected EntityRegistry $registry;
+    protected RecordRuleEngine $recordRules;
+
+    public function __construct(RecordRuleEngine $recordRules)
     {
         $this->registry = EntityRegistry::getInstance();
+        $this->recordRules = $recordRules;
+    }
+
+    /**
+     * Get the resource name for permission checks.
+     */
+    protected function getResourceName(): string
+    {
+        return 'entities';
+    }
+
+    /**
+     * Get entity-specific permission.
+     */
+    protected function getEntityPermission(string $entityName, string $action): string
+    {
+        return "entities.{$entityName}.{$action}";
     }
 
     /**
@@ -25,10 +59,20 @@ class EntityApiController extends Controller
      */
     public function index(): JsonResponse
     {
+        $this->authorizeView();
+
+        $user = $this->getAuthUser();
+
         $entities = EntityDefinition::active()
             ->where('show_in_rest', true)
             ->orderBy('menu_position')
             ->get()
+            ->filter(function ($entity) use ($user) {
+                // Filter entities user has permission to view
+                return $user->isSuperAdmin() ||
+                       $user->hasPermission("entities.{$entity->name}.view") ||
+                       $user->hasPermission('entities.view');
+            })
             ->map(fn($entity) => [
                 'name' => $entity->name,
                 'slug' => $entity->slug,
@@ -47,7 +91,7 @@ class EntityApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $entities,
+            'data' => $entities->values(),
         ]);
     }
 
@@ -57,6 +101,8 @@ class EntityApiController extends Controller
      */
     public function schema(string $entity): JsonResponse
     {
+        $this->authorizeView("entities.{$entity}");
+
         $definition = $this->getEntityOrFail($entity);
 
         $fields = $definition->fields->map(fn($field) => [
@@ -105,30 +151,37 @@ class EntityApiController extends Controller
      */
     public function listRecords(Request $request, string $entity): JsonResponse
     {
+        $this->authorizeView("entities.{$entity}");
+
         $definition = $this->getEntityOrFail($entity);
 
         $query = EntityRecord::forEntity($entity)
             ->with(['author'])
             ->notTrashed();
 
+        // Apply record rules (row-level security)
+        $user = $this->getAuthUser();
+        $query = $this->recordRules->applyReadRules($query, $entity, $user);
+
         // Status filter
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        // Search
+        // Search - escape wildcards for security
         if ($request->has('search')) {
-            $query->search($request->search);
+            $searchTerm = $this->escapeSearchWildcards($request->search);
+            $query->search($searchTerm);
         }
 
         // Author filter
         if ($request->has('author')) {
-            $query->byAuthor($request->author);
+            $query->byAuthor((int) $request->author);
         }
 
         // Term filter
         if ($request->has('term')) {
-            $query->withTerm($request->term);
+            $query->withTerm((int) $request->term);
         }
 
         // Taxonomy term filter (taxonomy:slug format)
@@ -154,17 +207,18 @@ class EntityApiController extends Controller
             }
         }
 
-        // Sorting
+        // Sorting - whitelist allowed fields
         $sortField = $request->get('sort', 'created_at');
-        $sortDir = $request->get('order', 'desc');
+        $sortDir = strtolower($request->get('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        if (in_array($sortField, ['id', 'title', 'slug', 'status', 'created_at', 'updated_at', 'published_at', 'menu_order'])) {
+        $allowedSortFields = ['id', 'title', 'slug', 'status', 'created_at', 'updated_at', 'published_at', 'menu_order'];
+        if (in_array($sortField, $allowedSortFields, true)) {
             $query->orderBy($sortField, $sortDir);
         }
 
         // Pagination
         $perPage = min(
-            $request->get('per_page', config('entity.pagination.default_per_page', 15)),
+            max(1, (int) $request->get('per_page', config('entity.pagination.default_per_page', 15))),
             config('entity.pagination.max_per_page', 100)
         );
 
@@ -193,13 +247,15 @@ class EntityApiController extends Controller
      */
     public function store(Request $request, string $entity): JsonResponse
     {
+        $this->authorizeCreate("entities.{$entity}");
+
         $definition = $this->getEntityOrFail($entity);
 
         // Build validation rules
         $rules = [
             'title' => $definition->supports('title') ? 'required|string|max:255' : 'nullable|string|max:255',
-            'slug' => 'nullable|string|max:100',
-            'content' => 'nullable|string',
+            'slug' => 'nullable|string|max:100|regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+            'content' => 'nullable|string|max:1000000',
             'excerpt' => 'nullable|string|max:500',
             'status' => 'nullable|string|in:draft,published,archived',
             'parent_id' => 'nullable|integer|exists:entity_records,id',
@@ -222,27 +278,39 @@ class EntityApiController extends Controller
 
         $validated = $request->validate($rules);
 
-        // Create record
-        $record = $this->registry->createRecord($entity, array_merge(
-            $validated,
-            [
-                'author_id' => $request->user()?->id,
-                'status' => $validated['status'] ?? 'draft',
-            ],
-            $validated['fields'] ?? []
-        ));
+        // Use transaction for data integrity
+        $record = DB::transaction(function () use ($entity, $validated, $request) {
+            // Create record
+            $record = $this->registry->createRecord($entity, array_merge(
+                $validated,
+                [
+                    'author_id' => $request->user()?->id,
+                    'status' => $validated['status'] ?? 'draft',
+                ],
+                $validated['fields'] ?? []
+            ));
 
-        // Sync taxonomies
-        if (!empty($validated['taxonomies'])) {
-            foreach ($validated['taxonomies'] as $taxonomyName => $termIds) {
-                $record->syncTerms($taxonomyName, $termIds);
+            // Sync taxonomies
+            if (!empty($validated['taxonomies'])) {
+                foreach ($validated['taxonomies'] as $taxonomyName => $termIds) {
+                    $record->syncTerms($taxonomyName, $termIds);
+                }
             }
-        }
+
+            return $record;
+        });
 
         // Fire hook
         if (function_exists('do_action')) {
             do_action('entity_record_created_via_api', $record, $definition);
         }
+
+        // Log the creation
+        \Log::info('Entity record created via API', [
+            'entity' => $entity,
+            'record_id' => $record->id,
+            'user_id' => $request->user()?->id,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -257,11 +325,18 @@ class EntityApiController extends Controller
      */
     public function show(string $entity, int $id): JsonResponse
     {
+        $this->authorizeView("entities.{$entity}");
+
         $definition = $this->getEntityOrFail($entity);
 
-        $record = EntityRecord::forEntity($entity)
-            ->with(['author', 'terms'])
-            ->findOrFail($id);
+        $query = EntityRecord::forEntity($entity)
+            ->with(['author', 'terms']);
+
+        // Apply record rules
+        $user = $this->getAuthUser();
+        $query = $this->recordRules->applyReadRules($query, $entity, $user);
+
+        $record = $query->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -277,13 +352,22 @@ class EntityApiController extends Controller
     {
         $definition = $this->getEntityOrFail($entity);
 
-        $record = EntityRecord::forEntity($entity)->findOrFail($id);
+        $query = EntityRecord::forEntity($entity);
+
+        // Apply record rules for update permission
+        $user = $this->getAuthUser();
+        $query = $this->recordRules->applyWriteRules($query, $entity, $user);
+
+        $record = $query->findOrFail($id);
+
+        // Authorize update (permission or ownership)
+        $this->authorizeActionOrOwnership('update', $record, 'author_id');
 
         // Build validation rules (all optional for updates)
         $rules = [
             'title' => 'nullable|string|max:255',
-            'slug' => 'nullable|string|max:100',
-            'content' => 'nullable|string',
+            'slug' => 'nullable|string|max:100|regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+            'content' => 'nullable|string|max:1000000',
             'excerpt' => 'nullable|string|max:500',
             'status' => 'nullable|string|in:draft,published,archived,trash',
             'parent_id' => 'nullable|integer|exists:entity_records,id',
@@ -295,9 +379,10 @@ class EntityApiController extends Controller
         // Add field validation rules (make all nullable for updates)
         $fieldRules = $this->registry->getValidationRules($entity);
         foreach ($fieldRules as $field => $fieldRule) {
-            // Replace 'required' with 'nullable' for updates
             if (is_array($fieldRule)) {
                 $fieldRule = array_map(fn($r) => $r === 'required' ? 'nullable' : $r, $fieldRule);
+            } elseif (is_string($fieldRule)) {
+                $fieldRule = str_replace('required', 'nullable', $fieldRule);
             }
             $rules["fields.{$field}"] = $fieldRule;
         }
@@ -310,27 +395,37 @@ class EntityApiController extends Controller
 
         $validated = $request->validate($rules);
 
-        // Update core fields
-        $coreFields = ['title', 'slug', 'content', 'excerpt', 'status', 'parent_id', 'featured_image', 'published_at', 'meta'];
-        $record->update(array_intersect_key($validated, array_flip($coreFields)));
+        // Use transaction for data integrity
+        DB::transaction(function () use ($record, $validated) {
+            // Update core fields
+            $coreFields = ['title', 'slug', 'content', 'excerpt', 'status', 'parent_id', 'featured_image', 'published_at', 'meta'];
+            $record->update(array_intersect_key($validated, array_flip($coreFields)));
 
-        // Update custom fields
-        if (!empty($validated['fields'])) {
-            $record->setFields($validated['fields']);
-            $record->saveFieldValues();
-        }
-
-        // Sync taxonomies
-        if (isset($validated['taxonomies'])) {
-            foreach ($validated['taxonomies'] as $taxonomyName => $termIds) {
-                $record->syncTerms($taxonomyName, $termIds);
+            // Update custom fields
+            if (!empty($validated['fields'])) {
+                $record->setFields($validated['fields']);
+                $record->saveFieldValues();
             }
-        }
+
+            // Sync taxonomies
+            if (isset($validated['taxonomies'])) {
+                foreach ($validated['taxonomies'] as $taxonomyName => $termIds) {
+                    $record->syncTerms($taxonomyName, $termIds);
+                }
+            }
+        });
 
         // Fire hook
         if (function_exists('do_action')) {
             do_action('entity_record_updated_via_api', $record, $definition);
         }
+
+        // Log the update
+        \Log::info('Entity record updated via API', [
+            'entity' => $entity,
+            'record_id' => $record->id,
+            'user_id' => $request->user()?->id,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -347,25 +442,49 @@ class EntityApiController extends Controller
     {
         $definition = $this->getEntityOrFail($entity);
 
-        $record = EntityRecord::forEntity($entity)->findOrFail($id);
+        $query = EntityRecord::forEntity($entity);
+
+        // Apply record rules for delete permission
+        $user = $this->getAuthUser();
+        $query = $this->recordRules->applyDeleteRules($query, $entity, $user);
+
+        $record = $query->findOrFail($id);
+
+        // Authorize delete (permission or ownership)
+        $this->authorizeActionOrOwnership('delete', $record, 'author_id');
 
         // Check if force delete
         $forceDelete = $request->boolean('force', false);
 
+        // Force delete requires additional permission
         if ($forceDelete) {
-            // Permanent delete
-            $record->forceDelete();
-            $message = "{$definition->getSingularLabel()} permanently deleted.";
-        } else {
-            // Soft delete (move to trash)
-            $record->trash();
-            $message = "{$definition->getSingularLabel()} moved to trash.";
+            $this->authorizeAction('force_delete', "entities.{$entity}");
         }
+
+        DB::transaction(function () use ($record, $forceDelete) {
+            if ($forceDelete) {
+                $record->forceDelete();
+            } else {
+                $record->trash();
+            }
+        });
+
+        $message = $forceDelete
+            ? "{$definition->getSingularLabel()} permanently deleted."
+            : "{$definition->getSingularLabel()} moved to trash.";
 
         // Fire hook
         if (function_exists('do_action')) {
             do_action('entity_record_deleted_via_api', $record, $definition, $forceDelete);
         }
+
+        // Log the deletion
+        \Log::info('Entity record deleted via API', [
+            'entity' => $entity,
+            'record_id' => $id,
+            'user_id' => $request->user()?->id,
+            'force' => $forceDelete,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -379,14 +498,18 @@ class EntityApiController extends Controller
      */
     public function restore(string $entity, int $id): JsonResponse
     {
+        $this->authorizeAction('restore', "entities.{$entity}");
+
         $definition = $this->getEntityOrFail($entity);
 
         $record = EntityRecord::forEntity($entity)
             ->withTrashed()
             ->findOrFail($id);
 
-        $record->status = EntityRecord::STATUS_DRAFT;
-        $record->restore();
+        DB::transaction(function () use ($record) {
+            $record->status = EntityRecord::STATUS_DRAFT;
+            $record->restore();
+        });
 
         return response()->json([
             'success' => true,
@@ -405,36 +528,58 @@ class EntityApiController extends Controller
 
         $validated = $request->validate([
             'action' => 'required|string|in:delete,trash,restore,publish,unpublish',
-            'ids' => 'required|array|min:1',
+            'ids' => 'required|array|min:1|max:100',
             'ids.*' => 'integer',
         ]);
 
+        // Authorize bulk action
+        $this->authorizeBulk($validated['action'], "entities.{$entity}");
+
+        $user = $this->getAuthUser();
         $query = EntityRecord::forEntity($entity)->whereIn('id', $validated['ids']);
 
-        $count = 0;
-        switch ($validated['action']) {
-            case 'delete':
-                $count = $query->forceDelete();
-                break;
-            case 'trash':
-                $count = $query->update(['status' => EntityRecord::STATUS_TRASH]);
-                break;
-            case 'restore':
-                $count = EntityRecord::forEntity($entity)
-                    ->withTrashed()
-                    ->whereIn('id', $validated['ids'])
-                    ->restore();
-                break;
-            case 'publish':
-                $count = $query->update([
-                    'status' => EntityRecord::STATUS_PUBLISHED,
-                    'published_at' => now(),
-                ]);
-                break;
-            case 'unpublish':
-                $count = $query->update(['status' => EntityRecord::STATUS_DRAFT]);
-                break;
+        // Apply record rules
+        if (in_array($validated['action'], ['delete', 'trash'])) {
+            $query = $this->recordRules->applyDeleteRules($query, $entity, $user);
+        } else {
+            $query = $this->recordRules->applyWriteRules($query, $entity, $user);
         }
+
+        $count = 0;
+
+        DB::transaction(function () use ($validated, $query, $entity, &$count) {
+            switch ($validated['action']) {
+                case 'delete':
+                    $count = $query->forceDelete();
+                    break;
+                case 'trash':
+                    $count = $query->update(['status' => EntityRecord::STATUS_TRASH]);
+                    break;
+                case 'restore':
+                    $count = EntityRecord::forEntity($entity)
+                        ->withTrashed()
+                        ->whereIn('id', $validated['ids'])
+                        ->restore();
+                    break;
+                case 'publish':
+                    $count = $query->update([
+                        'status' => EntityRecord::STATUS_PUBLISHED,
+                        'published_at' => now(),
+                    ]);
+                    break;
+                case 'unpublish':
+                    $count = $query->update(['status' => EntityRecord::STATUS_DRAFT]);
+                    break;
+            }
+        });
+
+        // Log bulk action
+        \Log::info('Bulk entity action via API', [
+            'entity' => $entity,
+            'action' => $validated['action'],
+            'count' => $count,
+            'user_id' => $request->user()?->id,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -463,6 +608,14 @@ class EntityApiController extends Controller
         }
 
         return $entity;
+    }
+
+    /**
+     * Escape SQL wildcards from search term.
+     */
+    protected function escapeSearchWildcards(string $term): string
+    {
+        return str_replace(['%', '_'], ['\%', '\_'], $term);
     }
 
     /**
