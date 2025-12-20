@@ -19,7 +19,7 @@
 /storage/*.key
 /storage/pail
 /vendor
-/plans
+/Plans
 /plugins
 /n8n
 /Documentations
@@ -27,3 +27,4 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+*.zip
