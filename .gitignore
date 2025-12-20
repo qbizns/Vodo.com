@@ -21,6 +21,9 @@
 /vendor
 /plans
 /plugins
+/n8n
+/Documentations
+/ajs
 Homestead.json
 Homestead.yaml
 Thumbs.db
