@@ -140,7 +140,7 @@
 </div>
 
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 function checkForUpdates() {
     const $btn = $(event.target).closest('button');
     const originalText = $btn.html();

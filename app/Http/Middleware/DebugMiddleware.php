@@ -78,12 +78,17 @@ class DebugMiddleware
      */
     protected function shouldEnableDebug(Request $request): bool
     {
-        // Check query parameter
+        // Check query parameter - DISABLED in production for security
+        // Query parameters can be logged in server access logs and leak debug info
         if ($request->has('_debug') && $request->get('_debug')) {
+            // Only allow query param debug in non-production environments
+            if (app()->environment('production')) {
+                return false;
+            }
             return $this->isDebugAllowed($request);
         }
 
-        // Check header
+        // Check header - safer as headers are not logged by default
         if ($request->header('X-Debug')) {
             return $this->isDebugAllowed($request);
         }

@@ -98,39 +98,39 @@ class ProductionCheckCommand extends Command
 
         // APP_ENV must be production
         if (config('app.env') === 'production') {
-            $this->pass('APP_ENV', 'Set to production');
+            $this->recordPass('APP_ENV', 'Set to production');
         } else {
-            $this->fail('APP_ENV', 'Must be "production", currently: ' . config('app.env'));
+            $this->recordFail('APP_ENV', 'Must be "production", currently: ' . config('app.env'));
         }
 
         // APP_DEBUG must be false
         if (config('app.debug') === false) {
-            $this->pass('APP_DEBUG', 'Disabled');
+            $this->recordPass('APP_DEBUG', 'Disabled');
         } else {
-            $this->fail('APP_DEBUG', 'Must be disabled in production');
+            $this->recordFail('APP_DEBUG', 'Must be disabled in production');
         }
 
         // APP_KEY must be set
         if (!empty(config('app.key'))) {
-            $this->pass('APP_KEY', 'Set');
+            $this->recordPass('APP_KEY', 'Set');
         } else {
-            $this->fail('APP_KEY', 'Not set - run "php artisan key:generate"');
+            $this->recordFail('APP_KEY', 'Not set - run "php artisan key:generate"');
         }
 
         // APP_URL must not be localhost
         $url = config('app.url');
         if ($url && !str_contains($url, 'localhost') && !str_contains($url, '127.0.0.1')) {
-            $this->pass('APP_URL', $url);
+            $this->recordPass('APP_URL', $url);
         } else {
-            $this->warn('APP_URL', 'Should be set to production URL, currently: ' . $url);
+            $this->recordWarn('APP_URL', 'Should be set to production URL, currently: ' . $url);
         }
 
         // Check log level
         $logLevel = config('logging.channels.' . config('logging.default') . '.level', config('logging.level'));
         if (in_array($logLevel, ['warning', 'error', 'critical', 'alert', 'emergency'])) {
-            $this->pass('LOG_LEVEL', $logLevel);
+            $this->recordPass('LOG_LEVEL', $logLevel);
         } else {
-            $this->warn('LOG_LEVEL', "Should be 'warning' or higher in production, currently: {$logLevel}");
+            $this->recordWarn('LOG_LEVEL', "Should be 'warning' or higher in production, currently: {$logLevel}");
         }
     }
 
@@ -143,46 +143,46 @@ class ProductionCheckCommand extends Command
 
         // Session encryption
         if (config('session.encrypt') === true) {
-            $this->pass('SESSION_ENCRYPT', 'Enabled');
+            $this->recordPass('SESSION_ENCRYPT', 'Enabled');
         } else {
-            $this->fail('SESSION_ENCRYPT', 'Must be enabled in production');
+            $this->recordFail('SESSION_ENCRYPT', 'Must be enabled in production');
         }
 
         // Secure cookies
         if (config('session.secure') === true) {
-            $this->pass('SESSION_SECURE_COOKIE', 'Enabled');
+            $this->recordPass('SESSION_SECURE_COOKIE', 'Enabled');
         } else {
-            $this->warn('SESSION_SECURE_COOKIE', 'Should be enabled when using HTTPS');
+            $this->recordWarn('SESSION_SECURE_COOKIE', 'Should be enabled when using HTTPS');
         }
 
         // HTTP-only cookies
         if (config('session.http_only') === true) {
-            $this->pass('SESSION_HTTP_ONLY', 'Enabled');
+            $this->recordPass('SESSION_HTTP_ONLY', 'Enabled');
         } else {
-            $this->fail('SESSION_HTTP_ONLY', 'Must be enabled to prevent XSS cookie access');
+            $this->recordFail('SESSION_HTTP_ONLY', 'Must be enabled to prevent XSS cookie access');
         }
 
         // Same-site cookies
         $sameSite = config('session.same_site');
         if (in_array($sameSite, ['strict', 'lax'])) {
-            $this->pass('SESSION_SAME_SITE', $sameSite);
+            $this->recordPass('SESSION_SAME_SITE', $sameSite);
         } else {
-            $this->warn('SESSION_SAME_SITE', "Should be 'lax' or 'strict', currently: {$sameSite}");
+            $this->recordWarn('SESSION_SAME_SITE', "Should be 'lax' or 'strict', currently: {$sameSite}");
         }
 
         // HTTPS enforcement
         if (config('app.force_https', false) === true) {
-            $this->pass('FORCE_HTTPS', 'Enabled');
+            $this->recordPass('FORCE_HTTPS', 'Enabled');
         } else {
-            $this->warn('FORCE_HTTPS', 'Consider enabling HTTPS enforcement');
+            $this->recordWarn('FORCE_HTTPS', 'Consider enabling HTTPS enforcement');
         }
 
         // Check for debug routes
         if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
             if (config('telescope.enabled') === false) {
-                $this->pass('TELESCOPE', 'Disabled');
+                $this->recordPass('TELESCOPE', 'Disabled');
             } else {
-                $this->warn('TELESCOPE', 'Should be disabled in production');
+                $this->recordWarn('TELESCOPE', 'Should be disabled in production');
             }
         }
     }
@@ -196,61 +196,61 @@ class ProductionCheckCommand extends Command
 
         // Config cache
         if (app()->configurationIsCached()) {
-            $this->pass('CONFIG_CACHE', 'Cached');
+            $this->recordPass('CONFIG_CACHE', 'Cached');
         } else {
-            $this->warn('CONFIG_CACHE', 'Not cached - run "php artisan config:cache"');
+            $this->recordWarn('CONFIG_CACHE', 'Not cached - run "php artisan config:cache"');
         }
 
         // Route cache
         if (app()->routesAreCached()) {
-            $this->pass('ROUTE_CACHE', 'Cached');
+            $this->recordPass('ROUTE_CACHE', 'Cached');
         } else {
-            $this->warn('ROUTE_CACHE', 'Not cached - run "php artisan route:cache"');
+            $this->recordWarn('ROUTE_CACHE', 'Not cached - run "php artisan route:cache"');
         }
 
         // View cache
         $viewCachePath = config('view.compiled');
         $cachedViews = glob($viewCachePath . '/*.php');
         if (count($cachedViews) > 0) {
-            $this->pass('VIEW_CACHE', count($cachedViews) . ' views compiled');
+            $this->recordPass('VIEW_CACHE', count($cachedViews) . ' views compiled');
         } else {
-            $this->warn('VIEW_CACHE', 'No views cached - run "php artisan view:cache"');
+            $this->recordWarn('VIEW_CACHE', 'No views cached - run "php artisan view:cache"');
         }
 
         // OPcache
         if (function_exists('opcache_get_status')) {
             $status = @opcache_get_status();
             if ($status && $status['opcache_enabled']) {
-                $this->pass('OPCACHE', 'Enabled');
+                $this->recordPass('OPCACHE', 'Enabled');
             } else {
-                $this->warn('OPCACHE', 'Not enabled - enable for better performance');
+                $this->recordWarn('OPCACHE', 'Not enabled - enable for better performance');
             }
         } else {
-            $this->warn('OPCACHE', 'Extension not loaded');
+            $this->recordWarn('OPCACHE', 'Extension not loaded');
         }
 
         // Cache driver
         $cacheDriver = config('cache.default');
         if (in_array($cacheDriver, ['redis', 'memcached'])) {
-            $this->pass('CACHE_DRIVER', $cacheDriver);
+            $this->recordPass('CACHE_DRIVER', $cacheDriver);
         } else {
-            $this->warn('CACHE_DRIVER', "Using '{$cacheDriver}' - consider Redis for production");
+            $this->recordWarn('CACHE_DRIVER', "Using '{$cacheDriver}' - consider Redis for production");
         }
 
         // Session driver
         $sessionDriver = config('session.driver');
         if (in_array($sessionDriver, ['redis', 'memcached', 'database'])) {
-            $this->pass('SESSION_DRIVER', $sessionDriver);
+            $this->recordPass('SESSION_DRIVER', $sessionDriver);
         } else {
-            $this->warn('SESSION_DRIVER', "Using '{$sessionDriver}' - consider Redis for production");
+            $this->recordWarn('SESSION_DRIVER', "Using '{$sessionDriver}' - consider Redis for production");
         }
 
         // Queue driver
         $queueDriver = config('queue.default');
         if (in_array($queueDriver, ['redis', 'sqs', 'database'])) {
-            $this->pass('QUEUE_DRIVER', $queueDriver);
+            $this->recordPass('QUEUE_DRIVER', $queueDriver);
         } else {
-            $this->warn('QUEUE_DRIVER', "Using '{$queueDriver}' - consider Redis for production");
+            $this->recordWarn('QUEUE_DRIVER', "Using '{$queueDriver}' - consider Redis for production");
         }
     }
 
@@ -264,31 +264,31 @@ class ProductionCheckCommand extends Command
         // Database
         try {
             DB::connection()->getPdo();
-            $this->pass('DATABASE', 'Connected');
+            $this->recordPass('DATABASE', 'Connected');
         } catch (\Exception $e) {
-            $this->fail('DATABASE', 'Connection failed: ' . $e->getMessage());
+            $this->recordFail('DATABASE', 'Connection failed: ' . $e->getMessage());
         }
 
         // Cache
         try {
             Cache::put('_health_check', true, 10);
             if (Cache::get('_health_check') === true) {
-                $this->pass('CACHE', 'Working');
+                $this->recordPass('CACHE', 'Working');
                 Cache::forget('_health_check');
             } else {
-                $this->fail('CACHE', 'Read/write failed');
+                $this->recordFail('CACHE', 'Read/write failed');
             }
         } catch (\Exception $e) {
-            $this->fail('CACHE', 'Error: ' . $e->getMessage());
+            $this->recordFail('CACHE', 'Error: ' . $e->getMessage());
         }
 
         // Redis (if configured)
         if (config('database.redis.default')) {
             try {
                 Redis::ping();
-                $this->pass('REDIS', 'Connected');
+                $this->recordPass('REDIS', 'Connected');
             } catch (\Exception $e) {
-                $this->warn('REDIS', 'Not available: ' . $e->getMessage());
+                $this->recordWarn('REDIS', 'Not available: ' . $e->getMessage());
             }
         }
 
@@ -298,12 +298,12 @@ class ProductionCheckCommand extends Command
             Storage::put($testFile, 'test');
             if (Storage::exists($testFile)) {
                 Storage::delete($testFile);
-                $this->pass('STORAGE', 'Writable');
+                $this->recordPass('STORAGE', 'Writable');
             } else {
-                $this->fail('STORAGE', 'Write verification failed');
+                $this->recordFail('STORAGE', 'Write verification failed');
             }
         } catch (\Exception $e) {
-            $this->fail('STORAGE', 'Error: ' . $e->getMessage());
+            $this->recordFail('STORAGE', 'Error: ' . $e->getMessage());
         }
 
         // Check disk space
@@ -312,18 +312,18 @@ class ProductionCheckCommand extends Command
         $freeSpaceGB = round($freeSpace / 1024 / 1024 / 1024, 2);
 
         if ($freeSpaceGB > 5) {
-            $this->pass('DISK_SPACE', "{$freeSpaceGB} GB free");
+            $this->recordPass('DISK_SPACE', "{$freeSpaceGB} GB free");
         } elseif ($freeSpaceGB > 1) {
-            $this->warn('DISK_SPACE', "{$freeSpaceGB} GB free - consider expanding");
+            $this->recordWarn('DISK_SPACE', "{$freeSpaceGB} GB free - consider expanding");
         } else {
-            $this->fail('DISK_SPACE', "{$freeSpaceGB} GB free - critically low!");
+            $this->recordFail('DISK_SPACE', "{$freeSpaceGB} GB free - critically low!");
         }
     }
 
     /**
      * Record a passed check.
      */
-    protected function pass(string $check, string $message): void
+    protected function recordPass(string $check, string $message): void
     {
         $this->results['passed'][] = ['check' => $check, 'message' => $message];
     }
@@ -331,7 +331,7 @@ class ProductionCheckCommand extends Command
     /**
      * Record a warning.
      */
-    protected function warn(string $check, string $message): void
+    protected function recordWarn(string $check, string $message): void
     {
         $this->results['warnings'][] = ['check' => $check, 'message' => $message];
     }
@@ -339,7 +339,7 @@ class ProductionCheckCommand extends Command
     /**
      * Record a failed check.
      */
-    protected function fail(string $check, string $message): void
+    protected function recordFail(string $check, string $message): void
     {
         $this->results['failed'][] = ['check' => $check, 'message' => $message];
     }

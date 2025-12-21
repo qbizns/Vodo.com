@@ -262,7 +262,7 @@
 </div>
 
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 let currentStep = 1;
 let selectedSlug = '{{ $slug ?? '' }}';
 let uploadedFile = null;

@@ -105,11 +105,12 @@ class PluginLoader
     protected function registerAutoloader(Plugin $plugin): void
     {
         $basePath = $plugin->getFullPath();
-        // Convert slug hyphens to underscores for valid PHP namespace
+        
+        // Register default App\Plugins\{slug} namespace
         $namespaceSlug = str_replace('-', '_', $plugin->slug);
         $namespace = "App\\Plugins\\{$namespaceSlug}\\";
 
-        spl_autoload_register(function ($class) use ($basePath, $namespace, $plugin) {
+        spl_autoload_register(function ($class) use ($basePath, $namespace) {
             // Check if the class belongs to this plugin's namespace
             if (strpos($class, $namespace) !== 0) {
                 return;
@@ -135,6 +136,57 @@ class PluginLoader
                 return;
             }
         });
+        
+        // Register custom namespaces from plugin.json autoload config
+        $this->registerCustomAutoloader($plugin);
+    }
+    
+    /**
+     * Register custom autoloader from plugin.json autoload configuration.
+     */
+    protected function registerCustomAutoloader(Plugin $plugin): void
+    {
+        $manifestPath = $plugin->getFullPath() . '/plugin.json';
+        
+        if (!file_exists($manifestPath)) {
+            return;
+        }
+        
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        
+        if (!isset($manifest['autoload']['psr-4'])) {
+            return;
+        }
+        
+        $basePath = $plugin->getFullPath();
+        
+        foreach ($manifest['autoload']['psr-4'] as $namespace => $path) {
+            // Ensure namespace ends with backslash
+            $namespace = rtrim($namespace, '\\') . '\\';
+            // Normalize path
+            $path = rtrim($path, '/');
+            
+            spl_autoload_register(function ($class) use ($basePath, $namespace, $path) {
+                // Check if the class belongs to this namespace
+                if (strpos($class, $namespace) !== 0) {
+                    return;
+                }
+
+                // Get the relative class name
+                $relativeClass = substr($class, strlen($namespace));
+                
+                // Convert namespace separators to directory separators
+                $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
+
+                // Build full path
+                $fullPath = $basePath . '/' . $path . '/' . $relativePath;
+                
+                if (file_exists($fullPath)) {
+                    require_once $fullPath;
+                    return;
+                }
+            });
+        }
     }
 
     /**

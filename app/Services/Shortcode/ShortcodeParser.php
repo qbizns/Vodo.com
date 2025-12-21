@@ -247,6 +247,16 @@ class ShortcodeParser
         $class = $shortcode->handler_class;
         $method = $shortcode->handler_method ?? 'render';
 
+        // Security: Validate handler class namespace
+        if (!$this->isValidHandlerClass($class)) {
+            return '';
+        }
+
+        // Security: Validate method name format
+        if (!$this->isValidMethodName($method)) {
+            return '';
+        }
+
         if (!class_exists($class)) {
             return '';
         }
@@ -254,6 +264,12 @@ class ShortcodeParser
         $handler = app($class);
         
         if (!method_exists($handler, $method)) {
+            return '';
+        }
+
+        // Security: Ensure method is public
+        $reflection = new \ReflectionMethod($handler, $method);
+        if (!$reflection->isPublic()) {
             return '';
         }
 
@@ -303,6 +319,8 @@ class ShortcodeParser
 
     /**
      * Render using a callback (function name)
+     * 
+     * Security: Only allows explicitly whitelisted callback functions.
      */
     protected function renderCallback(
         Shortcode $shortcode, 
@@ -313,6 +331,11 @@ class ShortcodeParser
         $callback = $shortcode->handler_method;
 
         if (!$callback || !function_exists($callback)) {
+            return '';
+        }
+
+        // Security: Only allow whitelisted callback functions
+        if (!$this->isAllowedCallback($callback)) {
             return '';
         }
 
@@ -475,6 +498,109 @@ class ShortcodeParser
             foreach ($tags as $t) {
                 Cache::forget("shortcode:def:{$t}");
             }
+        }
+    }
+
+    // =========================================================================
+    // Security Validation Methods
+    // =========================================================================
+
+    /**
+     * Allowed namespace prefixes for shortcode handler classes.
+     * 
+     * Security: Only classes in these namespaces can be used as shortcode handlers.
+     */
+    protected array $allowedHandlerNamespaces = [
+        'App\\Services\\Shortcode\\Handlers\\',
+        'App\\Plugins\\',
+    ];
+
+    /**
+     * Allowed callback functions for shortcode callbacks.
+     * 
+     * Security: Only explicitly whitelisted functions can be called as callbacks.
+     * Add application-specific shortcode callback functions here.
+     */
+    protected array $allowedCallbacks = [
+        // Add allowed shortcode callback function names here
+        // Example: 'my_shortcode_handler',
+    ];
+
+    /**
+     * Validate that a handler class is in an allowed namespace.
+     *
+     * Security: Prevents arbitrary class instantiation by restricting
+     * handler classes to known safe namespaces.
+     */
+    protected function isValidHandlerClass(?string $class): bool
+    {
+        if (empty($class)) {
+            return false;
+        }
+
+        foreach ($this->allowedHandlerNamespaces as $namespace) {
+            if (str_starts_with($class, $namespace)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate that a method name is safe.
+     *
+     * Security: Prevents calling arbitrary methods by ensuring the method name
+     * contains only alphanumeric characters and underscores, and doesn't start
+     * with underscore (which often indicates internal/magic methods).
+     */
+    protected function isValidMethodName(?string $method): bool
+    {
+        if (empty($method)) {
+            return false;
+        }
+
+        // Must start with letter, contain only alphanumeric and underscores
+        // Must not start with underscore (blocks __construct, __destruct, etc.)
+        return (bool) preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $method);
+    }
+
+    /**
+     * Check if a callback function is in the allowed list.
+     *
+     * Security: Only explicitly whitelisted functions can be executed as callbacks.
+     * This prevents execution of dangerous functions like system(), exec(), etc.
+     */
+    protected function isAllowedCallback(?string $callback): bool
+    {
+        if (empty($callback)) {
+            return false;
+        }
+
+        return in_array($callback, $this->allowedCallbacks, true);
+    }
+
+    /**
+     * Add an allowed handler namespace at runtime.
+     *
+     * Use this to allow plugin namespaces to register shortcode handlers.
+     */
+    public function addAllowedHandlerNamespace(string $namespace): void
+    {
+        if (!in_array($namespace, $this->allowedHandlerNamespaces, true)) {
+            $this->allowedHandlerNamespaces[] = $namespace;
+        }
+    }
+
+    /**
+     * Add an allowed callback function at runtime.
+     *
+     * Use this to allow plugins to register callback-based shortcodes.
+     */
+    public function addAllowedCallback(string $callback): void
+    {
+        if (!in_array($callback, $this->allowedCallbacks, true)) {
+            $this->allowedCallbacks[] = $callback;
         }
     }
 }

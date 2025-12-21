@@ -32,11 +32,14 @@ return [
     |--------------------------------------------------------------------------
     |
     | Middleware to apply to the metrics endpoint.
-    | In production, you may want to add authentication or IP restriction.
+    | In production, authentication is required by default to prevent
+    | information disclosure (PHP version, memory usage, etc).
     |
     */
 
     'metrics_middleware' => array_filter([
+        // Require authentication in production by default
+        env('APP_ENV') === 'production' ? 'auth:sanctum' : null,
         env('HEALTH_METRICS_AUTH_MIDDLEWARE'),
     ]),
 

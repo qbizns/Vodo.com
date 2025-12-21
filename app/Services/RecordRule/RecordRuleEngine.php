@@ -534,7 +534,8 @@ class RecordRuleEngine
 
         $this->registerOperator('parent_of', function ($query, $field, $value) {
             // Hierarchical: field is parent of value
-            $query->whereRaw("? LIKE CONCAT('%/', {$field}, '/%')", [$value]);
+            $quotedField = $query->getGrammar()->wrap($field);
+            $query->whereRaw("? LIKE CONCAT('%/', {$quotedField}, '/%')", [$value]);
         });
     }
 

@@ -322,10 +322,19 @@ class PluginManager
      * Load and instantiate a plugin class.
      *
      * @throws PluginNotFoundException
+     * @throws PluginException
      */
     public function loadPluginInstance(Plugin $plugin): PluginInterface
     {
         $className = $plugin->getMainClassName();
+
+        // Security: Validate class name is in allowed plugin namespace
+        if (!$this->isValidPluginClassName($className)) {
+            throw PluginException::forPlugin(
+                $plugin->slug,
+                "Invalid plugin class namespace. Class must be in App\\Plugins namespace: {$className}"
+            );
+        }
 
         // Require the main file if class doesn't exist
         if (!class_exists($className)) {
@@ -820,5 +829,25 @@ class PluginManager
         ]);
 
         return $updatesCount;
+    }
+
+    /**
+     * Validate that a class name is in an allowed plugin namespace.
+     *
+     * Security: Prevents arbitrary class instantiation by ensuring
+     * plugin classes are only loaded from the App\Plugins namespace.
+     */
+    protected function isValidPluginClassName(string $className): bool
+    {
+        // Must start with App\Plugins\ namespace
+        if (!str_starts_with($className, 'App\\Plugins\\')) {
+            return false;
+        }
+
+        // Validate the namespace structure: App\Plugins\{plugin_name}\{ClassName}
+        // Plugin name should only contain alphanumeric characters and underscores
+        $pattern = '/^App\\\\Plugins\\\\[a-zA-Z_][a-zA-Z0-9_]*\\\\[a-zA-Z_][a-zA-Z0-9_]*$/';
+        
+        return (bool) preg_match($pattern, $className);
     }
 }

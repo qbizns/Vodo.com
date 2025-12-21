@@ -148,7 +148,27 @@ abstract class BasePlugin implements PluginInterface
      */
     public function getRoutesPath(): ?string
     {
+        // Check for single routes.php file first
         $path = $this->basePath . '/routes.php';
+        if (file_exists($path)) {
+            return $path;
+        }
+        
+        // Check for routes/web.php (Laravel-style routes directory)
+        $webPath = $this->basePath . '/routes/web.php';
+        if (file_exists($webPath)) {
+            return $webPath;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the API routes path if exists.
+     */
+    public function getApiRoutesPath(): ?string
+    {
+        $path = $this->basePath . '/routes/api.php';
         return file_exists($path) ? $path : null;
     }
 
@@ -157,10 +177,18 @@ abstract class BasePlugin implements PluginInterface
      */
     protected function loadViews(): void
     {
-        $viewsPath = $this->getViewsPath();
+        // Check multiple possible view paths
+        $possiblePaths = [
+            $this->basePath . '/resources/views',
+            $this->basePath . '/Views',
+            $this->basePath . '/views',
+        ];
         
-        if (is_dir($viewsPath)) {
-            View::addNamespace($this->plugin->slug, $viewsPath);
+        foreach ($possiblePaths as $viewsPath) {
+            if (is_dir($viewsPath)) {
+                View::addNamespace($this->plugin->slug, $viewsPath);
+                return;
+            }
         }
     }
 
@@ -169,10 +197,16 @@ abstract class BasePlugin implements PluginInterface
      */
     protected function loadRoutes(): void
     {
+        // Load web routes
         $routesPath = $this->getRoutesPath();
-        
         if ($routesPath) {
             $this->loadRoutesFrom($routesPath);
+        }
+        
+        // Load API routes if they exist
+        $apiRoutesPath = $this->getApiRoutesPath();
+        if ($apiRoutesPath) {
+            $this->loadApiRoutesFrom($apiRoutesPath);
         }
     }
 
@@ -185,6 +219,20 @@ abstract class BasePlugin implements PluginInterface
         Route::middleware('web')
             ->prefix("plugins/{$this->plugin->slug}")
             ->name("plugins.{$this->plugin->slug}.")
+            ->group(function () use ($path) {
+                require $path;
+            });
+    }
+
+    /**
+     * Load API routes from a file with plugin context.
+     * Routes are registered with api middleware.
+     */
+    protected function loadApiRoutesFrom(string $path): void
+    {
+        Route::middleware('api')
+            ->prefix("api/plugins/{$this->plugin->slug}")
+            ->name("api.plugins.{$this->plugin->slug}.")
             ->group(function () use ($path) {
                 require $path;
             });

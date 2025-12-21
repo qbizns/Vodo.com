@@ -85,8 +85,8 @@
                                 </p>
                             </div>
                             <form action="{{ route('plugins.hello-world.greetings.destroy', $greeting) }}" 
-                                  method="POST" 
-                                  onsubmit="return confirm('Are you sure you want to delete this greeting?')">
+                                  method="POST"
+                                  class="delete-greeting-form">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="plugin-btn plugin-btn-danger" style="padding: 6px 12px;">
@@ -109,6 +109,22 @@
         </div>
     </div>
 @endsection
+
+@push('plugin-scripts')
+<script nonce="{{ csp_nonce() }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delete confirmation forms
+    document.querySelectorAll('.delete-greeting-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Are you sure you want to delete this greeting?')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+});
+</script>
+@endpush
 
 @push('plugin-styles')
 <style>

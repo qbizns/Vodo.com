@@ -38,27 +38,16 @@ Route::prefix('api/v1/shortcodes')->group(function () {
     });
 
     // =========================================================================
-    // Authenticated Routes
+    // Authenticated Routes (Read-Only)
     // =========================================================================
     
     Route::middleware(['api', 'auth:sanctum'])->group(function () {
-        // CRUD
+        // Read operations
         Route::get('/', [ShortcodeApiController::class, 'index'])
             ->name('shortcodes.index');
             
-        Route::post('/', [ShortcodeApiController::class, 'store'])
-            ->name('shortcodes.store');
-            
         Route::get('{tag}', [ShortcodeApiController::class, 'show'])
             ->name('shortcodes.show')
-            ->where('tag', '[a-z][a-z0-9_]*');
-            
-        Route::put('{tag}', [ShortcodeApiController::class, 'update'])
-            ->name('shortcodes.update')
-            ->where('tag', '[a-z][a-z0-9_]*');
-            
-        Route::delete('{tag}', [ShortcodeApiController::class, 'destroy'])
-            ->name('shortcodes.destroy')
             ->where('tag', '[a-z][a-z0-9_]*');
 
         // Preview
@@ -69,6 +58,24 @@ Route::prefix('api/v1/shortcodes')->group(function () {
         // Usage statistics
         Route::get('{tag}/usage', [ShortcodeApiController::class, 'usage'])
             ->name('shortcodes.usage')
+            ->where('tag', '[a-z][a-z0-9_]*');
+    });
+
+    // =========================================================================
+    // Admin Routes (Require manage-shortcodes permission)
+    // =========================================================================
+    
+    Route::middleware(['api', 'auth:sanctum', 'can:manage-shortcodes'])->group(function () {
+        // Create/Update/Delete operations
+        Route::post('/', [ShortcodeApiController::class, 'store'])
+            ->name('shortcodes.store');
+            
+        Route::put('{tag}', [ShortcodeApiController::class, 'update'])
+            ->name('shortcodes.update')
+            ->where('tag', '[a-z][a-z0-9_]*');
+            
+        Route::delete('{tag}', [ShortcodeApiController::class, 'destroy'])
+            ->name('shortcodes.destroy')
             ->where('tag', '[a-z][a-z0-9_]*');
 
         // Cache management

@@ -153,7 +153,8 @@ class TranslationServiceProvider extends ServiceProvider
 $__translations = app(\App\Services\Translation\TranslationService::class)->getJsTranslationsJson();
 $__locale = current_locale();
 $__direction = text_direction();
-echo "<script>window.I18n = {locale: '{$__locale}', direction: '{$__direction}', messages: {$__translations}};</script>";
+$__nonce = csp_nonce();
+echo "<script nonce=\"{$__nonce}\">window.I18n = {locale: '{$__locale}', direction: '{$__direction}', messages: {$__translations}};</script>";
 ?>
 PHP;
         });

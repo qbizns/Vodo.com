@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ViewDefinition;
 use App\Models\ViewExtension;
 use App\Models\CompiledView;
+use App\Rules\ValidXPath;
 use App\Services\View\ViewRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -326,7 +327,7 @@ class ViewApiController extends Controller
     {
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:100'],
-            'xpath' => ['required', 'string', 'max:500'],
+            'xpath' => ['required', 'string', 'max:500', new ValidXPath()],
             'operation' => ['required', 'in:before,after,replace,remove,inside_first,inside_last,wrap,attributes'],
             'content' => ['nullable', 'string'],
             'attributes' => ['nullable', 'array'],
@@ -416,7 +417,7 @@ class ViewApiController extends Controller
         }
 
         $validated = $request->validate([
-            'xpath' => ['nullable', 'string', 'max:500'],
+            'xpath' => ['nullable', 'string', 'max:500', new ValidXPath()],
             'operation' => ['nullable', 'in:before,after,replace,remove,inside_first,inside_last,wrap,attributes'],
             'content' => ['nullable', 'string'],
             'attribute_changes' => ['nullable', 'array'],
@@ -715,7 +716,7 @@ class ViewApiController extends Controller
     public function previewExtension(Request $request, string $name): JsonResponse
     {
         $validated = $request->validate([
-            'xpath' => ['required', 'string'],
+            'xpath' => ['required', 'string', 'max:500', new ValidXPath()],
             'operation' => ['required', 'in:before,after,replace,remove,inside_first,inside_last,wrap,attributes'],
             'content' => ['nullable', 'string'],
             'attributes' => ['nullable', 'array'],

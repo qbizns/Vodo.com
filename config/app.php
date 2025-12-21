@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Force HTTPS
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the application will enforce HTTPS connections and enable
+    | HSTS headers in production. Set to false for local development without
+    | HTTPS certificates.
+    |
+    */
+
+    'force_https' => env('FORCE_HTTPS', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

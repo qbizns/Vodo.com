@@ -235,8 +235,8 @@
         </div>
     </div>
 
-    <script src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
-    <script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}">
         $(document).ready(function() {
             // Apply dark mode if enabled
             const darkMode = localStorage.getItem('darkMode') === 'true';

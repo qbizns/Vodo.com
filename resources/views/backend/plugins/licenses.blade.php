@@ -214,7 +214,7 @@
 </div>
 
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 function showAddLicenseModal(slug = null) {
     if (slug) {
         $('#licensePlugin').val(slug);

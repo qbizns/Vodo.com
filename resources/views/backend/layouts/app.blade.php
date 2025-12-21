@@ -89,7 +89,7 @@
     <div id="overlay" class="overlay" style="display: none;"></div>
 
     {{-- Backend Configuration for JavaScript --}}
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         window.BackendConfig = {
             modulePrefix: '{{ $modulePrefix ?? "" }}',
             baseUrl: '{{ $baseUrl ?? "" }}',
@@ -106,15 +106,15 @@
 
     {{-- Translation JavaScript Helper --}}
     @translationsScript
-    <script src="{{ asset('backend/js/translations.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/translations.js') }}"></script>
 
-    <script src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
-    <script src="{{ asset('backend/js/plugins.js') }}"></script>
-    <script src="{{ asset('backend/js/main.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/plugins.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/main.js') }}"></script>
     
     {{-- Pass notifications to JS if available --}}
     @if(isset($notifications) && count($notifications) > 0)
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         $(document).ready(function() {
             window.setNotifications(@json($notifications));
         });

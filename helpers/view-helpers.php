@@ -267,3 +267,22 @@ if (!function_exists('xpath_nth')) {
         return "({$xpath})[{$n}]";
     }
 }
+
+// =========================================================================
+// Security Helpers
+// =========================================================================
+
+if (!function_exists('csp_nonce')) {
+    /**
+     * Get the CSP nonce for the current request.
+     * 
+     * Use this in Blade templates for inline scripts:
+     * <script nonce="{{ csp_nonce() }}">...</script>
+     *
+     * @return string The CSP nonce value
+     */
+    function csp_nonce(): string
+    {
+        return request()->attributes->get('csp_nonce', '');
+    }
+}
