@@ -98,10 +98,15 @@ class ApiKeyAuth
             }
         }
 
-        // Check query parameter
-        $paramName = config('api-endpoints.api_key_param', 'api_key');
-        if ($key = $request->query($paramName)) {
-            return $key;
+        // Check query parameter - disabled by default for security
+        // API keys in URLs can leak via server logs, browser history, and referrer headers
+        $allowQueryParam = config('api-endpoints.allow_query_param_auth', false);
+        
+        if ($allowQueryParam) {
+            $paramName = config('api-endpoints.api_key_param', 'api_key');
+            if ($key = $request->query($paramName)) {
+                return $key;
+            }
         }
 
         return null;

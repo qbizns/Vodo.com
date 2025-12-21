@@ -125,16 +125,31 @@ function loadPageCssMultiple(cssNames) {
 
 /**
  * Execute inline scripts from dynamically loaded content
+ * Preserves nonce attribute for CSP compliance
  * @param {jQuery} $container - Container with potential inline scripts
  */
 function executeInlineScripts($container) {
     $container.find('script').each(function () {
         const script = document.createElement('script');
+        
+        // Copy the nonce attribute for CSP compliance
+        if (this.nonce) {
+            script.nonce = this.nonce;
+        } else if (this.getAttribute('nonce')) {
+            script.setAttribute('nonce', this.getAttribute('nonce'));
+        }
+        
+        // Copy type attribute if present
+        if (this.type) {
+            script.type = this.type;
+        }
+        
         if (this.src) {
             script.src = this.src;
         } else {
             script.textContent = this.textContent;
         }
+        
         document.head.appendChild(script);
         document.head.removeChild(script);
     });

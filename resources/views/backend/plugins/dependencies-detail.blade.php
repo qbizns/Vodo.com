@@ -172,7 +172,7 @@
 </div>
 
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 // Tab switching
 $('.tab-btn').on('click', function() {
     const tab = $(this).data('tab');

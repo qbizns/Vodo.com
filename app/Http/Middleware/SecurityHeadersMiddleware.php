@@ -27,6 +27,10 @@ class SecurityHeadersMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Generate CSP nonce for this request
+        $nonce = $this->generateCspNonce();
+        $request->attributes->set('csp_nonce', $nonce);
+
         $response = $next($request);
 
         // Remove potentially unsafe headers
@@ -38,6 +42,14 @@ class SecurityHeadersMiddleware
         $this->addSecurityHeaders($response, $request);
 
         return $response;
+    }
+
+    /**
+     * Generate a cryptographically secure nonce for CSP.
+     */
+    protected function generateCspNonce(): string
+    {
+        return base64_encode(random_bytes(16));
     }
 
     /**
@@ -78,8 +90,11 @@ class SecurityHeadersMiddleware
         }
 
         // Cross-Origin policies for enhanced isolation
-        $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
-        $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        // Only send COOP/CORP headers over HTTPS or in production to avoid browser warnings
+        if ($this->shouldEnableCrossOriginPolicies($request)) {
+            $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+            $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        }
 
         // Cache control for sensitive pages
         if ($this->isSensitivePage($request)) {
@@ -97,7 +112,19 @@ class SecurityHeadersMiddleware
         // Only enable HSTS in production and when using HTTPS
         return app()->isProduction()
             && $request->secure()
-            && config('app.force_https', false);
+            && config('app.force_https', true);
+    }
+
+    /**
+     * Determine if Cross-Origin policies (COOP/CORP) should be enabled
+     * 
+     * These headers are ignored by browsers on non-secure origins (HTTP),
+     * causing console warnings. Only send them when appropriate.
+     */
+    protected function shouldEnableCrossOriginPolicies(Request $request): bool
+    {
+        // Enable in production or when using HTTPS
+        return app()->isProduction() || $request->secure();
     }
 
     /**
@@ -130,15 +157,22 @@ class SecurityHeadersMiddleware
         // Use report-only mode in development for debugging
         $isProduction = app()->isProduction();
 
+        // Get the CSP nonce for this request
+        $nonce = $request->attributes->get('csp_nonce', '');
+
         // Define CSP directives
         $directives = [
             // Default fallback for all resource types
             "default-src" => "'self'",
 
-            // Scripts: self + inline for Blade templates (should migrate to nonces)
-            "script-src" => "'self' 'unsafe-inline' 'unsafe-eval'",
+            // Scripts: Use nonce-based CSP for better XSS protection
+            // In production: use 'strict-dynamic' for better security (disables 'self')
+            // In development: keep 'self' + nonce + 'unsafe-eval' for easier debugging
+            "script-src" => $isProduction
+                ? "'self' 'nonce-{$nonce}' 'strict-dynamic'"
+                : "'self' 'nonce-{$nonce}' 'unsafe-eval'",
 
-            // Styles: self + inline for dynamic styles
+            // Styles: self + inline for dynamic styles (nonce for inline styles is complex)
             "style-src" => "'self' 'unsafe-inline' https://fonts.googleapis.com",
 
             // Images: self + data URIs + HTTPS
@@ -175,6 +209,16 @@ class SecurityHeadersMiddleware
             ->implode('; ');
 
         return $policy ?: null;
+    }
+
+    /**
+     * Get CSP nonce for use in Blade templates.
+     * 
+     * Usage in Blade: <script nonce="{{ csp_nonce() }}">...</script>
+     */
+    public static function getNonce(): string
+    {
+        return request()->attributes->get('csp_nonce', '');
     }
 
     /**

@@ -1118,7 +1118,28 @@ class PluginController extends Controller
             abort(404, 'Asset not found');
         }
 
-        // Determine MIME type
+        $extension = strtolower(pathinfo($realAssetPath, PATHINFO_EXTENSION));
+
+        // Security: Block sensitive file extensions that should never be served publicly
+        $sensitiveExtensions = [
+            'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps',
+            'env', 'htaccess', 'htpasswd',
+            'sql', 'sqlite', 'db',
+            'yml', 'yaml',
+            'xml',
+            'log', 'logs',
+            'key', 'pem', 'crt', 'csr',
+            'bak', 'backup', 'old', 'orig',
+            'sh', 'bash', 'zsh',
+            'exe', 'dll', 'so',
+            'lock',
+        ];
+
+        if (in_array($extension, $sensitiveExtensions)) {
+            abort(403, 'Asset type not allowed');
+        }
+
+        // Determine MIME type for allowed extensions
         $mimeTypes = [
             'svg' => 'image/svg+xml',
             'png' => 'image/png',
@@ -1134,9 +1155,11 @@ class PluginController extends Controller
             'woff2' => 'font/woff2',
             'ttf' => 'font/ttf',
             'eot' => 'application/vnd.ms-fontobject',
+            'txt' => 'text/plain',
+            'md' => 'text/markdown',
+            'map' => 'application/json',
         ];
 
-        $extension = strtolower(pathinfo($realAssetPath, PATHINFO_EXTENSION));
         $mimeType = $mimeTypes[$extension] ?? mime_content_type($realAssetPath) ?: 'application/octet-stream';
 
         return response()->file($realAssetPath, [

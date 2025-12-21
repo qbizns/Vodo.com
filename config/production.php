@@ -50,6 +50,7 @@ return [
             'require_numbers' => true,
             'require_symbols' => true,
             'max_age_days' => 90,
+            'check_pwned' => env('PASSWORD_CHECK_PWNED', true),
         ],
 
         // API security

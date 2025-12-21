@@ -231,6 +231,7 @@ class PluginServiceProvider extends ServiceProvider
         $namespaceSlug = str_replace('-', '_', $plugin->slug);
         $namespace = "App\\Plugins\\{$namespaceSlug}\\";
 
+        // Register default App\Plugins\{slug} namespace
         spl_autoload_register(function ($class) use ($basePath, $namespace) {
             if (strpos($class, $namespace) !== 0) {
                 return;
@@ -253,6 +254,55 @@ class PluginServiceProvider extends ServiceProvider
                 return;
             }
         });
+        
+        // Register custom namespaces from plugin.json autoload config
+        $this->registerCustomPluginAutoloader($basePath);
+    }
+    
+    /**
+     * Register custom autoloader from plugin.json autoload configuration.
+     */
+    protected function registerCustomPluginAutoloader(string $basePath): void
+    {
+        $manifestPath = $basePath . '/plugin.json';
+        
+        if (!file_exists($manifestPath)) {
+            return;
+        }
+        
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        
+        if (!isset($manifest['autoload']['psr-4'])) {
+            return;
+        }
+        
+        foreach ($manifest['autoload']['psr-4'] as $namespace => $path) {
+            // Ensure namespace ends with backslash
+            $namespace = rtrim($namespace, '\\') . '\\';
+            // Normalize path
+            $path = rtrim($path, '/');
+            
+            spl_autoload_register(function ($class) use ($basePath, $namespace, $path) {
+                // Check if the class belongs to this namespace
+                if (strpos($class, $namespace) !== 0) {
+                    return;
+                }
+
+                // Get the relative class name
+                $relativeClass = substr($class, strlen($namespace));
+                
+                // Convert namespace separators to directory separators
+                $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
+
+                // Build full path
+                $fullPath = $basePath . '/' . $path . '/' . $relativePath;
+                
+                if (file_exists($fullPath)) {
+                    require_once $fullPath;
+                    return;
+                }
+            });
+        }
     }
 
     /**

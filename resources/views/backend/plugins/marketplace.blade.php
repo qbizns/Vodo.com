@@ -172,7 +172,7 @@
 </div>
 
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 // Initialize immediately (works for both initial load and PJAX)
 (function() {
     initMarketplaceSearch();

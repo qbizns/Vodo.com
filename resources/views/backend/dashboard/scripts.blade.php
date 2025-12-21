@@ -1,5 +1,5 @@
 {{-- Dashboard Scripts --}}
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function() {
     'use strict';
 
@@ -211,10 +211,15 @@
 
         loadWidgetData() {
             // Load data for each widget that needs it
-            this.grid?.querySelectorAll('.widget').forEach(widget => {
+            const widgets = this.grid?.querySelectorAll('.widget');
+            console.log('[Dashboard] Loading widget data for', widgets?.length || 0, 'widgets');
+            
+            widgets?.forEach(widget => {
                 const component = widget.querySelector('.widget-content')?.dataset.component;
                 const widgetId = widget.dataset.widgetId;
                 const pluginSlug = widget.dataset.pluginSlug;
+
+                console.log('[Dashboard] Widget:', widgetId, 'component:', component, 'plugin:', pluginSlug);
 
                 // Load data for dynamic widgets
                 if (['stats', 'list', 'table', 'chart'].includes(component)) {
@@ -230,8 +235,21 @@
                 const params = new URLSearchParams();
                 if (pluginSlug) params.append('plugin_slug', pluginSlug);
 
-                const response = await fetch(`/dashboard/widgets/${widgetId}/data?${params}`);
+                const response = await fetch(`/dashboard/widgets/${widgetId}/data?${params}`, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.error('Widget data fetch failed:', response.status, response.statusText);
+                    return;
+                }
+                
                 const result = await response.json();
+                console.log('Widget data received:', widgetId, result);
 
                 if (result.success && result.data) {
                     this.renderWidgetData(widget, result.data);

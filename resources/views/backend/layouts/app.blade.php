@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __t('dashboard.title')) - {{ $brandName ?? 'VODO' }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ asset('backend/css/tailwind.min.css') }}">
     <link rel="stylesheet" href="{{ asset('backend/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('backend/css/skeleton.css') }}">
     @if(is_rtl())
@@ -90,7 +90,7 @@
     <div id="overlay" class="overlay" style="display: none;"></div>
 
     {{-- Backend Configuration for JavaScript --}}
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         window.BackendConfig = {
             modulePrefix: '{{ $modulePrefix ?? "" }}',
             baseUrl: '{{ $baseUrl ?? "" }}',
@@ -107,21 +107,21 @@
 
     {{-- Translation JavaScript Helper --}}
     @translationsScript
-    <script src="{{ asset('backend/js/translations.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/translations.js') }}"></script>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     {{-- Vodo Framework Modules --}}
-    <script src="{{ asset('backend/js/vodo.core.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.events.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.storage.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.skeleton.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.ajax.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.router.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.forms.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.components.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.modals.js') }}"></script>
-    <script src="{{ asset('backend/js/vodo.notifications.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.core.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.events.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.storage.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.skeleton.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.ajax.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.router.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.forms.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.components.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.modals.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.notifications.js') }}"></script>
     <script>
         // Initialize Vodo framework
         Vodo.init();
@@ -138,12 +138,12 @@
     </script>
 
     {{-- Legacy Scripts (keeping for backward compatibility) --}}
-    <script src="{{ asset('backend/js/plugins.js') }}"></script>
-    <script src="{{ asset('backend/js/main.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/plugins.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/main.js') }}"></script>
     
     {{-- Pass notifications to JS if available --}}
     @if(isset($notifications) && count($notifications) > 0)
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         $(document).ready(function() {
             window.setNotifications(@json($notifications));
         });

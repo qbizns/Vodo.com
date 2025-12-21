@@ -42,7 +42,7 @@
 @endpush
 
 @push('scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function() {
     'use strict';
     

@@ -115,7 +115,7 @@
 </div>
 
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 // Tab switching
 $('.settings-nav-item').on('click', function(e) {
     e.preventDefault();

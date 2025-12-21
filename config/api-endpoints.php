@@ -66,6 +66,19 @@ return [
 
     'api_key_header' => ['X-API-Key', 'Authorization'],
     'api_key_param' => 'api_key',
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Allow Query Parameter Authentication
+    |--------------------------------------------------------------------------
+    |
+    | Security: Query parameter authentication is disabled by default because
+    | API keys in URLs can be leaked through server access logs, browser
+    | history, and referrer headers. Use header-based authentication instead.
+    |
+    */
+    'allow_query_param_auth' => env('API_ALLOW_QUERY_PARAM_AUTH', false),
+    
     'require_signed_requests' => false,
 
     /*

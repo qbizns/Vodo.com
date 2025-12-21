@@ -31,7 +31,8 @@
         "files": [
             "helpers/hook-helpers.php",
             "helpers/view-helpers.php",
-            "helpers/i18n.php"
+            "helpers/i18n.php",
+            "database/helpers.php"
         ]
     },
     "autoload-dev": {

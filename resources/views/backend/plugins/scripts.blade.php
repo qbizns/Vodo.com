@@ -1,6 +1,6 @@
 {{-- Plugin Management Common Scripts --}}
 @push('inline-scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 console.log('[Plugins] Inline scripts loaded');
 
 (function() {
