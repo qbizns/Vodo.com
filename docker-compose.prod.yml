@@ -1,0 +1,214 @@
+################################################################################
+# Vodo.com Production Docker Compose Override
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This override:
+# - Removes development tools (phpMyAdmin)
+# - Adds production optimizations
+# - Configures proper resource limits
+# - Enables health checks
+# - Configures logging
+################################################################################
+
+services:
+  app:
+    # Production build with optimizations
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        - APP_ENV=production
+    restart: always
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - LOG_LEVEL=warning
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Health check
+    healthcheck:
+      test: ["CMD", "php", "artisan", "production:check", "--json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nginx:
+    restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # More aggressive health check
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  mysql:
+    restart: always
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # MySQL production tuning
+    command: >
+      --innodb-buffer-pool-size=512M
+      --innodb-log-file-size=256M
+      --innodb-flush-log-at-trx-commit=2
+      --innodb-flush-method=O_DIRECT
+      --max-connections=200
+      --query-cache-type=1
+      --query-cache-size=64M
+      --slow-query-log=1
+      --slow-query-log-file=/var/log/mysql/slow.log
+      --long-query-time=2
+
+  # Redis for caching/sessions/queues (Production)
+  redis:
+    image: redis:7-alpine
+    container_name: vodo-redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - vodo-redis-data:/data
+    networks:
+      - vodo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # Queue worker (Production)
+  queue:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: vodo-queue
+    restart: always
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-jobs=1000 --max-time=3600
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+    volumes:
+      - ./:/var/www
+    networks:
+      - vodo-network
+    depends_on:
+      - app
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Scheduler (Production)
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: vodo-scheduler
+    restart: always
+    command: >
+      sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+    volumes:
+      - ./:/var/www
+    networks:
+      - vodo-network
+    depends_on:
+      - app
+      - mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+# Additional volumes for production
+volumes:
+  vodo-redis-data:
+    driver: local
+
+# Production network with encryption
+networks:
+  vodo-network:
+    driver: bridge
+    driver_opts:
+      encrypted: "true"
