@@ -109,11 +109,15 @@ class ApiKeyAuth
 
     /**
      * Verify request signature
+     *
+     * IMPORTANT: This method safely retrieves the request body content.
+     * Laravel's Request object (via Symfony HttpFoundation) internally caches
+     * the content, so calling getContent() multiple times is safe.
      */
     protected function verifySignature(Request $request, ApiKey $apiKey): bool
     {
         $providedSignature = $request->header('X-API-Signature');
-        
+
         if (!$providedSignature) {
             return false;
         }
@@ -130,18 +134,47 @@ class ApiKeyAuth
             return false;
         }
 
+        // Get request body content safely
+        // Laravel/Symfony caches the content internally after first read
+        $content = $this->getRequestBodySafely($request);
+
         // Build signature string
         $signaturePayload = implode("\n", [
             $request->method(),
             $request->path(),
             $timestamp,
-            $request->getContent(),
+            $content,
         ]);
 
-        // Verify HMAC
+        // Verify HMAC using timing-safe comparison
         $expectedSignature = hash_hmac('sha256', $signaturePayload, $apiKey->secret_hash);
-        
+
         return hash_equals($expectedSignature, $providedSignature);
+    }
+
+    /**
+     * Get request body content safely.
+     *
+     * This method ensures the request body can be read multiple times by
+     * caching it in request attributes. While Symfony's getContent() already
+     * caches internally, this provides an additional safety layer and makes
+     * the caching behavior explicit.
+     */
+    protected function getRequestBodySafely(Request $request): string
+    {
+        // Check if we already cached the body in request attributes
+        $cacheKey = '_api_signature_body';
+        if ($request->attributes->has($cacheKey)) {
+            return $request->attributes->get($cacheKey);
+        }
+
+        // Get content - Symfony caches this internally after first read
+        $content = $request->getContent();
+
+        // Store in request attributes for explicit caching
+        $request->attributes->set($cacheKey, $content);
+
+        return $content;
     }
 
     /**

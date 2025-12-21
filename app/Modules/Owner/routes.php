@@ -6,10 +6,12 @@ use App\Modules\Owner\Controllers\PluginController;
 use App\Modules\Owner\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
-// Guest routes
-Route::middleware('guest:owner')->group(function () {
+// Guest routes with login throttling to prevent brute force attacks
+Route::middleware(['guest:owner'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('owner.login');
-    Route::post('/login', [AuthController::class, 'login'])->name('owner.login.submit');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle.login')
+        ->name('owner.login.submit');
 });
 
 // Authenticated routes
