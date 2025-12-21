@@ -33,6 +33,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
         $middleware->append(\App\Http\Middleware\SetLocaleMiddleware::class);
         $middleware->append(\App\Http\Middleware\InputSanitizationMiddleware::class);
+        // Compress AJAX/PJAX responses for better performance
+        $middleware->append(\App\Http\Middleware\CompressResponse::class);
 
         // Register route middleware aliases (can be applied to specific routes)
         $middleware->alias([
@@ -44,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.rate' => \App\Http\Middleware\ApiRateLimiter::class,
             'api.errors' => \App\Http\Middleware\ApiErrorHandler::class,
             'security.headers' => \App\Http\Middleware\SecurityHeadersMiddleware::class,
+            'compress' => \App\Http\Middleware\CompressResponse::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

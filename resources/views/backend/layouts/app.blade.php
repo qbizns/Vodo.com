@@ -7,6 +7,7 @@
     <title>@yield('title', __t('dashboard.title')) - {{ $brandName ?? 'VODO' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('backend/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('backend/css/skeleton.css') }}">
     @if(is_rtl())
     <link rel="stylesheet" href="{{ asset('backend/css/rtl.css') }}">
     @endif
@@ -109,6 +110,34 @@
     <script src="{{ asset('backend/js/translations.js') }}"></script>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    {{-- Vodo Framework Modules --}}
+    <script src="{{ asset('backend/js/vodo.core.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.events.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.storage.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.skeleton.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.ajax.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.router.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.forms.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.components.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.modals.js') }}"></script>
+    <script src="{{ asset('backend/js/vodo.notifications.js') }}"></script>
+    <script>
+        // Initialize Vodo framework
+        Vodo.init();
+        Vodo.ready(function() {
+            // Initialize all modules
+            if (Vodo.storage) Vodo.storage.init();
+            if (Vodo.ajax) Vodo.ajax.init();
+            if (Vodo.router) Vodo.router.init();
+            if (Vodo.forms) Vodo.forms.init();
+            if (Vodo.components) Vodo.components.setup();
+            if (Vodo.modals) Vodo.modals.init();
+            if (Vodo.notify) Vodo.notify.init();
+        });
+    </script>
+
+    {{-- Legacy Scripts (keeping for backward compatibility) --}}
     <script src="{{ asset('backend/js/plugins.js') }}"></script>
     <script src="{{ asset('backend/js/main.js') }}"></script>
     
