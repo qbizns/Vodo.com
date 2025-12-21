@@ -2,6 +2,7 @@
 
 return [
     App\Providers\AppServiceProvider::class,
+    App\Providers\RepositoryServiceProvider::class,
     App\Providers\TranslationServiceProvider::class,
     App\Providers\ModuleServiceProvider::class,
     App\Providers\PluginServiceProvider::class,
