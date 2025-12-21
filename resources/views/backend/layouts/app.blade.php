@@ -7,6 +7,7 @@
     <title>@yield('title', __t('dashboard.title')) - {{ $brandName ?? 'VODO' }}</title>
     <link rel="stylesheet" href="{{ asset('backend/css/tailwind.min.css') }}">
     <link rel="stylesheet" href="{{ asset('backend/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('backend/css/skeleton.css') }}">
     @if(is_rtl())
     <link rel="stylesheet" href="{{ asset('backend/css/rtl.css') }}">
     @endif
@@ -108,7 +109,35 @@
     @translationsScript
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/translations.js') }}"></script>
 
-    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    {{-- Vodo Framework Modules --}}
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.core.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.events.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.storage.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.skeleton.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.ajax.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.router.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.forms.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.components.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.modals.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.notifications.js') }}"></script>
+    <script>
+        // Initialize Vodo framework
+        Vodo.init();
+        Vodo.ready(function() {
+            // Initialize all modules
+            if (Vodo.storage) Vodo.storage.init();
+            if (Vodo.ajax) Vodo.ajax.init();
+            if (Vodo.router) Vodo.router.init();
+            if (Vodo.forms) Vodo.forms.init();
+            if (Vodo.components) Vodo.components.setup();
+            if (Vodo.modals) Vodo.modals.init();
+            if (Vodo.notify) Vodo.notify.init();
+        });
+    </script>
+
+    {{-- Legacy Scripts (keeping for backward compatibility) --}}
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/plugins.js') }}"></script>
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/main.js') }}"></script>
     
