@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __t('dashboard.title')) - {{ $brandName ?? 'VODO' }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ asset('backend/css/tailwind.min.css') }}">
     <link rel="stylesheet" href="{{ asset('backend/css/style.css') }}">
     @if(is_rtl())
     <link rel="stylesheet" href="{{ asset('backend/css/rtl.css') }}">
@@ -108,7 +108,7 @@
     @translationsScript
     <script src="{{ asset('backend/js/translations.js') }}"></script>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ asset('backend/js/plugins.js') }}"></script>
     <script src="{{ asset('backend/js/main.js') }}"></script>
     
