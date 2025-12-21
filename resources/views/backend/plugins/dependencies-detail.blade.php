@@ -183,7 +183,12 @@ $('.tab-btn').on('click', function() {
 });
 
 function installDependency(slug) {
-    window.location.href = '{{ route("admin.plugins.install") }}?slug=' + slug + '&marketplace=true';
+    const url = '{{ route("admin.plugins.install") }}?slug=' + slug + '&marketplace=true';
+    if (window.Vodo && Vodo.router) {
+        Vodo.router.navigate(url);
+    } else {
+        window.location.href = url;
+    }
 }
 </script>
 @endpush

@@ -109,7 +109,7 @@
     @translationsScript
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/translations.js') }}"></script>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/jquery-3.7.1.min.js') }}"></script>
 
     {{-- Vodo Framework Modules --}}
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.core.js') }}"></script>
@@ -122,7 +122,7 @@
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.components.js') }}"></script>
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.modals.js') }}"></script>
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.notifications.js') }}"></script>
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         // Initialize Vodo framework
         Vodo.init();
         Vodo.ready(function() {

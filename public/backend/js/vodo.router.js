@@ -27,7 +27,7 @@
             titleBarContainer: '.page-title-bar',
             headerActionsContainer: '.header-actions-container',
             tabsContainer: '#tabsContainer',
-            preloadOnHover: true,
+            preloadOnHover: false, // Disabled: only load on click, not hover
             preloadDelay: 150,
             scrollToTop: true,
             updateTitle: true,
@@ -268,24 +268,53 @@
                 document.title = `${title} - ${brandName}`;
 
                 // Update page header
-                const $titleBar = $(this.config.titleBarContainer);
-                if ($titleBar.length) {
-                    const $pageTitle = $titleBar.find(this.config.titleContainer);
-                    if ($pageTitle.length) {
-                        $pageTitle.text(fragment.header || title);
+                let $titleBar = $(this.config.titleBarContainer);
+                
+                // Handle pages that should hide the title bar (e.g., Dashboard)
+                if (fragment.hideTitleBar) {
+                    if ($titleBar.length) {
+                        $titleBar.css('display', 'none');
                     }
+                } else {
+                    // Create title bar if it doesn't exist (e.g., coming from Dashboard which hides it)
+                    if (!$titleBar.length && (fragment.header || title)) {
+                        const $contentArea = $('.flex-1.flex.flex-col');
+                        if ($contentArea.length) {
+                            $titleBar = $(`
+                                <div class="page-title-bar flex items-center justify-between">
+                                    <h2 id="pageTitle" class="page-title"></h2>
+                                    <div class="header-actions-container flex items-center" style="gap: var(--spacing-3);"></div>
+                                </div>
+                            `);
+                            // Insert before pageContent
+                            $container.before($titleBar);
+                            Vodo.log('Created missing page title bar');
+                        }
+                    }
+                    
+                    if ($titleBar.length) {
+                        let $pageTitle = $titleBar.find(this.config.titleContainer);
+                        if ($pageTitle.length) {
+                            $pageTitle.text(fragment.header || title);
+                        }
 
-                    // Update header actions
-                    const $headerActions = $titleBar.find(this.config.headerActionsContainer);
-                    if ($headerActions.length) {
+                        // Update header actions
+                        let $headerActions = $titleBar.find(this.config.headerActionsContainer);
+                        
+                        // Create header actions container if missing
+                        if (!$headerActions.length) {
+                            $headerActions = $('<div class="header-actions-container flex items-center" style="gap: var(--spacing-3);"></div>');
+                            $titleBar.append($headerActions);
+                        }
+                        
                         if (fragment.headerActions) {
                             $headerActions.html(fragment.headerActions).show();
                         } else {
                             $headerActions.empty().hide();
                         }
-                    }
 
-                    $titleBar.css('display', 'flex');
+                        $titleBar.css('display', 'flex');
+                    }
                 }
             }
 
@@ -352,7 +381,7 @@
                 await Vodo.skeleton.hide(skeletonId);
             }
 
-            // Show error message
+            // Show error message (CSP-compliant: no inline event handlers)
             $container.html(`
                 <div class="error-state" style="padding: var(--spacing-6); text-align: center;">
                     <div style="color: var(--text-error); margin-bottom: var(--spacing-4);">
@@ -366,10 +395,10 @@
                     <p style="color: var(--text-secondary); margin-bottom: var(--spacing-4);">
                         ${error.status === 404 ? 'Page not found' : 'An error occurred'}
                     </p>
-                    <button onclick="Vodo.router.refresh()" class="btn-primary">
+                    <button data-action="router-refresh" class="btn-primary">
                         Try Again
                     </button>
-                    <button onclick="Vodo.router.hardReload()" class="btn-secondary" style="margin-left: var(--spacing-2);">
+                    <button data-action="router-hard-reload" class="btn-secondary" style="margin-left: var(--spacing-2);">
                         Reload Page
                     </button>
                 </div>
@@ -579,6 +608,17 @@
                 e.preventDefault();
                 e.returnValue = '';
             }
+        });
+
+        // CSP-compliant event delegation for router actions
+        $(document).on('click', '[data-action="router-refresh"]', function(e) {
+            e.preventDefault();
+            router.refresh();
+        });
+
+        $(document).on('click', '[data-action="router-hard-reload"]', function(e) {
+            e.preventDefault();
+            router.hardReload();
         });
 
         Vodo.log('Router initialized');

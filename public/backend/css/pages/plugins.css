@@ -2569,3 +2569,99 @@
 .list-disc a:hover {
     text-decoration: underline;
 }
+
+/* ==================== Update Confirmation Modal ==================== */
+
+.update-confirmation-modal .update-version-info {
+    margin-bottom: var(--spacing-4, 16px);
+    font-size: var(--text-base, 14px);
+    line-height: 1.6;
+}
+
+.update-confirmation-modal .update-version-info strong {
+    color: var(--text-primary, #1f2937);
+}
+
+.update-confirmation-modal .update-warning-box {
+    background: var(--bg-warning-subtle, rgba(234, 179, 8, 0.1));
+    border: 1px solid var(--border-warning, rgba(234, 179, 8, 0.3));
+    border-radius: var(--radius-md, 8px);
+    padding: var(--spacing-4, 16px);
+    margin-bottom: var(--spacing-4, 16px);
+}
+
+.update-confirmation-modal .warning-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2, 8px);
+    font-weight: 600;
+    color: var(--text-warning, #b45309);
+    margin-bottom: var(--spacing-2, 8px);
+}
+
+.update-confirmation-modal .warning-header svg {
+    flex-shrink: 0;
+}
+
+.update-confirmation-modal .warning-list {
+    margin: 0;
+    padding-left: var(--spacing-6, 24px);
+    color: var(--text-secondary, #6b7280);
+    font-size: var(--text-sm, 13px);
+}
+
+.update-confirmation-modal .warning-list li {
+    margin-bottom: var(--spacing-1, 4px);
+}
+
+.update-confirmation-modal .warning-list li:last-child {
+    margin-bottom: 0;
+}
+
+.update-confirmation-modal .update-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3, 12px);
+}
+
+.update-confirmation-modal .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2, 8px);
+    cursor: pointer;
+    font-size: var(--text-sm, 13px);
+    color: var(--text-primary, #1f2937);
+}
+
+.update-confirmation-modal .checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--color-accent, #3b82f6);
+}
+
+.update-confirmation-modal .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1, 4px);
+    padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--text-xs, 11px);
+    font-weight: 500;
+    margin-top: var(--spacing-2, 8px);
+}
+
+.update-confirmation-modal .badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+.update-confirmation-modal .badge-danger {
+    background: var(--bg-danger-subtle, rgba(239, 68, 68, 0.1));
+    color: var(--text-danger, #dc2626);
+}
+
+.update-confirmation-modal .badge-warning {
+    background: var(--bg-warning-subtle, rgba(234, 179, 8, 0.1));
+    color: var(--text-warning, #b45309);
+}

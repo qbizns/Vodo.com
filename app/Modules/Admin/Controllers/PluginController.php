@@ -480,10 +480,19 @@ class PluginController extends Controller
     {
         $licenses = PluginLicense::with(['plugin'])->get();
 
-        // Get plugins that require license but don't have one
-        $unlicensedPlugins = Plugin::where('requires_license', true)
+        // Get plugins that could have a license but don't have one yet
+        // This includes premium plugins OR any plugin that requires a license
+        $unlicensedPlugins = Plugin::where(function($query) {
+                $query->where('requires_license', true)
+                      ->orWhere('is_premium', true);
+            })
             ->whereDoesntHave('license')
             ->get();
+        
+        // If no premium/licensed plugins, show all installed plugins as options
+        if ($unlicensedPlugins->isEmpty()) {
+            $unlicensedPlugins = Plugin::whereDoesntHave('license')->get();
+        }
 
         $stats = [
             'total' => $licenses->count(),

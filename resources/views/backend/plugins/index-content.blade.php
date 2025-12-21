@@ -92,10 +92,10 @@
             <h3>{{ __t('plugins.no_plugins') }}</h3>
             <p>{{ __t('plugins.no_plugins_desc') }}</p>
             <div class="flex gap-3 justify-center mt-4">
-                <a href="{{ route('admin.plugins.install') }}" class="btn-secondary" onclick="event.preventDefault(); navigateToPage(this.href)">
+                <a href="{{ route('admin.plugins.install') }}" class="btn-secondary">
                     {{ __t('plugins.upload_plugin') }}
                 </a>
-                <a href="{{ route('admin.plugins.marketplace') }}" class="btn-primary" onclick="event.preventDefault(); navigateToPage(this.href)">
+                <a href="{{ route('admin.plugins.marketplace') }}" class="btn-primary">
                     {{ __t('plugins.browse_marketplace') }}
                 </a>
             </div>
@@ -136,7 +136,7 @@
                             </td>
                             <td>
                                 <div class="plugin-info">
-                                    <a href="{{ route('admin.plugins.show', $plugin->slug) }}" class="plugin-name-link" onclick="event.preventDefault(); navigateToPage(this.href)">
+                                    <a href="{{ route('admin.plugins.show', $plugin->slug) }}" class="plugin-name-link">
                                         {{ $plugin->name }}
                                         @if($plugin->is_core)
                                             <span class="core-badge">{{ __t('plugins.core') }}</span>
@@ -173,12 +173,12 @@
                                     </button>
                                     <div class="action-menu">
                                         @if($plugin->has_settings)
-                                            <a href="{{ route('admin.plugins.settings', $plugin->slug) }}" class="action-item" onclick="event.preventDefault(); navigateToPage(this.href)">
+                                            <a href="{{ route('admin.plugins.settings', $plugin->slug) }}" class="action-item">
                                                 @include('backend.partials.icon', ['icon' => 'settings'])
                                                 {{ __t('plugins.settings') }}
                                             </a>
                                         @endif
-                                        <a href="{{ route('admin.plugins.show', $plugin->slug) }}" class="action-item" onclick="event.preventDefault(); navigateToPage(this.href)">
+                                        <a href="{{ route('admin.plugins.show', $plugin->slug) }}" class="action-item">
                                             @include('backend.partials.icon', ['icon' => 'info'])
                                             {{ __t('plugins.details') }}
                                         </a>

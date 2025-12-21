@@ -33,52 +33,172 @@
     };
 
     window.deactivatePlugin = function (slug) {
-        if (!confirm('Are you sure you want to deactivate this plugin?')) return;
-        performPluginAction(slug, 'deactivate', 'Deactivating');
+        Vodo.modals.confirm('Are you sure you want to deactivate this plugin?', {
+            title: 'Deactivate Plugin',
+            confirmText: 'Deactivate',
+            confirmClass: 'btn-warning'
+        }).then(function(confirmed) {
+            if (confirmed) {
+                performPluginAction(slug, 'deactivate', 'Deactivating');
+            }
+        });
     };
 
+    /**
+     * Show update confirmation modal
+     * Gets plugin data from the DOM
+     */
     window.updatePlugin = function (slug) {
-        if (!confirm('Are you sure you want to update this plugin?')) return;
-        performPluginAction(slug, 'update', 'Updating');
+        // Get plugin info from the card/row
+        var $row = $('[data-plugin-slug="' + slug + '"]').length 
+            ? $('[data-plugin-slug="' + slug + '"]') 
+            : $('tr').filter(function() { return $(this).find('[onclick*="' + slug + '"]').length > 0; });
+        
+        var pluginName = $row.find('.plugin-name, .plugin-name-link').first().text().trim() || slug;
+        var currentVersion = $row.find('.plugin-version').first().text().replace('v', '').trim() || '?';
+        var latestVersion = $row.find('.update-available').first().text().trim() || '?';
+        
+        showUpdateConfirmationModal({
+            slug: slug,
+            name: pluginName,
+            currentVersion: currentVersion,
+            latestVersion: latestVersion,
+            onConfirm: function() {
+                performPluginAction(slug, 'update', 'Updating');
+            }
+        });
     };
 
     window.uninstallPlugin = function (slug, name) {
-        if (!confirm('Are you sure you want to uninstall ' + name + '?')) return;
-        performPluginAction(slug, 'destroy', 'Uninstalling', 'DELETE');
+        Vodo.modals.confirm('Are you sure you want to uninstall <strong>' + Vodo.utils.escapeHtml(name) + '</strong>?<br><br>This will remove all plugin data and cannot be undone.', {
+            title: 'Uninstall Plugin',
+            confirmText: 'Uninstall',
+            confirmClass: 'btn-danger'
+        }).then(function(confirmed) {
+            if (confirmed) {
+                performPluginAction(slug, 'destroy', 'Uninstalling', 'DELETE');
+            }
+        });
     };
 
     window.bulkAction = function (action) {
         if (window._pluginState.selectedPlugins.length === 0) {
-            alert('Please select plugins first');
+            Vodo.notify.warning('Please select plugins first');
             return;
         }
 
-        if (!confirm('Are you sure you want to ' + action + ' the selected plugins?')) return;
+        var count = window._pluginState.selectedPlugins.length;
+        var actionText = action.charAt(0).toUpperCase() + action.slice(1);
+        
+        Vodo.modals.confirm('Are you sure you want to ' + action + ' ' + count + ' selected plugin(s)?', {
+            title: actionText + ' Plugins',
+            confirmText: actionText,
+            confirmClass: action === 'delete' ? 'btn-danger' : 'btn-primary'
+        }).then(function(confirmed) {
+            if (!confirmed) return;
+            
+            showLoading('Processing...');
 
-        showLoading('Processing...');
-
-        $.ajax({
-            url: window.BackendConfig.baseUrl + '/system/plugins/bulk', // Use robust URL construction
-            method: 'POST',
-            data: {
-                action: action,
-                plugins: window._pluginState.selectedPlugins
-            },
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
-                'Accept': 'application/json'
-            },
-            success: function (response) {
-                hideLoading();
-                alert('Operation completed');
-                location.reload();
-            },
-            error: function (xhr) {
-                hideLoading();
-                alert('Error: ' + (xhr.responseJSON?.message || 'Unknown error'));
-            }
+            $.ajax({
+                url: window.BackendConfig.baseUrl + '/system/plugins/bulk',
+                method: 'POST',
+                data: {
+                    action: action,
+                    plugins: window._pluginState.selectedPlugins
+                },
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'Accept': 'application/json'
+                },
+                success: function (response) {
+                    hideLoading();
+                    Vodo.notify.success(response.message || 'Operation completed');
+                    if (window.Vodo && Vodo.router) {
+                        Vodo.router.refresh();
+                    } else {
+                        location.reload();
+                    }
+                },
+                error: function (xhr) {
+                    hideLoading();
+                    Vodo.notify.error(xhr.responseJSON?.message || 'An error occurred');
+                }
+            });
         });
     };
+    
+    /**
+     * Show the update confirmation modal with checkboxes
+     */
+    function showUpdateConfirmationModal(options) {
+        var warningItems = [
+            'A backup of your data will be created automatically',
+            'The plugin will be temporarily deactivated during update',
+            'Database migrations will run automatically'
+        ];
+        
+        var warningHtml = '<div class="update-warning-box">' +
+            '<div class="warning-header">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' +
+                '<span>Before updating:</span>' +
+            '</div>' +
+            '<ul class="warning-list">';
+        
+        warningItems.forEach(function(item) {
+            warningHtml += '<li>' + item + '</li>';
+        });
+        warningHtml += '</ul></div>';
+        
+        var versionHtml = '<p class="update-version-info">' +
+            'You are about to update <strong>' + Vodo.utils.escapeHtml(options.name) + '</strong> ' +
+            'from <strong>v' + Vodo.utils.escapeHtml(options.currentVersion) + '</strong> ' +
+            'to <strong>v' + Vodo.utils.escapeHtml(options.latestVersion) + '</strong>' +
+            '</p>';
+        
+        var checkboxesHtml = '<div class="update-checkboxes">' +
+            '<label class="checkbox-item">' +
+                '<input type="checkbox" id="updateConfirmBackup" class="form-checkbox">' +
+                '<span>I have backed up my database</span>' +
+            '</label>' +
+            '<label class="checkbox-item">' +
+                '<input type="checkbox" id="updateConfirmDowntime" class="form-checkbox">' +
+                '<span>I understand this may cause temporary downtime</span>' +
+            '</label>' +
+        '</div>';
+        
+        var contentHtml = versionHtml + warningHtml + checkboxesHtml;
+        
+        var modalId = Vodo.modals.open({
+            title: 'Update ' + options.name,
+            content: contentHtml,
+            size: 'md',
+            class: 'update-confirmation-modal',
+            footer: '<button type="button" class="btn-secondary" data-modal-close>Cancel</button>' +
+                    '<button type="button" class="btn-primary" id="updateNowBtn" disabled>' +
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> ' +
+                        'Update Now' +
+                    '</button>',
+            onOpen: function(id, $modal) {
+                var $confirmBtn = $modal.find('#updateNowBtn');
+                var $checkbox1 = $modal.find('#updateConfirmBackup');
+                var $checkbox2 = $modal.find('#updateConfirmDowntime');
+                
+                function checkCheckboxes() {
+                    $confirmBtn.prop('disabled', !($checkbox1.is(':checked') && $checkbox2.is(':checked')));
+                }
+                
+                $checkbox1.on('change', checkCheckboxes);
+                $checkbox2.on('change', checkCheckboxes);
+                
+                $confirmBtn.on('click', function() {
+                    Vodo.modals.close(id);
+                    if (typeof options.onConfirm === 'function') {
+                        options.onConfirm();
+                    }
+                });
+            }
+        });
+    }
 
     window.toggleSelectAll = function (checked) {
         $('.plugin-checkbox:not(:disabled)').prop('checked', checked);
@@ -112,9 +232,15 @@
 
         url.searchParams.delete('page');
 
-        // Use global navigation if available (replaces location.href)
-        if (typeof window.navigateToPage === 'function') {
-            window.navigateToPage(url.toString(), 'system/plugins', 'Installed Plugins', 'plug');
+        // Use Vodo router for SPA navigation
+        if (window.Vodo && Vodo.router) {
+            Vodo.router.navigate(url.toString(), {
+                pageInfo: {
+                    id: 'system/plugins',
+                    label: 'Installed Plugins',
+                    icon: 'plug'
+                }
+            });
         } else {
             window.location.href = url.toString();
         }
@@ -150,15 +276,19 @@
             success: function (response) {
                 hideLoading();
                 if (response.success) {
-                    alert(response.message || 'Success');
+                    Vodo.notify.success(response.message || 'Success');
                     setTimeout(function () {
-                        location.reload();
+                        if (window.Vodo && Vodo.router) {
+                            Vodo.router.refresh();
+                        } else {
+                            location.reload();
+                        }
                     }, 500);
                 }
             },
             error: function (xhr) {
                 hideLoading();
-                alert('Error: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                Vodo.notify.error(xhr.responseJSON?.message || 'An error occurred');
             }
         });
     }

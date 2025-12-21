@@ -11,7 +11,7 @@
 
 @section('header-actions')
 <div class="flex items-center gap-3">
-    <button type="button" class="btn-primary flex items-center gap-2" onclick="showAddLicenseModal()">
+    <button type="button" class="btn-primary flex items-center gap-2" data-action="add-license">
         @include('backend.partials.icon', ['icon' => 'plus'])
         <span>{{ __t('plugins.add_license') }}</span>
     </button>
@@ -114,12 +114,12 @@
                                         @include('backend.partials.icon', ['icon' => 'moreVertical'])
                                     </button>
                                     <div class="action-menu">
-                                        <button type="button" class="action-item" onclick="viewLicenseDetails({{ $license->id }})">
+                                        <button type="button" class="action-item" data-action="view-license" data-license-id="{{ $license->id }}">
                                             @include('backend.partials.icon', ['icon' => 'info'])
                                             {{ __t('plugins.view_details') }}
                                         </button>
                                         @if($license->status === 'active')
-                                            <button type="button" class="action-item" onclick="deactivateLicense('{{ $license->plugin->slug }}')">
+                                            <button type="button" class="action-item" data-action="deactivate-license" data-plugin-slug="{{ $license->plugin->slug }}">
                                                 @include('backend.partials.icon', ['icon' => 'pause'])
                                                 {{ __t('plugins.deactivate') }}
                                             </button>
@@ -159,7 +159,8 @@
                             <td class="text-right">
                                 <button type="button" 
                                         class="btn-primary btn-sm"
-                                        onclick="showAddLicenseModal('{{ $plugin->slug }}')">
+                                        data-action="add-license"
+                                        data-plugin-slug="{{ $plugin->slug }}">
                                     {{ __t('plugins.activate') }}
                                 </button>
                             </td>
@@ -171,87 +172,98 @@
     @endif
 </div>
 
-{{-- Add License Modal --}}
-<div id="addLicenseModal" class="modal" style="display: none;">
-    <div class="modal-backdrop" onclick="closeModal()"></div>
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>{{ __t('plugins.activate_license') }}</h3>
-            <button type="button" class="modal-close" onclick="closeModal()">×</button>
-        </div>
-        <form id="addLicenseForm" onsubmit="submitLicense(event)">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="licensePlugin">{{ __t('plugins.plugin') }}</label>
-                    <select id="licensePlugin" name="plugin_slug" class="form-select" required>
-                        <option value="">{{ __t('plugins.select_plugin') }}...</option>
-                        @foreach($unlicensedPlugins as $plugin)
-                            <option value="{{ $plugin->slug }}">{{ $plugin->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="licenseKey">{{ __t('plugins.license_key') }}</label>
-                    <input type="text" 
-                           id="licenseKey" 
-                           name="license_key" 
-                           class="form-input"
-                           placeholder="XXXX-XXXX-XXXX-XXXX"
-                           required>
-                    <p class="form-hint">{{ __t('plugins.license_key_hint') }}</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal()">
-                    {{ __t('common.cancel') }}
-                </button>
-                <button type="submit" class="btn-primary">
-                    {{ __t('plugins.activate_license') }}
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+@php
+// Prepare unlicensed plugins data for JavaScript
+$unlicensedPluginsData = $unlicensedPlugins->mapWithKeys(function($plugin) {
+    return [$plugin->slug => ['slug' => $plugin->slug, 'name' => $plugin->name]];
+})->toArray();
+@endphp
 
 @push('inline-scripts')
 <script nonce="{{ csp_nonce() }}">
-function showAddLicenseModal(slug = null) {
-    if (slug) {
-        $('#licensePlugin').val(slug);
-    }
-    $('#addLicenseModal').fadeIn(200);
-}
+var unlicensedPlugins = @json($unlicensedPluginsData);
 
-function closeModal() {
-    $('.modal').fadeOut(200);
-}
-
-function submitLicense(e) {
-    e.preventDefault();
+function showAddLicenseModal(preselectedSlug) {
+    preselectedSlug = preselectedSlug || null;
     
-    const $form = $('#addLicenseForm');
-    const $btn = $form.find('button[type="submit"]');
-    const originalText = $btn.html();
+    // Build plugin options
+    var optionsHtml = '<option value="">{{ __t("plugins.select_plugin") }}...</option>';
+    Object.keys(unlicensedPlugins).forEach(function(slug) {
+        var plugin = unlicensedPlugins[slug];
+        var selected = preselectedSlug === slug ? ' selected' : '';
+        optionsHtml += '<option value="' + Vodo.utils.escapeHtml(slug) + '"' + selected + '>' + Vodo.utils.escapeHtml(plugin.name) + '</option>';
+    });
+    
+    var formHtml = '<form id="addLicenseForm">' +
+        '<div class="form-group">' +
+            '<label for="licensePlugin">{{ __t("plugins.plugin") }}</label>' +
+            '<select id="licensePlugin" name="plugin_slug" class="form-select" required>' + optionsHtml + '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label for="licenseKey">{{ __t("plugins.license_key") }}</label>' +
+            '<input type="text" id="licenseKey" name="license_key" class="form-input" placeholder="XXXX-XXXX-XXXX-XXXX" required>' +
+            '<p class="form-hint">{{ __t("plugins.license_key_hint") }}</p>' +
+        '</div>' +
+    '</form>';
+    
+    var modalId = Vodo.modals.open({
+        title: '{{ __t("plugins.activate_license") }}',
+        content: formHtml,
+        size: 'md',
+        footer: '<button type="button" class="btn-secondary" data-modal-close>{{ __t("common.cancel") }}</button>' +
+                '<button type="button" class="btn-primary" id="submitLicenseBtn">{{ __t("plugins.activate_license") }}</button>',
+        onOpen: function(id, $modal) {
+            $modal.find('#submitLicenseBtn').on('click', function() {
+                submitLicense(id);
+            });
+            
+            // Also submit on enter key in the form
+            $modal.find('#addLicenseForm').on('submit', function(e) {
+                e.preventDefault();
+                submitLicense(id);
+            });
+        }
+    });
+}
+
+function submitLicense(modalId) {
+    var $modal = $('[data-modal-id="' + modalId + '"]');
+    var $form = $modal.find('#addLicenseForm');
+    var $btn = $modal.find('#submitLicenseBtn');
+    var originalText = $btn.html();
+    
+    var pluginSlug = $form.find('#licensePlugin').val();
+    var licenseKey = $form.find('#licenseKey').val();
+    
+    if (!pluginSlug || !licenseKey) {
+        Vodo.notify.error('{{ __t("plugins.please_fill_all_fields") }}');
+        return;
+    }
     
     $btn.prop('disabled', true).html('<span class="spinner"></span> {{ __t("plugins.activating") }}...');
     
     $.ajax({
         url: '{{ route("admin.plugins.licenses.activate") }}',
         method: 'POST',
-        data: $form.serialize(),
+        data: {
+            plugin_slug: pluginSlug,
+            license_key: licenseKey
+        },
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json',
         },
         success: function(response) {
             if (response.success) {
-                showNotification('success', response.message);
-                closeModal();
-                location.reload();
+                Vodo.notify.success(response.message || '{{ __t("plugins.license_activated") }}');
+                Vodo.modals.close(modalId);
+                Vodo.router.refresh();
+            } else {
+                Vodo.notify.error(response.message || '{{ __t("plugins.license_activation_failed") }}');
             }
         },
         error: function(xhr) {
-            showNotification('error', xhr.responseJSON?.message || '{{ __t("plugins.license_activation_failed") }}');
+            Vodo.notify.error(xhr.responseJSON?.message || '{{ __t("plugins.license_activation_failed") }}');
         },
         complete: function() {
             $btn.prop('disabled', false).html(originalText);
@@ -260,42 +272,49 @@ function submitLicense(e) {
 }
 
 function deactivateLicense(slug) {
-    if (!confirm('{{ __t("plugins.confirm_deactivate_license") }}')) return;
-    
-    $.ajax({
-        url: '{{ url("admin/system/plugins/licenses") }}/' + slug + '/deactivate',
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json',
-        },
-        success: function(response) {
-            showNotification('success', response.message || '{{ __t("plugins.license_deactivated") }}');
-            location.reload();
-        },
-        error: function(xhr) {
-            showNotification('error', xhr.responseJSON?.message || '{{ __t("common.error_occurred") }}');
-        }
+    Vodo.modals.confirm('{{ __t("plugins.confirm_deactivate_license") }}', {
+        title: '{{ __t("plugins.deactivate_license") }}',
+        confirmText: '{{ __t("plugins.deactivate") }}',
+        confirmClass: 'btn-danger'
+    }).then(function(confirmed) {
+        if (!confirmed) return;
+        
+        $.ajax({
+            url: '{{ url("admin/system/plugins/licenses") }}/' + slug + '/deactivate',
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            success: function(response) {
+                Vodo.notify.success(response.message || '{{ __t("plugins.license_deactivated") }}');
+                Vodo.router.refresh();
+            },
+            error: function(xhr) {
+                Vodo.notify.error(xhr.responseJSON?.message || '{{ __t("common.error_occurred") }}');
+            }
+        });
     });
 }
 
 function viewLicenseDetails(id) {
-    // Could open a modal with full license details
-    alert('License details view - to be implemented');
+    Vodo.notify.info('{{ __t("plugins.license_details_coming_soon") }}');
 }
 
-function showNotification(type, message) {
-    if (typeof window.showAlert === 'function') {
-        window.showAlert(type, message);
-    } else {
-        alert(message);
-    }
-}
-
-// Close modal on escape
-$(document).on('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeModal();
+// Event delegation for license actions (namespaced to prevent duplicates)
+$(document).off('click.licenses').on('click.licenses', '[data-action="add-license"], [data-action="view-license"], [data-action="deactivate-license"]', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    var $el = $(this);
+    var action = $el.data('action');
+    
+    if (action === 'add-license') {
+        showAddLicenseModal($el.data('plugin-slug') || null);
+    } else if (action === 'view-license') {
+        viewLicenseDetails($el.data('license-id'));
+    } else if (action === 'deactivate-license') {
+        deactivateLicense($el.data('plugin-slug'));
     }
 });
 </script>

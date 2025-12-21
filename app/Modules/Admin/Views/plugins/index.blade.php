@@ -3,12 +3,13 @@
     {{-- PJAX Response: Return only content with CSS requirement --}}
     <div id="pjax-content" 
          data-page-title="{{ __t('plugins.installed') }}" 
+         data-page-header="{{ __t('plugins.installed') }}"
          data-page-id="system/plugins"
          data-require-css="plugins">
          
         {{-- Header actions for PJAX to update --}}
         <div id="pjax-header-actions" style="display:none;">
-            @include('backend.plugins.partials.header-actions')
+            @include('backend.plugins.partials.header-actions', ['stats' => $stats])
         </div>
 
         @include('backend.plugins.index-content', [

@@ -3,6 +3,7 @@
     {{-- PJAX Response: Return only content with CSS requirement --}}
     <div id="pjax-content" 
          data-page-title="Settings" 
+         data-page-header="Settings"
          data-page-id="system/settings"
          data-require-css="settings">
         @include('backend.settings.index', [

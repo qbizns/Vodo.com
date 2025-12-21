@@ -621,7 +621,11 @@ function failInstallation(message) {
 
 function cancelInstall() {
     if (confirm('{{ __t("plugins.confirm_cancel_install") }}')) {
-        window.location.href = '{{ route("admin.plugins.index") }}';
+        if (window.Vodo && Vodo.router) {
+            Vodo.router.navigate('{{ route("admin.plugins.index") }}');
+        } else {
+            window.location.href = '{{ route("admin.plugins.index") }}';
+        }
     }
 }
 </script>

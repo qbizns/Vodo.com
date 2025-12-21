@@ -106,10 +106,8 @@
             headers['X-CSRF-TOKEN'] = Vodo.config.csrfToken;
         }
 
-        // Add compression hint
-        if (ajax.config.compress) {
-            headers['Accept-Encoding'] = 'gzip, deflate';
-        }
+        // Note: Accept-Encoding is a forbidden header that browsers manage automatically.
+        // We don't need to set it - the browser handles compression negotiation.
 
         // Merge custom headers
         Object.assign(headers, ajax.config.headers);
@@ -322,6 +320,7 @@
 
     /**
      * Load HTML fragment (optimized for PJAX)
+     * Uses X-PJAX header only to get HTML wrapped in #pjax-content
      */
     ajax.fragment = function(url, options = {}) {
         return this.request(url, {
@@ -330,46 +329,33 @@
             headers: {
                 ...options.headers,
                 'X-PJAX': 'true',
-                'X-Fragment-Only': 'true',
+                // Note: We intentionally don't send X-Fragment-Only to get HTML response
+                // JSON responses have issues with escaped content and script execution
                 'X-PJAX-Container': options.container || '#pageContent'
             }
         }).then(response => {
-            // Parse fragment response
+            // Parse HTML fragment response
             if (typeof response === 'string') {
-                // Try to parse as JSON first (new format)
-                try {
-                    const json = JSON.parse(response);
+                const $temp = $('<div>').html(response);
+                const $pjax = $temp.find('#pjax-content');
+
+                if ($pjax.length) {
+                    const $headerActions = $pjax.find('#pjax-header-actions');
+                    const headerActionsHtml = $headerActions.html();
+                    $headerActions.remove();
+
                     return {
-                        content: json.content || response,
-                        title: json.title,
-                        header: json.header,
-                        headerActions: json.headerActions,
-                        css: json.css,
-                        scripts: json.scripts,
-                        raw: json
+                        content: $pjax.html(),
+                        title: $pjax.data('page-title'),
+                        header: $pjax.data('page-header'),
+                        headerActions: headerActionsHtml,
+                        css: $pjax.data('require-css'),
+                        hideTitleBar: $pjax.data('hide-title-bar') === true || $pjax.data('hide-title-bar') === 'true',
+                        raw: response
                     };
-                } catch (e) {
-                    // HTML response, extract from PJAX wrapper
-                    const $temp = $('<div>').html(response);
-                    const $pjax = $temp.find('#pjax-content');
-
-                    if ($pjax.length) {
-                        const $headerActions = $pjax.find('#pjax-header-actions');
-                        const headerActionsHtml = $headerActions.html();
-                        $headerActions.remove();
-
-                        return {
-                            content: $pjax.html(),
-                            title: $pjax.data('page-title'),
-                            header: $pjax.data('page-header'),
-                            headerActions: headerActionsHtml,
-                            css: $pjax.data('require-css'),
-                            raw: response
-                        };
-                    }
-
-                    return { content: response, raw: response };
                 }
+
+                return { content: response, raw: response };
             }
 
             return { content: response, raw: response };

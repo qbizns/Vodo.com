@@ -56,17 +56,6 @@ class DashboardService
                 'configurable' => true,
                 'system' => true,
             ],
-            'system-health' => [
-                'title' => 'System Health',
-                'description' => 'Server and application status',
-                'icon' => 'activity',
-                'component' => 'stats',
-                'default_width' => 2,
-                'default_height' => 1,
-                'refreshable' => true,
-                'configurable' => false,
-                'system' => true,
-            ],
             'recent-activity' => [
                 'title' => 'Recent Activity',
                 'description' => 'Latest system activities',
@@ -242,15 +231,6 @@ class DashboardService
                 'plugin_slug' => null,
                 'position' => 1,
                 'col' => 0,
-                'row' => 1,
-                'width' => 2,
-                'height' => 1,
-            ],
-            [
-                'widget_id' => 'system-health',
-                'plugin_slug' => null,
-                'position' => 2,
-                'col' => 2,
                 'row' => 1,
                 'width' => 2,
                 'height' => 1,
@@ -446,18 +426,6 @@ class DashboardService
                     'data' => [
                         'greeting' => $this->getGreeting(),
                         'date' => now()->format('l, F j, Y'),
-                    ],
-                ];
-
-            case 'system-health':
-                return [
-                    'widget_id' => 'system-health',
-                    'data' => [
-                        'items' => [
-                            ['label' => 'Server Status', 'value' => 'Online', 'status' => 'success'],
-                            ['label' => 'Database', 'value' => 'Connected', 'status' => 'success'],
-                            ['label' => 'Cache', 'value' => 'Active', 'status' => 'success'],
-                        ],
                     ],
                 ];
 

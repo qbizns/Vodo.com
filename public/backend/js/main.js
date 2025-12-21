@@ -499,7 +499,31 @@ function changeSlide(index) {
 
 let isNavigating = false;
 
+/**
+ * Legacy navigation function - now delegates to Vodo.router
+ * Kept for backward compatibility with any remaining calls
+ */
 function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
+    // Delegate to Vodo.router if available
+    if (window.Vodo && Vodo.router) {
+        Vodo.router.navigate(url, {
+            pushState: pushState,
+            pageInfo: {
+                id: pageId,
+                label: pageLabel,
+                icon: pageIcon
+            }
+        });
+        return;
+    }
+    
+    // Fallback: just navigate normally if Vodo not available
+    window.location.href = url;
+}
+
+// Legacy AJAX navigation code - DISABLED (Vodo.router handles all navigation now)
+// Keeping the structure for reference but not executing
+function _legacyNavigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
     if (isNavigating) return;
 
     isNavigating = true;
@@ -699,7 +723,7 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
         error: function (xhr, status, error) {
             console.error('Navigation error:', error);
 
-            // Show error message
+            // Show error message (CSP-compliant: no inline event handlers)
             $pageContent.html(`
                 <div style="padding: var(--spacing-6); text-align: center;">
                     <div style="color: var(--text-error); margin-bottom: var(--spacing-4);">
@@ -713,7 +737,7 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
                     <p style="color: var(--text-secondary); margin-bottom: var(--spacing-4);">
                         ${xhr.status === 404 ? 'Page not found' : 'An error occurred while loading the page'}
                     </p>
-                    <button onclick="location.reload()" class="btn-primary" style="padding: var(--spacing-2) var(--spacing-4); background: var(--bg-primary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                    <button data-action="page-reload" class="btn-primary" style="padding: var(--spacing-2) var(--spacing-4); background: var(--bg-primary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer;">
                         Reload Page
                     </button>
                 </div>
@@ -726,37 +750,27 @@ function navigateToPage(url, pageId, pageLabel, pageIcon, pushState = true) {
 }
 
 // Handle browser back/forward buttons
-window.addEventListener('popstate', function (event) {
-    if (event.state) {
-        const { pageId, pageLabel, pageIcon, url } = event.state;
-        navigateToPage(url, pageId, pageLabel, pageIcon, false);
-    }
-});
+// NOTE: Popstate is now handled by Vodo.router (vodo.router.js)
+// This handler is disabled to prevent duplicate navigation
 
 // ============================================
 // Event Handlers
 // ============================================
 
 function initEventHandlers() {
-    // Tab button click - handle tab activation with AJAX
+    // ============================================
+    // Navigation is now handled by Vodo.router (vodo.router.js)
+    // The handlers below are disabled to prevent duplicate XHR requests
+    // ============================================
+
+    // Tab button click - Let Vodo.router handle navigation, but update tab state
     $(document).on('click', '.tab-btn', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
+        // Don't prevent default - let Vodo.router handle the navigation
+        // Just update the active tab state
         const tabId = String($(this).attr('data-tab-id'));
-
-        // If this tab is already active, do nothing
-        if (isTabActive(tabId)) {
-            return false;
+        if (!isTabActive(tabId)) {
+            AppState.activeTabId = tabId;
         }
-
-        // Find the tab
-        const tab = getTabById(tabId);
-        if (tab) {
-            navigateToPage(tab.url, tab.id, tab.label, tab.icon);
-        }
-
-        return false;
     });
 
     // Tab close
@@ -767,29 +781,16 @@ function initEventHandlers() {
         closeTab(tabId);
     });
 
-    // Sidebar nav item click - use AJAX navigation
+    // Sidebar nav item click - Let Vodo.router handle navigation, but manage tabs
     $(document).on('click', '.nav-item', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
+        // Don't prevent default - let Vodo.router handle the navigation
         const navId = String($(this).attr('data-nav-id'));
         const navUrl = $(this).attr('href');
         const navLabel = $(this).find('span').last().text();
-
-        // Check if already on this page
-        if (isTabActive(navId)) {
-            return false;
-        }
-
-        // Get icon from the nav item
         const navIcon = getIconNameFromNav(navId);
 
-        // Check if tab exists
+        // Manage tab state (Vodo.router handles actual navigation)
         if (!isTabOpen(navId)) {
-            // Add new tab
-            const container = document.getElementById('tabsContainer');
-            const baseUrl = container?.getAttribute('data-base-url') || '';
-
             AppState.openTabs.push({
                 id: navId,
                 label: navLabel,
@@ -797,25 +798,20 @@ function initEventHandlers() {
                 url: navUrl,
                 closable: true
             });
-
-            // Save to storage
             const storageKey = getTabStorageKey();
             sessionStorage.setItem(storageKey, JSON.stringify(AppState.openTabs));
         }
-
-        // Navigate to page
-        navigateToPage(navUrl, navId, navLabel, navIcon);
-
-        return false;
+        
+        AppState.activeTabId = navId;
+        renderTabs();
+        
+        // Update sidebar active state
+        $('.nav-item').removeClass('active');
+        $(this).addClass('active');
     });
 
-    // Nav board button - use AJAX navigation
-    $(document).on('click', '#navBoardBtn', function (e) {
-        e.preventDefault();
-        const url = $(this).attr('href');
-        navigateToPage(url, 'navigation-board', 'Navigation Board', 'layoutDashboard');
-        return false;
-    });
+    // Nav board button - Vodo.router handles navigation
+    // No special handler needed, just let the link work naturally
 
     // Sidebar collapse
     $('#collapseBtn').on('click', function () {
@@ -1002,6 +998,12 @@ function initEventHandlers() {
             const text = $(this).text().toLowerCase();
             $(this).toggle(text.includes(query));
         });
+    });
+
+    // CSP-compliant event delegation for page reload action
+    $(document).on('click', '[data-action="page-reload"]', function (e) {
+        e.preventDefault();
+        location.reload();
     });
 
     // Navigation board item toggle

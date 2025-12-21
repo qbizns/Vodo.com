@@ -181,8 +181,14 @@
 })();
 
 function navigateMarketplace(url) {
-    if (typeof navigateToPage === 'function') {
-        navigateToPage(url.toString(), 'system/plugins/marketplace', '{{ __t("plugins.marketplace") }}', 'store');
+    if (window.Vodo && Vodo.router) {
+        Vodo.router.navigate(url.toString(), {
+            pageInfo: {
+                id: 'system/plugins/marketplace',
+                label: '{{ __t("plugins.marketplace") }}',
+                icon: 'store'
+            }
+        });
     } else {
         window.location.href = url.toString();
     }
@@ -203,8 +209,14 @@ function goToPage(page) {
 
 function installFromMarketplace(slug) {
     const installUrl = '{{ route("admin.plugins.install") }}?slug=' + encodeURIComponent(slug) + '&marketplace=true';
-    if (typeof navigateToPage === 'function') {
-        navigateToPage(installUrl, 'system/plugins/install', '{{ __t("plugins.install") }}', 'upload');
+    if (window.Vodo && Vodo.router) {
+        Vodo.router.navigate(installUrl, {
+            pageInfo: {
+                id: 'system/plugins/install',
+                label: '{{ __t("plugins.install") }}',
+                icon: 'upload'
+            }
+        });
     } else {
         window.location.href = installUrl;
     }

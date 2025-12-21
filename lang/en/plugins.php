@@ -235,6 +235,18 @@ return [
     'requires_system' => 'Requires system version :version or higher',
     'update_failed' => 'Update failed',
     'all_updated' => 'All plugins updated successfully',
+    'plugin_not_found' => 'Plugin not found',
+    'update_now' => 'Update Now',
+    'before_updating' => 'Before updating',
+    'update_warning_backup' => 'A backup of your data will be created automatically',
+    'update_warning_deactivate' => 'The plugin will be temporarily deactivated during update',
+    'update_warning_migrations' => 'Database migrations will run automatically',
+    'update_from_to' => 'You are about to update :name from :from to :to',
+    'update_multiple' => 'You are about to update :count',
+    'confirm_backup' => 'I have backed up my database',
+    'confirm_downtime' => 'I understand this may cause temporary downtime',
+    'updating_plugins' => 'Updating plugins',
+    'some_updates_failed' => ':count update(s) failed',
 
     // Dependencies
     'no_dependencies' => 'This plugin has no dependencies',
@@ -279,6 +291,8 @@ return [
     'expires' => 'Expires',
     'renew' => 'Renew',
     'confirm_deactivate_license' => 'Deactivate this license? You can reactivate it later.',
+    'please_fill_all_fields' => 'Please fill all required fields',
+    'license_details_coming_soon' => 'License details view coming soon',
     'licenses_expiring' => 'Licenses Expiring',
 
     // Settings

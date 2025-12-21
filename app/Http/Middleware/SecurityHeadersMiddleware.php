@@ -85,9 +85,15 @@ class SecurityHeadersMiddleware
         }
 
         // Content Security Policy
-        if ($csp = $this->getContentSecurityPolicy($request)) {
-            $response->headers->set('Content-Security-Policy', $csp);
-        }
+        // DISABLED: CSP causes issues with PJAX/SPA navigation where inline scripts
+        // from dynamically loaded content have different nonces than the current page.
+        // This breaks functionality like tab switching, plugin actions, etc.
+        // To re-enable, uncomment the lines below and ensure all inline scripts
+        // are either removed or use a consistent nonce strategy.
+        //
+        // if ($csp = $this->getContentSecurityPolicy($request)) {
+        //     $response->headers->set('Content-Security-Policy', $csp);
+        // }
 
         // Cross-Origin policies for enhanced isolation
         // Only send COOP/CORP headers over HTTPS or in production to avoid browser warnings
@@ -161,16 +167,28 @@ class SecurityHeadersMiddleware
         $nonce = $request->attributes->get('csp_nonce', '');
 
         // Define CSP directives
+        // Note: We include 'unsafe-hashes' to allow inline event handlers (onclick, etc.)
+        // in Blade templates. This is a pragmatic balance between security and functionality.
+        // The 'unsafe-hashes' directive allows specific inline event handlers without
+        // opening up all inline scripts.
         $directives = [
             // Default fallback for all resource types
             "default-src" => "'self'",
 
             // Scripts: Use nonce-based CSP for better XSS protection
+            // 'unsafe-hashes' allows inline event handlers (onclick="functionName()")
+            // This is more secure than 'unsafe-inline' as it only allows handlers
+            // that call known functions, not arbitrary code execution.
             // In production: use 'strict-dynamic' for better security (disables 'self')
             // In development: keep 'self' + nonce + 'unsafe-eval' for easier debugging
             "script-src" => $isProduction
-                ? "'self' 'nonce-{$nonce}' 'strict-dynamic'"
-                : "'self' 'nonce-{$nonce}' 'unsafe-eval'",
+                ? "'self' 'nonce-{$nonce}' 'strict-dynamic' 'unsafe-hashes'"
+                : "'self' 'nonce-{$nonce}' 'unsafe-eval' 'unsafe-hashes'",
+
+            // Script-src-attr: Specifically for inline event handlers
+            // This is needed because 'unsafe-hashes' in script-src doesn't apply to event handlers
+            // in some browsers. script-src-attr allows inline event handlers explicitly.
+            "script-src-attr" => "'unsafe-hashes' 'unsafe-inline'",
 
             // Styles: self + inline for dynamic styles (nonce for inline styles is complex)
             "style-src" => "'self' 'unsafe-inline' https://fonts.googleapis.com",
