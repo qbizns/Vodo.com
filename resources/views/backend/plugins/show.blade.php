@@ -11,27 +11,44 @@
 
 @section('header-actions')
 <div class="flex items-center gap-3">
-    @if($plugin->has_settings)
-        <a href="{{ route('admin.plugins.settings', $plugin->slug) }}" class="btn-secondary flex items-center gap-2">
-            @include('backend.partials.icon', ['icon' => 'settings'])
-            <span>{{ __t('plugins.settings') }}</span>
+    {{-- Back to Marketplace link (shown for marketplace plugins) --}}
+    @if($fromMarketplace ?? false)
+        <a href="{{ route('admin.plugins.marketplace') }}" class="btn-secondary flex items-center gap-2">
+            @include('backend.partials.icon', ['icon' => 'arrowLeft'])
+            <span>{{ __t('plugins.back_to_marketplace') }}</span>
         </a>
     @endif
-    
-    @if($plugin->isActive() && !$plugin->is_core)
-        <button type="button" class="btn-secondary" onclick="deactivatePlugin('{{ $plugin->slug }}')">
-            {{ __t('plugins.deactivate') }}
-        </button>
-    @elseif(!$plugin->isActive())
-        <button type="button" class="btn-primary" onclick="activatePlugin('{{ $plugin->slug }}')">
-            {{ __t('plugins.activate') }}
-        </button>
-    @endif
-    
-    @if(!$plugin->is_core)
-        <button type="button" class="btn-danger" onclick="uninstallPlugin('{{ $plugin->slug }}', '{{ $plugin->name }}')">
-            {{ __t('plugins.uninstall') }}
-        </button>
+
+    {{-- Actions for installed plugins only --}}
+    @if($isInstalled ?? false)
+        @if($plugin->has_settings)
+            <a href="{{ route('admin.plugins.settings', $plugin->slug) }}" class="btn-secondary flex items-center gap-2">
+                @include('backend.partials.icon', ['icon' => 'settings'])
+                <span>{{ __t('plugins.settings') }}</span>
+            </a>
+        @endif
+        
+        @if($plugin->isActive() && !$plugin->is_core)
+            <button type="button" class="btn-secondary" onclick="deactivatePlugin('{{ $plugin->slug }}')">
+                {{ __t('plugins.deactivate') }}
+            </button>
+        @elseif(!$plugin->isActive())
+            <button type="button" class="btn-primary" onclick="activatePlugin('{{ $plugin->slug }}')">
+                {{ __t('plugins.activate') }}
+            </button>
+        @endif
+        
+        @if(!$plugin->is_core)
+            <button type="button" class="btn-danger" onclick="uninstallPlugin('{{ $plugin->slug }}', '{{ $plugin->name }}')">
+                {{ __t('plugins.uninstall') }}
+            </button>
+        @endif
+    @else
+        {{-- Install button for marketplace plugins --}}
+        <a href="{{ route('admin.plugins.install', ['slug' => $plugin->slug, 'marketplace' => 1]) }}" class="btn-primary flex items-center gap-2">
+            @include('backend.partials.icon', ['icon' => 'download'])
+            <span>{{ __t('plugins.install') }}</span>
+        </a>
     @endif
 </div>
 @endsection
@@ -60,13 +77,18 @@
             </div>
             
             <div class="plugin-meta-row">
-                @if($plugin->author)
+                @php
+                    // Handle author as either string or array
+                    $authorName = is_array($plugin->author) ? ($plugin->author['name'] ?? 'Unknown') : ($plugin->author ?? null);
+                    $authorUrl = is_array($plugin->author) ? ($plugin->author['url'] ?? null) : ($plugin->author_url ?? null);
+                @endphp
+                @if($authorName)
                     <span class="meta-item">
                         {{ __t('plugins.by') }} 
-                        @if($plugin->author_url)
-                            <a href="{{ $plugin->author_url }}" target="_blank" rel="noopener">{{ $plugin->author }}</a>
+                        @if($authorUrl)
+                            <a href="{{ $authorUrl }}" target="_blank" rel="noopener">{{ $authorName }}</a>
                         @else
-                            {{ $plugin->author }}
+                            {{ $authorName }}
                         @endif
                     </span>
                 @endif
@@ -290,16 +312,16 @@
         @if(!empty($changelog))
             <div class="tab-pane {{ $activeTab === 'changelog' ? 'active' : '' }}" id="tab-changelog">
                 <div class="changelog-list">
-                    @foreach($changelog as $version)
+                    @foreach($changelog as $changelogEntry)
                         <div class="changelog-item">
                             <div class="changelog-header">
-                                <span class="changelog-version">{{ __t('plugins.version') }} {{ $version['version'] }}</span>
-                                @if($version['date'])
-                                    <span class="changelog-date">{{ $version['date'] }}</span>
+                                <span class="changelog-version">{{ __t('plugins.version') }} {{ $changelogEntry['version'] }}</span>
+                                @if($changelogEntry['date'])
+                                    <span class="changelog-date">{{ $changelogEntry['date'] }}</span>
                                 @endif
                             </div>
                             <ul class="changelog-changes">
-                                @foreach($version['changes'] as $change)
+                                @foreach($changelogEntry['changes'] as $change)
                                     <li>{{ $change }}</li>
                                 @endforeach
                             </ul>
@@ -336,62 +358,170 @@
 
         {{-- Dependencies Tab --}}
         <div class="tab-pane {{ $activeTab === 'dependencies' ? 'active' : '' }}" id="tab-dependencies">
-            @if(empty($dependencies))
+            @if(empty($dependencies) && $dependents->isEmpty())
                 <div class="empty-state-small">
                     <p>{{ __t('plugins.no_dependencies') }}</p>
                 </div>
             @else
-                <div class="dependencies-section">
-                    <h3>{{ __t('plugins.required_dependencies') }}</h3>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>{{ __t('plugins.plugin') }}</th>
-                                <th>{{ __t('plugins.required') }}</th>
-                                <th>{{ __t('plugins.installed') }}</th>
-                                <th>{{ __t('plugins.status') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($dependencies as $dep)
-                                <tr>
-                                    <td>{{ $dep['name'] }}</td>
-                                    <td>{{ $dep['required_version'] }}</td>
-                                    <td>{{ $dep['installed_version'] ?? '—' }}</td>
-                                    <td>
-                                        @if($dep['status'] === 'satisfied')
-                                            <span class="badge badge-success">✓ {{ __t('plugins.compatible') }}</span>
-                                        @elseif($dep['status'] === 'missing')
-                                            <span class="badge badge-danger">{{ __t('plugins.missing') }}</span>
-                                        @elseif($dep['status'] === 'inactive')
-                                            <span class="badge badge-warning">{{ __t('plugins.inactive') }}</span>
-                                        @else
-                                            <span class="badge badge-danger">{{ __t('plugins.version_mismatch') }}</span>
+                {{-- Visual Dependency Tree --}}
+                @if(!empty($dependencies))
+                    <div class="dependency-tree-visual">
+                        <div class="tree-container">
+                            {{-- Root Node (Current Plugin) --}}
+                            <div class="tree-root">
+                                <div class="tree-node root">
+                                    <span class="node-name">{{ $plugin->name }}</span>
+                                </div>
+                            </div>
+                            
+                            {{-- Vertical Connector --}}
+                            <div class="tree-connector-vertical"></div>
+                            
+                            {{-- Child Nodes (Dependencies) --}}
+                            <div class="tree-level">
+                                @foreach($dependencies as $dep)
+                                    @php
+                                        $nodeClass = 'node-' . ($dep['status'] ?? 'unknown');
+                                        $statusIcon = match($dep['status'] ?? 'unknown') {
+                                            'satisfied' => '✓',
+                                            'missing' => '✗',
+                                            'inactive' => '○',
+                                            default => '?'
+                                        };
+                                        $statusClass = match($dep['status'] ?? 'unknown') {
+                                            'satisfied' => 'status-ok',
+                                            'missing' => 'status-missing',
+                                            'inactive' => 'status-inactive',
+                                            default => 'status-mismatch'
+                                        };
+                                    @endphp
+                                    <div class="tree-branch">
+                                        <div class="tree-node {{ $nodeClass }}">
+                                            <span class="node-status {{ $statusClass }}">{{ $statusIcon }}</span>
+                                            <span class="node-name">{{ $dep['name'] }}</span>
+                                            @if(!empty($dep['installed_version']))
+                                                <span class="node-version">v{{ $dep['installed_version'] }}</span>
+                                            @endif
+                                        </div>
+                                        
+                                        {{-- Nested dependencies (if any) --}}
+                                        @if(!empty($dep['children']))
+                                            <div class="tree-children">
+                                                @foreach($dep['children'] as $child)
+                                                    @php
+                                                        $childNodeClass = 'node-' . ($child['status'] ?? 'unknown');
+                                                        $childStatusIcon = match($child['status'] ?? 'unknown') {
+                                                            'satisfied' => '✓',
+                                                            'missing' => '✗',
+                                                            'inactive' => '○',
+                                                            default => '?'
+                                                        };
+                                                        $childStatusClass = match($child['status'] ?? 'unknown') {
+                                                            'satisfied' => 'status-ok',
+                                                            'missing' => 'status-missing',
+                                                            'inactive' => 'status-inactive',
+                                                            default => 'status-mismatch'
+                                                        };
+                                                    @endphp
+                                                    <div class="tree-branch">
+                                                        <div class="tree-node {{ $childNodeClass }}">
+                                                            <span class="node-status {{ $childStatusClass }}">{{ $childStatusIcon }}</span>
+                                                            <span class="node-name">{{ $child['name'] }}</span>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
                                         @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-
-            @if($dependents->isNotEmpty())
-                <div class="dependencies-section">
-                    <h3>{{ __t('plugins.dependent_plugins') }}</h3>
-                    <p class="section-intro">{{ __t('plugins.dependent_plugins_desc') }}</p>
-                    <ul class="dependents-list">
-                        @foreach($dependents as $dep)
-                            <li>
-                                <a href="{{ route('admin.plugins.show', $dep->slug) }}">{{ $dep->name }}</a>
-                            </li>
-                        @endforeach
-                    </ul>
-                    <div class="warning-box">
-                        @include('backend.partials.icon', ['icon' => 'alertTriangle'])
-                        {{ __t('plugins.uninstall_warning', ['count' => $dependents->count()]) }}
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        
+                        {{-- Legend --}}
+                        <div class="tree-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot compatible"></span>
+                                <span>{{ __t('plugins.compatible') }}</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot missing"></span>
+                                <span>{{ __t('plugins.missing') }}</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot inactive"></span>
+                                <span>{{ __t('plugins.inactive') }}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                @endif
+
+                {{-- Dependencies Table --}}
+                @if(!empty($dependencies))
+                    <div class="dependencies-section">
+                        <h3>{{ __t('plugins.required_dependencies') }}</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ __t('plugins.plugin') }}</th>
+                                    <th>{{ __t('plugins.required') }}</th>
+                                    <th>{{ __t('plugins.installed') }}</th>
+                                    <th>{{ __t('plugins.status') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($dependencies as $dep)
+                                    <tr>
+                                        <td>{{ $dep['name'] }}</td>
+                                        <td><code>{{ $dep['required_version'] }}</code></td>
+                                        <td>{{ $dep['installed_version'] ?? '—' }}</td>
+                                        <td>
+                                            @if($dep['status'] === 'satisfied')
+                                                <span class="badge badge-success">✓ {{ __t('plugins.compatible') }}</span>
+                                            @elseif($dep['status'] === 'missing')
+                                                <span class="badge badge-danger">{{ __t('plugins.missing') }}</span>
+                                            @elseif($dep['status'] === 'inactive')
+                                                <span class="badge badge-warning">{{ __t('plugins.inactive') }}</span>
+                                            @else
+                                                <span class="badge badge-danger">{{ __t('plugins.version_mismatch') }}</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                {{-- Dependents Section --}}
+                @if($dependents->isNotEmpty())
+                    <div class="dependencies-section">
+                        <h3>{{ __t('plugins.dependent_plugins') }}</h3>
+                        <p class="section-intro">{{ __t('plugins.dependent_plugins_desc') }}</p>
+                        <ul class="dependents-list">
+                            @foreach($dependents as $dep)
+                                <li>
+                                    <a href="{{ route('admin.plugins.show', $dep->slug) }}" class="dependent-plugin-link">
+                                        @include('backend.partials.icon', ['icon' => 'plug'])
+                                        {{ $dep->name }}
+                                    </a>
+                                    @if(!empty($dep->pivot) && !empty($dep->pivot->required_version))
+                                        <span class="dependent-version-constraint">
+                                            requires {{ $plugin->slug }} {{ $dep->pivot->required_version }}
+                                        </span>
+                                    @elseif(!empty($dep->required_version))
+                                        <span class="dependent-version-constraint">
+                                            requires {{ $plugin->slug }} {{ $dep->required_version }}
+                                        </span>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                        <div class="warning-box">
+                            @include('backend.partials.icon', ['icon' => 'alertTriangle'])
+                            {{ __t('plugins.uninstall_warning', ['count' => $dependents->count()]) }}
+                        </div>
+                    </div>
+                @endif
             @endif
         </div>
 

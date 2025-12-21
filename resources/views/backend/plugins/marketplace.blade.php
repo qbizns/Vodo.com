@@ -130,7 +130,7 @@
                     </div>
                     
                     <div class="card-actions">
-                        <a href="{{ route('admin.plugins.install', ['slug' => $plugin['slug'], 'marketplace' => true]) }}" 
+                        <a href="{{ route('admin.plugins.show', $plugin['slug']) }}" 
                            class="btn-secondary btn-sm">
                             {{ __t('plugins.view') }}
                         </a>

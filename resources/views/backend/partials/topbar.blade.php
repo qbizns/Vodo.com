@@ -7,7 +7,7 @@
                 {{ $brandName ?? 'VODO' }}
             </div>
             <div style="width: 1px; height: 20px; background-color: #404040;"></div>
-            <div style="font-size: var(--text-caption); color: #A0A0A0;">{{ $version ?? 'v.1.0.0' }}</div>
+            <div style="font-size: var(--text-caption); color: #A0A0A0;">{{ is_string($version ?? null) ? $version : 'v.1.0.0' }}</div>
         </div>
 
         {{-- Navigation Tabs --}}

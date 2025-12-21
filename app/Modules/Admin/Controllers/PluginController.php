@@ -17,6 +17,7 @@ use App\Models\Permission;
 use App\Models\PluginDependency;
 use App\Models\PluginEvent;
 use App\Services\Plugins\PluginManager;
+use App\Services\Marketplace\PluginDataTransformer;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,8 @@ use Illuminate\Support\Facades\Schema;
 class PluginController extends Controller
 {
     public function __construct(
-        protected PluginManager $pluginManager
+        protected PluginManager $pluginManager,
+        protected PluginDataTransformer $pluginDataTransformer
     ) {}
 
     /**
@@ -275,6 +277,9 @@ class PluginController extends Controller
             ];
         }
 
+        // Determine if plugin is installed (from DB) or just from marketplace
+        $isInstalled = $mockData === null;
+
         $data = [
             'plugin' => $plugin,
             'manifest' => $manifest,
@@ -285,6 +290,8 @@ class PluginController extends Controller
             'dependents' => $dependents,
             'activeTab' => $activeTab,
             'components' => $components,
+            'isInstalled' => $isInstalled,
+            'fromMarketplace' => !$isInstalled,
             'currentPage' => 'system/plugins/' . $slug,
             'currentPageLabel' => $plugin->name,
             'currentPageIcon' => 'plug',
@@ -856,60 +863,72 @@ class PluginController extends Controller
      */
     protected function fetchMarketplacePlugins(Request $request): array
     {
-        $cacheKey = 'marketplace.plugins.' . md5(serialize($request->all()));
+        // Fetch data directly (no caching during development)
+        return $this->doFetchMarketplacePlugins($request);
+    }
 
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($request) {
+    /**
+     * Actually fetch and transform marketplace plugins.
+     */
+    protected function doFetchMarketplacePlugins(Request $request): array
+    {
+        // Try fetch from local mock for demo purposes
+        $mockPath = base_path('database/marketplace_plugins.json');
+        if (file_exists($mockPath)) {
+            $json = json_decode(file_get_contents($mockPath), true);
+            $items = array_values($json);
             
-            // Try fetch from local mock for demo purposes
-            $mockPath = base_path('database/marketplace_plugins.json');
-            if (file_exists($mockPath)) {
-                $json = json_decode(file_get_contents($mockPath), true);
-                $items = array_values($json);
-                
-                // Simple filtering
-                if ($q = $request->get('q')) {
+            // Simple filtering
+            if ($q = $request->get('q')) {
+                $items = array_filter($items, fn($p) => 
+                    str_contains(strtolower($p['name']), strtolower($q)) || 
+                    str_contains(strtolower($p['description'] ?? ''), strtolower($q))
+                );
+            }
+             if ($cat = $request->get('category')) {
+                 if ($cat !== 'all') {
                     $items = array_filter($items, fn($p) => 
-                        str_contains(strtolower($p['name']), strtolower($q)) || 
-                        str_contains(strtolower($p['description'] ?? ''), strtolower($q))
+                        isset($p['category']) && $p['category'] === $cat
                     );
-                }
-                 if ($cat = $request->get('category')) {
-                     if ($cat !== 'all') {
-                        $items = array_filter($items, fn($p) => 
-                            isset($p['category']) && $p['category'] === $cat
-                        );
-                     }
-                }
-                
-                return [
-                    'data' => array_values($items),
-                    'meta' => [
-                        'current_page' => 1,
-                        'last_page' => 1,
-                        'total' => count($items),
-                        'per_page' => 12
-                    ]
-                ];
+                 }
             }
+            
+            // Transform plugin data to standardized format
+            $transformedItems = $this->pluginDataTransformer->transformMany(array_values($items));
+            
+            return [
+                'data' => $transformedItems,
+                'meta' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'total' => count($transformedItems),
+                    'per_page' => 12
+                ]
+            ];
+        }
 
-            try {
-                $response = Http::timeout(10)->get(config('marketplace.api_url') . '/plugins', [
-                    'q' => $request->get('q'),
-                    'category' => $request->get('category'),
-                    'sort' => $request->get('sort', 'popular'),
-                    'page' => $request->get('page', 1),
-                    'per_page' => 12,
-                ]);
+        try {
+            $response = Http::timeout(10)->get(config('marketplace.api_url') . '/plugins', [
+                'q' => $request->get('q'),
+                'category' => $request->get('category'),
+                'sort' => $request->get('sort', 'popular'),
+                'page' => $request->get('page', 1),
+                'per_page' => 12,
+            ]);
 
-                if ($response->successful()) {
-                    return $response->json();
+            if ($response->successful()) {
+                $data = $response->json();
+                // Transform API response data to standardized format
+                if (!empty($data['data'])) {
+                    $data['data'] = $this->pluginDataTransformer->transformMany($data['data']);
                 }
-            } catch (\Exception $e) {
-                Log::warning('Marketplace API unavailable', ['error' => $e->getMessage()]);
+                return $data;
             }
+        } catch (\Exception $e) {
+            Log::warning('Marketplace API unavailable', ['error' => $e->getMessage()]);
+        }
 
-            return ['data' => [], 'meta' => []];
-        });
+        return ['data' => [], 'meta' => []];
     }
 
     /**

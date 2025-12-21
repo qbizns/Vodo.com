@@ -366,6 +366,11 @@ class PluginManager
         $requires = $plugin->requires ?? [];
 
         foreach ($requires as $dependency => $version) {
+            // Skip non-string values (like arrays) - they're not version constraints
+            if (!is_string($version)) {
+                continue;
+            }
+
             if ($dependency === 'php') {
                 if (version_compare(PHP_VERSION, $version, '<')) {
                     throw PluginActivationException::forPlugin(
@@ -383,6 +388,23 @@ class PluginManager
                         "Requires Laravel {$version} or higher"
                     );
                 }
+                continue;
+            }
+
+            if ($dependency === 'system') {
+                // System is always available, but check version if specified
+                $systemVersion = config('app.version', '1.0.0');
+                if ($version !== '*' && version_compare($systemVersion, $version, '<')) {
+                    throw PluginActivationException::forPlugin(
+                        $plugin->slug,
+                        "Requires system version {$version} or higher, current: {$systemVersion}"
+                    );
+                }
+                continue;
+            }
+
+            // Skip 'extensions' - it's a list of PHP extensions, not a plugin dependency
+            if ($dependency === 'extensions') {
                 continue;
             }
 
@@ -743,8 +765,18 @@ class PluginManager
         }
 
         // Handle requirements
+        // Filter requirements to only include version constraints (strings), excluding arrays like 'extensions'
         if (isset($manifest['requirements'])) {
-            $updates['requires'] = $manifest['requirements'];
+            $requires = [];
+            foreach ($manifest['requirements'] as $key => $value) {
+                // Only include string values (version constraints), skip arrays and other types
+                if (is_string($value)) {
+                    $requires[$key] = $value;
+                }
+            }
+            if (!empty($requires)) {
+                $updates['requires'] = $requires;
+            }
         }
 
         // Only update if there are changes
@@ -754,5 +786,39 @@ class PluginManager
         }
 
         return false;
+    }
+
+    /**
+     * Check all installed plugins for available updates.
+     * 
+     * In a production environment, this would query the marketplace API.
+     * For now, it returns the count of existing update records.
+     *
+     * @return int Number of updates found
+     */
+    public function checkForUpdates(): int
+    {
+        // Get all installed plugins
+        $plugins = Plugin::all();
+        
+        if ($plugins->isEmpty()) {
+            return 0;
+        }
+
+        // In production, this would:
+        // 1. Query the marketplace API for each plugin's latest version
+        // 2. Compare with installed version
+        // 3. Create/update PluginUpdate records
+        
+        // For now, just return the count of existing update records
+        // The seeder (PluginUpdatesSeeder) creates mock updates for testing
+        $updatesCount = \App\Models\PluginUpdate::count();
+        
+        Log::info('Plugin update check completed', [
+            'plugins_checked' => $plugins->count(),
+            'updates_found' => $updatesCount,
+        ]);
+
+        return $updatesCount;
     }
 }
