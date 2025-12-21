@@ -37,6 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'rate' => \App\Http\Middleware\RateLimitMiddleware::class,
             'plugin.csrf' => \App\Http\Middleware\PluginCsrfMiddleware::class,
             'sanitize' => \App\Http\Middleware\InputSanitizationMiddleware::class,
+            'api.version' => \App\Http\Middleware\ApiVersionMiddleware::class,
+            'api.rate' => \App\Http\Middleware\ApiRateLimiter::class,
+            'api.errors' => \App\Http\Middleware\ApiErrorHandler::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
