@@ -6,6 +6,17 @@ use App\Models\Plugin;
 use App\Services\Plugins\Contracts\PluginInterface;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Plugin Loader - Loads active plugins at boot time.
+ * 
+ * @deprecated This class is maintained for backward compatibility.
+ *             Plugin loading is now handled directly by PluginServiceProvider
+ *             using PluginCacheManager for better performance.
+ * 
+ * @see \App\Providers\PluginServiceProvider
+ * @see \App\Services\Plugins\PluginCacheManager
+ */
+
 class PluginLoader
 {
     /**

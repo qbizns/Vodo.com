@@ -25,6 +25,7 @@ use WeakMap;
  * - WeakMap for instance management to prevent memory leaks
  * - Hook cleanup on deactivation
  * - Dependency validation
+ * - Provider cache integration for performance
  */
 class PluginManager
 {
@@ -49,8 +50,14 @@ class PluginManager
     public function __construct(
         protected PluginInstaller $installer,
         protected PluginMigrator $migrator,
-        protected HookManager $hooks
-    ) {}
+        protected HookManager $hooks,
+        protected ?PluginCacheManager $cacheManager = null
+    ) {
+        // Allow null for backward compatibility, resolve from container if needed
+        if ($this->cacheManager === null && app()->bound(PluginCacheManager::class)) {
+            $this->cacheManager = app(PluginCacheManager::class);
+        }
+    }
 
     /**
      * Get all plugins from the database.
@@ -167,6 +174,9 @@ class PluginManager
                 // Clear related caches
                 $this->clearPluginCaches($slug);
 
+                // Rebuild provider cache
+                $this->rebuildProviderCache();
+
                 Log::info("Plugin activated successfully: {$slug}");
 
                 return $plugin->fresh();
@@ -230,6 +240,9 @@ class PluginManager
                 // Clear related caches
                 $this->clearPluginCaches($slug);
 
+                // Rebuild provider cache
+                $this->rebuildProviderCache();
+
                 Log::info("Plugin deactivated successfully: {$slug}");
 
                 return $plugin->fresh();
@@ -284,6 +297,9 @@ class PluginManager
 
                 // Clear all caches
                 $this->clearPluginCaches($slug);
+
+                // Rebuild provider cache
+                $this->rebuildProviderCache();
 
                 Log::info("Plugin uninstalled successfully: {$slug}");
 
@@ -470,6 +486,33 @@ class PluginManager
         Cache::forget('plugins_manifest_synced'); // Force re-sync on next list load
         Cache::forget('plugins:all');
         // Cache::tags(['plugins', "plugin:{$slug}"])->flush(); // Tagging not supported by file/database drivers
+    }
+
+    /**
+     * Rebuild the provider cache.
+     * Called after activate/deactivate/uninstall to update the cached provider list.
+     */
+    protected function rebuildProviderCache(): void
+    {
+        if ($this->cacheManager === null) {
+            return;
+        }
+
+        try {
+            $this->cacheManager->rebuild(silent: true);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to rebuild provider cache', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get the cache manager instance.
+     */
+    public function cache(): ?PluginCacheManager
+    {
+        return $this->cacheManager;
     }
 
     /**
