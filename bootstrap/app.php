@@ -29,17 +29,21 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // Register global middleware (applied to all requests)
+        // Security headers MUST be first to ensure all responses are protected
+        $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
         $middleware->append(\App\Http\Middleware\SetLocaleMiddleware::class);
         $middleware->append(\App\Http\Middleware\InputSanitizationMiddleware::class);
 
         // Register route middleware aliases (can be applied to specific routes)
         $middleware->alias([
             'rate' => \App\Http\Middleware\RateLimitMiddleware::class,
+            'throttle.login' => \App\Http\Middleware\ThrottleLoginMiddleware::class,
             'plugin.csrf' => \App\Http\Middleware\PluginCsrfMiddleware::class,
             'sanitize' => \App\Http\Middleware\InputSanitizationMiddleware::class,
             'api.version' => \App\Http\Middleware\ApiVersionMiddleware::class,
             'api.rate' => \App\Http\Middleware\ApiRateLimiter::class,
             'api.errors' => \App\Http\Middleware\ApiErrorHandler::class,
+            'security.headers' => \App\Http\Middleware\SecurityHeadersMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

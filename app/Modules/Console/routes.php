@@ -6,10 +6,12 @@ use App\Modules\Console\Controllers\PluginController;
 use App\Modules\Console\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
-// Guest routes
-Route::middleware('guest:console')->group(function () {
+// Guest routes with login throttling to prevent brute force attacks
+Route::middleware(['guest:console'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('console.login');
-    Route::post('/login', [AuthController::class, 'login'])->name('console.login.submit');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle.login')
+        ->name('console.login.submit');
 });
 
 // Authenticated routes

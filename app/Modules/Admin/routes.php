@@ -12,10 +12,12 @@ Route::get('/plugins/{slug}/assets/{path}', [PluginController::class, 'serveAsse
     ->name('admin.plugins.asset')
     ->where('path', '.*');
 
-// Guest routes
-Route::middleware('guest:admin')->group(function () {
+// Guest routes with login throttling to prevent brute force attacks
+Route::middleware(['guest:admin'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('admin.login');
-    Route::post('/login', [AuthController::class, 'login'])->name('admin.login.submit');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle.login')
+        ->name('admin.login.submit');
 });
 
 // Authenticated routes
