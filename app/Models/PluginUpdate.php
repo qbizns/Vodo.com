@@ -9,22 +9,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PluginUpdate extends Model
 {
     protected $fillable = [
-        'plugin_id', 'current_version', 'new_version', 'changelog',
-        'download_url', 'package_hash', 'package_size', 'requires_php',
-        'requires_laravel', 'requires_plugins', 'is_security_update',
-        'is_critical', 'requires_license', 'released_at', 'discovered_at',
-        'installed_at', 'meta',
+        'plugin_id', 'current_version', 'latest_version', 'changelog',
+        'download_url', 'package_size', 'requires_system_version', 
+        'requires_php_version', 'is_security_update', 'is_breaking_change',
+        'release_date', 'checked_at', 'notified_at',
     ];
 
     protected $casts = [
-        'requires_plugins' => 'array',
         'is_security_update' => 'boolean',
-        'is_critical' => 'boolean',
-        'requires_license' => 'boolean',
-        'released_at' => 'datetime',
-        'discovered_at' => 'datetime',
-        'installed_at' => 'datetime',
-        'meta' => 'array',
+        'is_breaking_change' => 'boolean',
+        'release_date' => 'date',
+        'checked_at' => 'datetime',
+        'notified_at' => 'datetime',
     ];
 
     // =========================================================================
@@ -40,67 +36,46 @@ class PluginUpdate extends Model
     // Scopes
     // =========================================================================
 
-    public function scopePending(Builder $query): Builder
-    {
-        return $query->whereNull('installed_at');
-    }
-
-    public function scopeInstalled(Builder $query): Builder
-    {
-        return $query->whereNotNull('installed_at');
-    }
-
     public function scopeSecurity(Builder $query): Builder
     {
         return $query->where('is_security_update', true);
     }
 
-    public function scopeCritical(Builder $query): Builder
+    public function scopeBreaking(Builder $query): Builder
     {
-        return $query->where('is_critical', true);
+        return $query->where('is_breaking_change', true);
     }
 
     // =========================================================================
     // Methods
     // =========================================================================
 
-    public function isPending(): bool
-    {
-        return $this->installed_at === null;
-    }
-
-    public function isInstalled(): bool
-    {
-        return $this->installed_at !== null;
-    }
-
-    public function markInstalled(): bool
-    {
-        $this->installed_at = now();
-        return $this->save();
-    }
-
     public function meetsRequirements(): array
     {
         $issues = [];
 
-        if ($this->requires_php && version_compare(PHP_VERSION, $this->requires_php, '<')) {
-            $issues[] = "Requires PHP {$this->requires_php}, current: " . PHP_VERSION;
+        if ($this->requires_php_version && version_compare(PHP_VERSION, $this->requires_php_version, '<')) {
+            $issues[] = "Requires PHP {$this->requires_php_version}, current: " . PHP_VERSION;
         }
 
-        if ($this->requires_laravel) {
-            $laravelVersion = app()->version();
-            if (version_compare($laravelVersion, $this->requires_laravel, '<')) {
-                $issues[] = "Requires Laravel {$this->requires_laravel}, current: {$laravelVersion}";
+        if ($this->requires_system_version) {
+            $systemVersion = config('app.version', '1.0.0');
+            if (version_compare($systemVersion, $this->requires_system_version, '<')) {
+                $issues[] = "Requires system version {$this->requires_system_version}, current: {$systemVersion}";
             }
         }
 
         return $issues;
     }
 
-    public function canInstall(): bool
+    public function canUpdate(): bool
     {
         return empty($this->meetsRequirements());
+    }
+
+    public function canInstall(): bool
+    {
+        return $this->canUpdate();
     }
 
     public function getPackageSizeForHumans(): string

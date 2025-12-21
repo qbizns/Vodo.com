@@ -3,6 +3,35 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Safe Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, no plugins will be loaded. Use this to recover from a
+    | broken plugin that crashes the application.
+    |
+    | Set PLUGINS_SAFE_MODE=true in your .env file to enable.
+    |
+    */
+
+    'safe_mode' => env('PLUGINS_SAFE_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Use Provider Cache
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, active plugins are cached to bootstrap/cache/plugins.php
+    | to avoid a database query on every request.
+    |
+    | The cache is automatically rebuilt when plugins are activated/deactivated.
+    | You can manually rebuild with: php artisan plugins:cache
+    |
+    */
+
+    'use_cache' => env('PLUGINS_USE_CACHE', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Plugin Directory
     |--------------------------------------------------------------------------
     |

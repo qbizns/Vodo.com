@@ -31,6 +31,8 @@ return [
     'search_installed' => 'Search installed plugins...',
     'search_marketplace' => 'Search marketplace...',
     'showing_of' => 'Showing :showing of :total plugins',
+    'back_to_marketplace' => 'Back to Marketplace',
+    'back_to_plugins' => 'Back to Plugins',
 
     // Plugin List
     'all_plugins' => 'All Plugins',

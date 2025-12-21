@@ -114,22 +114,19 @@ class UpdateManager
         return PluginUpdate::updateOrCreate(
             [
                 'plugin_id' => $plugin->id,
-                'new_version' => $data['version'],
             ],
             [
                 'current_version' => $plugin->version,
+                'latest_version' => $data['version'],
                 'changelog' => $data['changelog'] ?? null,
                 'download_url' => $data['download_url'] ?? null,
-                'package_hash' => $data['package_hash'] ?? null,
                 'package_size' => $data['package_size'] ?? null,
-                'requires_php' => $data['requires_php'] ?? null,
-                'requires_laravel' => $data['requires_laravel'] ?? null,
-                'requires_plugins' => $data['requires_plugins'] ?? null,
+                'requires_php_version' => $data['requires_php'] ?? null,
+                'requires_system_version' => $data['requires_system'] ?? null,
                 'is_security_update' => $data['is_security_update'] ?? false,
-                'is_critical' => $data['is_critical'] ?? false,
-                'requires_license' => $data['requires_license'] ?? false,
-                'released_at' => $data['released_at'] ?? now(),
-                'discovered_at' => now(),
+                'is_breaking_change' => $data['is_breaking_change'] ?? false,
+                'release_date' => isset($data['released_at']) ? \Carbon\Carbon::parse($data['released_at'])->toDateString() : null,
+                'checked_at' => now(),
             ]
         );
     }
@@ -161,7 +158,7 @@ class UpdateManager
         }
 
         // Start update history
-        $history = PluginUpdateHistory::recordStart($plugin, $plugin->version, $update->new_version);
+        $history = PluginUpdateHistory::recordStart($plugin, $plugin->version, $update->latest_version);
 
         try {
             // 1. Create backup
@@ -191,10 +188,10 @@ class UpdateManager
             $this->runPluginMigrations($plugin);
 
             // 7. Run update hook
-            $this->runPluginMethod($plugin, 'update', [$plugin->version, $update->new_version]);
+            $this->runPluginMethod($plugin, 'update', [$plugin->version, $update->latest_version]);
 
             // 8. Update version
-            $plugin->version = $update->new_version;
+            $plugin->version = $update->latest_version;
             $plugin->save();
 
             // 9. Reactivate if was active
@@ -218,7 +215,7 @@ class UpdateManager
 
             return [
                 'success' => true,
-                'message' => "Updated to version {$update->new_version}",
+                'message' => "Updated to version {$update->latest_version}",
                 'from_version' => $history->from_version,
                 'to_version' => $history->to_version,
             ];
@@ -330,7 +327,7 @@ class UpdateManager
     {
         $this->ensureDirectory($this->tempPath);
 
-        $packageFile = $this->tempPath . '/' . $plugin->slug . '-' . $update->new_version . '.zip';
+        $packageFile = $this->tempPath . '/' . $plugin->slug . '-' . $update->latest_version . '.zip';
 
         // Get download URL (may require license)
         $downloadUrl = $update->download_url;
@@ -339,7 +336,7 @@ class UpdateManager
             $license = $plugin->license;
             $downloadUrl = $this->client->getDownloadUrl(
                 $plugin->marketplace_id,
-                $update->new_version,
+                $update->latest_version,
                 $license?->license_key
             );
         }

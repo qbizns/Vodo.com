@@ -1470,14 +1470,22 @@
     text-decoration: underline;
 }
 
-/* Dependency Tree Visual */
+/* Dependency Tree Visual - Enhanced */
 
 .dependency-tree-visual {
-    padding: 24px;
+    padding: 32px;
     background: var(--bg-surface-2, #f9fafb);
     border-radius: 12px;
     margin-bottom: 24px;
     overflow-x: auto;
+    min-height: 200px;
+}
+
+.tree-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: fit-content;
 }
 
 .tree-root {
@@ -1490,58 +1498,124 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 12px 20px;
     background: var(--bg-surface-1, #fff);
     border: 2px solid var(--border-color, #e5e7eb);
     border-radius: 8px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    white-space: nowrap;
 }
 
 .tree-node.root {
     border-color: var(--color-accent, #3b82f6);
+    background: linear-gradient(135deg, #fff 0%, #eff6ff 100%);
+    font-weight: 600;
 }
 
-.tree-node.node-ok {
+.tree-node.node-ok,
+.tree-node.node-satisfied {
     border-color: #10b981;
 }
 
 .tree-node.node-missing {
     border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
 }
 
 .tree-node.node-inactive {
     border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.tree-node.node-mismatch {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
 }
 
 .node-status {
     font-weight: bold;
+    font-size: 14px;
 }
+
+.node-status.status-ok { color: #10b981; }
+.node-status.status-missing { color: #ef4444; }
+.node-status.status-inactive { color: #f59e0b; }
+.node-status.status-mismatch { color: #f59e0b; }
 
 .node-name {
     font-weight: 500;
+    color: var(--text-primary, #1f2937);
 }
 
 .node-version {
     font-size: 12px;
     color: var(--text-secondary, #6b7280);
+    font-family: monospace;
 }
 
-.tree-children {
-    display: flex;
-    gap: 24px;
-    margin-top: 24px;
-    padding-top: 24px;
+/* Vertical connector from root */
+.tree-connector-vertical {
+    width: 2px;
+    height: 32px;
+    background: var(--border-color, #d1d5db);
     position: relative;
 }
 
-.tree-children::before {
+.tree-connector-vertical::after {
+    content: '▼';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--border-color, #d1d5db);
+}
+
+/* Horizontal connector line with branches */
+.tree-horizontal-connector {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.tree-horizontal-connector::before {
     content: '';
     position: absolute;
     top: 0;
     left: 50%;
+    height: 16px;
     width: 2px;
-    height: 24px;
-    background: var(--border-color, #e5e7eb);
+    background: var(--border-color, #d1d5db);
     transform: translateX(-50%);
+}
+
+.tree-horizontal-line {
+    position: absolute;
+    top: 16px;
+    height: 2px;
+    background: var(--border-color, #d1d5db);
+}
+
+.tree-level {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    position: relative;
+    padding-top: 16px;
+}
+
+/* Horizontal line spanning all children */
+.tree-level::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border-color, #d1d5db);
 }
 
 .tree-branch {
@@ -1551,16 +1625,88 @@
     position: relative;
 }
 
+/* Vertical connector from horizontal line to node */
 .tree-branch::before {
+    content: '';
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    width: 2px;
+    height: 16px;
+    background: var(--border-color, #d1d5db);
+    transform: translateX(-50%);
+}
+
+/* Arrow pointing down to node */
+.tree-branch::after {
+    content: '▼';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: var(--border-color, #d1d5db);
+}
+
+/* Nested children (transitive dependencies) */
+.tree-branch .tree-children {
+    margin-top: 24px;
+    position: relative;
+}
+
+.tree-branch .tree-children::before {
     content: '';
     position: absolute;
     top: -24px;
     left: 50%;
     width: 2px;
     height: 24px;
-    background: var(--border-color, #e5e7eb);
+    background: var(--border-color, #d1d5db);
     transform: translateX(-50%);
 }
+
+/* Empty tree state */
+.tree-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary, #6b7280);
+}
+
+.tree-empty svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+/* Tree legend */
+.tree-legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    font-size: 13px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary, #6b7280);
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid;
+}
+
+.legend-dot.compatible { border-color: #10b981; }
+.legend-dot.missing { border-color: #ef4444; }
+.legend-dot.inactive { border-color: #f59e0b; }
 
 .warning-box {
     display: flex;
@@ -1577,6 +1723,84 @@
     height: 24px;
     color: #d97706;
     flex-shrink: 0;
+}
+
+/* Dependencies Section Styles */
+.dependencies-section {
+    margin-bottom: 32px;
+}
+
+.dependencies-section:last-child {
+    margin-bottom: 0;
+}
+
+.dependencies-section h3 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+}
+
+.section-intro {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--text-secondary, #6b7280);
+}
+
+/* Enhanced Dependents List */
+.dependents-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background: var(--bg-surface-1, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.dependents-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    font-size: 14px;
+}
+
+.dependents-list li:last-child {
+    border-bottom: none;
+}
+
+.dependents-list li:hover {
+    background: var(--bg-surface-2, #f9fafb);
+}
+
+.dependent-plugin-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary, #1f2937);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.dependent-plugin-link:hover {
+    color: var(--color-accent, #3b82f6);
+}
+
+.dependent-plugin-link svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary, #9ca3af);
+}
+
+.dependent-version-constraint {
+    font-size: 13px;
+    color: var(--text-secondary, #6b7280);
+    font-family: monospace;
+    background: var(--bg-surface-2, #f3f4f6);
+    padding: 2px 8px;
+    border-radius: 4px;
 }
 
 /* ==================== Installation Wizard ==================== */

@@ -4,18 +4,25 @@
         "slug": "invoice-manager",
         "version": "2.1.0",
         "description": "Invoice Manager is a comprehensive invoicing solution that allows you to create, send, and track invoices with ease. Features include:\n\n• Create professional invoices with customizable templates\n• Send invoices via email directly from the system\n• Track payment status and send reminders\n• Generate financial reports and analytics\n• Multi-currency support\n• Integration with popular payment gateways",
+        "short_description": "Manage invoices, payments, and billing with ease.",
         "author": "Vendor Name",
         "author_url": "https://vendor.com",
         "homepage": "https://vendor.com/invoice-manager",
         "status": "active",
         "category": "accounting",
+        "tags": ["invoice", "billing", "payment", "finance"],
         "icon": "https://wperp-com.s3.amazonaws.com/uploads/2025/04/Best-WooCommerce-Accounting-Plugins.png",
         "is_core": false,
         "is_premium": true,
         "requires_license": true,
         "has_valid_license": true,
-        "min_system_version": "2.0.0",
+        "min_system_version": "1.0.0",
+        "tested": "2.5.0",
         "min_php_version": "8.1",
+        "rating": 4.2,
+        "reviews_count": 124,
+        "downloads": 10500,
+        "price": 49.99,
         "installed_at": "2024-12-10 10:00:00",
         "activated_at": "2024-12-15 10:05:00",
         "latest_version": "2.2.0",
@@ -36,19 +43,19 @@
         },
         "screenshots": [
             {
-                "url": "https://placehold.co/600x400?text=Invoice+List",
+                "url": "https://akaunting.com/public/assets/media/1-pos-screenshot-orders.png",
                 "caption": "Invoice List Management"
             },
             {
-                "url": "https://placehold.co/600x400?text=Create+Invoice",
+                "url": "https://akaunting.com/public/assets/media/2-pos-screenshot-empty.png",
                 "caption": "Create New Invoice Interface"
             },
             {
-                "url": "https://placehold.co/600x400?text=Payment+Tracking",
+                "url": "https://akaunting.com/public/assets/media/7-pos-screenshot-settings-1.png",
                 "caption": "Payment Tracking Dashboard"
             },
             {
-                "url": "https://placehold.co/600x400?text=Reports",
+                "url": "https://akaunting.com/public/assets/media/8-pos-screenshot-settings-2.png",
                 "caption": "Financial Reports"
             }
         ],
@@ -120,7 +127,15 @@
                 "name": "core-finance",
                 "required_version": "^1.5.0",
                 "installed_version": "1.6.2",
-                "status": "satisfied"
+                "status": "satisfied",
+                "children": [
+                    {
+                        "name": "core-reports",
+                        "required_version": "^1.0.0",
+                        "installed_version": "1.2.0",
+                        "status": "satisfied"
+                    }
+                ]
             },
             {
                 "name": "pdf-generator",
@@ -132,17 +147,27 @@
                 "name": "email-service",
                 "required_version": "^1.0.0",
                 "installed_version": "1.2.0",
-                "status": "satisfied"
+                "status": "satisfied",
+                "children": [
+                    {
+                        "name": "queue-manager",
+                        "required_version": "^1.0.0",
+                        "installed_version": "1.1.0",
+                        "status": "satisfied"
+                    }
+                ]
             }
         ],
         "dependents": [
             {
                 "slug": "subscription-billing",
-                "name": "Subscription Billing"
+                "name": "Subscription Billing",
+                "required_version": "^2.0.0"
             },
             {
                 "slug": "customer-portal",
-                "name": "Customer Portal"
+                "name": "Customer Portal",
+                "required_version": "^1.5.0"
             }
         ],
         "components": {
@@ -154,6 +179,435 @@
             "menus": 5,
             "workflows": 2,
             "shortcodes": 0
+        }
+    },
+    "hr-management": {
+        "name": "HR Management",
+        "slug": "hr-management",
+        "version": "3.0.0",
+        "description": "Complete HR suite with employee management, time tracking, leave management, performance reviews, and payroll integration. Perfect for businesses of all sizes.",
+        "short_description": "Complete HR suite with employee management and payroll.",
+        "author": "HR Solutions Inc",
+        "author_url": "https://hr-solutions.com",
+        "homepage": "https://hr-solutions.com/hr-management",
+        "status": "active",
+        "category": "hr",
+        "tags": ["hr", "employee", "payroll", "time-tracking", "leave"],
+        "icon": "https://placehold.co/128x128?text=HR",
+        "is_core": false,
+        "is_premium": true,
+        "requires_license": true,
+        "has_valid_license": false,
+        "min_system_version": "1.5.0",
+        "tested": "2.5.0",
+        "min_php_version": "8.1",
+        "rating": 4.8,
+        "reviews_count": 89,
+        "downloads": 5200,
+        "price": 79.99,
+        "installed_at": null,
+        "activated_at": null,
+        "latest_version": "3.1.0",
+        "has_update": false,
+        "manifest": {
+            "description": "Complete HR suite with employee management...",
+            "features": [
+                "Employee management and directory",
+                "Time tracking and attendance",
+                "Leave management system",
+                "Performance reviews",
+                "Payroll integration"
+            ],
+            "docs_url": "https://docs.hr-solutions.com/hr-management",
+            "support_url": "https://support.hr-solutions.com",
+            "support_email": "support@hr-solutions.com"
+        },
+        "screenshots": [
+            {
+                "url": "https://placehold.co/600x400?text=Employee+Directory",
+                "caption": "Employee Directory"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Time+Tracking",
+                "caption": "Time Tracking Dashboard"
+            }
+        ],
+        "changelog": [
+            {
+                "version": "3.0.0",
+                "date": "Nov 15, 2024",
+                "changes": [
+                    "Major: Complete UI redesign",
+                    "Added: Performance review module",
+                    "Added: Payroll integration"
+                ]
+            }
+        ],
+        "permissions": [
+            {
+                "name": "hr.view",
+                "description": "View HR data",
+                "default": "HR Managers"
+            },
+            {
+                "name": "hr.manage",
+                "description": "Manage HR data",
+                "default": "HR Managers"
+            }
+        ],
+        "dependencies": [],
+        "dependents": [],
+        "components": {
+            "permissions": 8,
+            "widgets": 2,
+            "entities": 6,
+            "tasks": 3,
+            "endpoints": 12,
+            "menus": 4,
+            "workflows": 1,
+            "shortcodes": 0
+        }
+    },
+    "advanced-reports": {
+        "name": "Advanced Reports",
+        "slug": "advanced-reports",
+        "version": "1.5.0",
+        "description": "Build custom reports with an intuitive drag-and-drop interface. Create dashboards, export to PDF/Excel, and schedule automated report delivery.",
+        "short_description": "Build custom reports with drag-and-drop interface.",
+        "author": "DataViz Pro",
+        "author_url": "https://dataviz-pro.com",
+        "homepage": "https://dataviz-pro.com/advanced-reports",
+        "status": "inactive",
+        "category": "reports",
+        "tags": ["reports", "analytics", "dashboard", "export", "charts"],
+        "icon": "https://placehold.co/128x128?text=Reports",
+        "is_core": false,
+        "is_premium": false,
+        "requires_license": false,
+        "has_valid_license": false,
+        "min_system_version": "2.0.0",
+        "tested": "2.3.0",
+        "min_php_version": "8.2",
+        "rating": 4.5,
+        "reviews_count": 56,
+        "downloads": 2300,
+        "price": null,
+        "installed_at": null,
+        "activated_at": null,
+        "latest_version": "1.5.0",
+        "has_update": false,
+        "manifest": {
+            "description": "Build custom reports with drag-and-drop...",
+            "features": [
+                "Drag-and-drop report builder",
+                "Multiple chart types",
+                "PDF and Excel export",
+                "Scheduled reports",
+                "Dashboard widgets"
+            ],
+            "docs_url": "https://docs.dataviz-pro.com/advanced-reports",
+            "support_url": "https://github.com/dataviz-pro/advanced-reports/issues",
+            "support_email": "support@dataviz-pro.com"
+        },
+        "screenshots": [
+            {
+                "url": "https://placehold.co/600x400?text=Report+Builder",
+                "caption": "Report Builder Interface"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Dashboard",
+                "caption": "Dashboard Overview"
+            }
+        ],
+        "changelog": [
+            {
+                "version": "1.5.0",
+                "date": "Oct 20, 2024",
+                "changes": [
+                    "Added: New chart types",
+                    "Added: Report templates",
+                    "Fixed: Export issues"
+                ]
+            }
+        ],
+        "permissions": [
+            {
+                "name": "reports.view",
+                "description": "View reports",
+                "default": "All users"
+            },
+            {
+                "name": "reports.create",
+                "description": "Create reports",
+                "default": "Managers"
+            }
+        ],
+        "dependencies": [],
+        "dependents": [],
+        "components": {
+            "permissions": 4,
+            "widgets": 5,
+            "entities": 2,
+            "tasks": 1,
+            "endpoints": 6,
+            "menus": 3,
+            "workflows": 0,
+            "shortcodes": 2
+        }
+    },
+    "inventory-control": {
+        "name": "Inventory Control",
+        "slug": "inventory-control",
+        "version": "1.2.0",
+        "description": "Stock management solution with real-time tracking, low stock alerts, barcode support, and warehouse management. Integrates with popular e-commerce platforms.",
+        "short_description": "Stock management with real-time tracking and alerts.",
+        "author": "Stock Masters",
+        "author_url": "https://stockmasters.io",
+        "homepage": "https://stockmasters.io/inventory-control",
+        "status": "active",
+        "category": "inventory",
+        "tags": ["inventory", "stock", "warehouse", "barcode", "e-commerce"],
+        "icon": "https://placehold.co/128x128?text=Inventory",
+        "is_core": false,
+        "is_premium": true,
+        "requires_license": true,
+        "has_valid_license": true,
+        "min_system_version": "1.0.0",
+        "tested": "2.5.0",
+        "min_php_version": "8.1",
+        "rating": 4.0,
+        "reviews_count": 45,
+        "downloads": 3800,
+        "price": 39.99,
+        "installed_at": "2024-11-01 09:00:00",
+        "activated_at": "2024-11-01 09:05:00",
+        "latest_version": "1.3.0",
+        "has_update": true,
+        "manifest": {
+            "description": "Stock management solution...",
+            "features": [
+                "Real-time stock tracking",
+                "Low stock alerts",
+                "Barcode support",
+                "Multi-warehouse management",
+                "E-commerce integration"
+            ],
+            "docs_url": "https://docs.stockmasters.io/inventory-control",
+            "support_url": "https://support.stockmasters.io",
+            "support_email": "help@stockmasters.io"
+        },
+        "screenshots": [
+            {
+                "url": "https://placehold.co/600x400?text=Stock+Overview",
+                "caption": "Stock Overview Dashboard"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Barcode+Scanner",
+                "caption": "Barcode Scanner Integration"
+            }
+        ],
+        "changelog": [
+            {
+                "version": "1.2.0",
+                "date": "Sep 15, 2024",
+                "changes": [
+                    "Added: Barcode scanner support",
+                    "Added: Multi-warehouse feature",
+                    "Improved: Stock alert system"
+                ]
+            }
+        ],
+        "permissions": [
+            {
+                "name": "inventory.view",
+                "description": "View inventory",
+                "default": "All users"
+            },
+            {
+                "name": "inventory.manage",
+                "description": "Manage inventory",
+                "default": "Managers"
+            }
+        ],
+        "dependencies": [],
+        "dependents": [],
+        "components": {
+            "permissions": 6,
+            "widgets": 2,
+            "entities": 4,
+            "tasks": 2,
+            "endpoints": 10,
+            "menus": 3,
+            "workflows": 1,
+            "shortcodes": 0
+        }
+    },
+    "crm-pro": {
+        "name": "CRM Professional",
+        "slug": "crm-pro",
+        "version": "2.0.0",
+        "description": "Professional CRM solution with contact management, sales pipeline, email integration, task management, and reporting. Perfect for sales teams of any size.",
+        "short_description": "Professional CRM with sales pipeline and email integration.",
+        "author": "SalesTech",
+        "author_url": "https://salestech.com",
+        "homepage": "https://salestech.com/crm-pro",
+        "status": "inactive",
+        "category": "crm",
+        "tags": ["crm", "sales", "contacts", "pipeline", "email"],
+        "icon": "https://placehold.co/128x128?text=CRM",
+        "is_core": false,
+        "is_premium": true,
+        "requires_license": true,
+        "has_valid_license": false,
+        "min_system_version": "1.5.0",
+        "tested": "2.5.0",
+        "min_php_version": "8.1",
+        "rating": 4.6,
+        "reviews_count": 203,
+        "downloads": 15200,
+        "price": 99.99,
+        "installed_at": null,
+        "activated_at": null,
+        "latest_version": "2.0.0",
+        "has_update": false,
+        "manifest": {
+            "description": "Professional CRM solution...",
+            "features": [
+                "Contact management",
+                "Sales pipeline",
+                "Email integration",
+                "Task management",
+                "Advanced reporting"
+            ],
+            "docs_url": "https://docs.salestech.com/crm-pro",
+            "support_url": "https://support.salestech.com",
+            "support_email": "support@salestech.com"
+        },
+        "screenshots": [
+            {
+                "url": "https://placehold.co/600x400?text=Pipeline",
+                "caption": "Sales Pipeline View"
+            },
+            {
+                "url": "https://placehold.co/600x400?text=Contacts",
+                "caption": "Contact Management"
+            }
+        ],
+        "changelog": [
+            {
+                "version": "2.0.0",
+                "date": "Dec 1, 2024",
+                "changes": [
+                    "Major: New UI design",
+                    "Added: Email integration",
+                    "Added: Advanced reporting"
+                ]
+            }
+        ],
+        "permissions": [
+            {
+                "name": "crm.view",
+                "description": "View CRM data",
+                "default": "Sales Team"
+            },
+            {
+                "name": "crm.manage",
+                "description": "Manage CRM data",
+                "default": "Sales Managers"
+            }
+        ],
+        "dependencies": [],
+        "dependents": [],
+        "components": {
+            "permissions": 10,
+            "widgets": 4,
+            "entities": 8,
+            "tasks": 2,
+            "endpoints": 15,
+            "menus": 5,
+            "workflows": 3,
+            "shortcodes": 1
+        }
+    },
+    "email-templates": {
+        "name": "Email Templates",
+        "slug": "email-templates",
+        "version": "1.0.0",
+        "description": "Create beautiful email templates with a drag-and-drop editor. Includes pre-built templates, variable support, and preview functionality.",
+        "short_description": "Drag-and-drop email template builder.",
+        "author": "MailCraft",
+        "author_url": "https://mailcraft.io",
+        "homepage": "https://mailcraft.io/email-templates",
+        "status": "inactive",
+        "category": "utils",
+        "tags": ["email", "templates", "editor", "marketing"],
+        "icon": "https://placehold.co/128x128?text=Email",
+        "is_core": false,
+        "is_premium": false,
+        "requires_license": false,
+        "has_valid_license": false,
+        "min_system_version": "1.0.0",
+        "tested": "2.5.0",
+        "min_php_version": "8.1",
+        "rating": 4.3,
+        "reviews_count": 78,
+        "downloads": 8900,
+        "price": null,
+        "installed_at": null,
+        "activated_at": null,
+        "latest_version": "1.0.0",
+        "has_update": false,
+        "manifest": {
+            "description": "Create beautiful email templates...",
+            "features": [
+                "Drag-and-drop editor",
+                "Pre-built templates",
+                "Variable support",
+                "Preview functionality",
+                "Mobile responsive"
+            ],
+            "docs_url": "https://docs.mailcraft.io/email-templates",
+            "support_url": "https://github.com/mailcraft/email-templates/issues",
+            "support_email": "support@mailcraft.io"
+        },
+        "screenshots": [
+            {
+                "url": "https://placehold.co/600x400?text=Template+Editor",
+                "caption": "Template Editor"
+            }
+        ],
+        "changelog": [
+            {
+                "version": "1.0.0",
+                "date": "Oct 1, 2024",
+                "changes": [
+                    "Initial release"
+                ]
+            }
+        ],
+        "permissions": [
+            {
+                "name": "email_templates.view",
+                "description": "View email templates",
+                "default": "All users"
+            },
+            {
+                "name": "email_templates.manage",
+                "description": "Manage email templates",
+                "default": "Admins"
+            }
+        ],
+        "dependencies": [],
+        "dependents": [],
+        "components": {
+            "permissions": 2,
+            "widgets": 0,
+            "entities": 1,
+            "tasks": 0,
+            "endpoints": 4,
+            "menus": 1,
+            "workflows": 0,
+            "shortcodes": 3
         }
     }
 }

@@ -169,10 +169,10 @@ trait HasMarketplace
 
         return [
             'current_version' => $plugin->version,
-            'new_version' => $update->new_version,
+            'new_version' => $update->latest_version,
             'changelog' => $update->changelog,
             'is_security' => $update->is_security_update,
-            'is_critical' => $update->is_critical,
+            'is_breaking' => $update->is_breaking_change,
         ];
     }
 

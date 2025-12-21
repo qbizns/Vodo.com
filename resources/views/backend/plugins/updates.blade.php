@@ -260,10 +260,8 @@ function toggleChangelog(header) {
 
 function toggleAutoCheck(checkbox) {
     // Save preference via AJAX
-    $.post('{{ route("admin.settings.save") }}', {
-        _token: '{{ csrf_token() }}',
-        'plugins.auto_update_check': checkbox.checked ? '1' : '0',
-    });
+    // TODO: Implement settings save route
+    console.log('Auto-check updates: ' + (checkbox.checked ? 'enabled' : 'disabled'));
 }
 
 function showNotification(type, message) {

@@ -102,6 +102,8 @@ return [
 
     // المتجر
     'browse_marketplace' => 'تصفح المتجر',
+    'back_to_marketplace' => 'العودة إلى المتجر',
+    'back_to_plugins' => 'العودة إلى الإضافات',
     'featured_plugins' => 'الإضافات المميزة',
     'popular_plugins' => 'الإضافات الشائعة',
     'new_plugins' => 'الإضافات الجديدة',
