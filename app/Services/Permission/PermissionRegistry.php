@@ -3,18 +3,26 @@
 namespace App\Services\Permission;
 
 use App\Models\Permission;
+use App\Models\PermissionGroup;
+use App\Models\PermissionAudit;
 use App\Models\Role;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Permission Registry Service
- * 
+ *
  * Central service for managing permissions and roles.
+ * Handles registration from plugins, validation, and caching.
  */
 class PermissionRegistry
 {
     protected array $runtimePermissions = [];
+    protected array $pendingPermissions = [];
+    protected array $pendingGroups = [];
+    protected array $pendingRoles = [];
+    protected array $pendingAssignments = [];
 
     // =========================================================================
     // Permission Registration
@@ -26,9 +34,14 @@ class PermissionRegistry
     public function registerPermission(array $config, ?string $pluginSlug = null): Permission
     {
         $slug = $config['slug'] ?? null;
-        
+
         if (!$slug) {
             throw new \InvalidArgumentException('Permission slug is required');
+        }
+
+        // Validate permission slug format
+        if (!Permission::validateSlug($slug)) {
+            throw new \InvalidArgumentException("Invalid permission slug format: '{$slug}'. Must be in format 'module.action' or 'module.submodule.action'");
         }
 
         $existing = Permission::findBySlug($slug);
@@ -39,15 +52,28 @@ class PermissionRegistry
             return $this->updatePermission($slug, $config, $pluginSlug);
         }
 
+        // Resolve or create permission group
+        $groupId = null;
+        $groupSlug = $config['group'] ?? Permission::slugToGroup($slug);
+        if ($groupSlug) {
+            $group = PermissionGroup::findOrCreate($groupSlug, [
+                'plugin_slug' => $pluginSlug,
+            ]);
+            $groupId = $group->id;
+        }
+
         $permission = Permission::create([
             'slug' => $slug,
             'name' => $config['name'] ?? Permission::slugToName($slug),
+            'label' => $config['label'] ?? null,
             'description' => $config['description'] ?? null,
-            'group' => $config['group'] ?? Permission::slugToGroup($slug),
+            'group' => $groupSlug,
+            'group_id' => $groupId,
             'category' => $config['category'] ?? null,
             'plugin_slug' => $pluginSlug,
             'is_system' => $config['system'] ?? false,
             'is_active' => $config['active'] ?? true,
+            'is_dangerous' => $config['dangerous'] ?? false,
             'priority' => $config['priority'] ?? 100,
             'meta' => $config['meta'] ?? null,
         ]);
@@ -469,5 +495,308 @@ class PermissionRegistry
         }
 
         return $docs;
+    }
+
+    // =========================================================================
+    // Permission Groups
+    // =========================================================================
+
+    /**
+     * Register a permission group
+     */
+    public function registerGroup(array $config, ?string $pluginSlug = null): PermissionGroup
+    {
+        $slug = $config['slug'] ?? null;
+
+        if (!$slug) {
+            throw new \InvalidArgumentException('Group slug is required');
+        }
+
+        return PermissionGroup::updateOrCreate(
+            ['slug' => $slug],
+            [
+                'name' => $config['name'] ?? ucwords(str_replace(['-', '_'], ' ', $slug)),
+                'description' => $config['description'] ?? null,
+                'plugin_slug' => $pluginSlug,
+                'icon' => $config['icon'] ?? 'folder',
+                'position' => $config['position'] ?? 0,
+                'is_active' => $config['active'] ?? true,
+            ]
+        );
+    }
+
+    /**
+     * Get permission groups
+     */
+    public function getGroups(): Collection
+    {
+        return Cache::remember('permission_groups:all', 3600, fn() =>
+            PermissionGroup::active()->ordered()->get()
+        );
+    }
+
+    /**
+     * Get groups with permissions for UI
+     */
+    public function getGroupedForUI(): array
+    {
+        return Cache::remember('permissions:grouped_ui', 3600, fn() =>
+            PermissionGroup::getGroupedPermissions()
+        );
+    }
+
+    // =========================================================================
+    // Plugin Lifecycle
+    // =========================================================================
+
+    /**
+     * Handle plugin enabled event - reactivate permissions
+     */
+    public function onPluginEnabled(string $pluginSlug): void
+    {
+        DB::transaction(function () use ($pluginSlug) {
+            Permission::forPlugin($pluginSlug)->update(['is_active' => true]);
+            PermissionGroup::forPlugin($pluginSlug)->update(['is_active' => true]);
+            Role::forPlugin($pluginSlug)->update(['is_active' => true]);
+        });
+
+        PermissionAudit::logPluginEvent($pluginSlug, PermissionAudit::ACTION_PLUGIN_ENABLED);
+        $this->clearCache();
+    }
+
+    /**
+     * Handle plugin disabled event - deactivate permissions
+     */
+    public function onPluginDisabled(string $pluginSlug): void
+    {
+        DB::transaction(function () use ($pluginSlug) {
+            Permission::forPlugin($pluginSlug)->update(['is_active' => false]);
+            PermissionGroup::forPlugin($pluginSlug)->update(['is_active' => false]);
+            Role::forPlugin($pluginSlug)->update(['is_active' => false]);
+        });
+
+        PermissionAudit::logPluginEvent($pluginSlug, PermissionAudit::ACTION_PLUGIN_DISABLED);
+        $this->clearCache();
+    }
+
+    /**
+     * Handle plugin uninstall - remove all permissions
+     */
+    public function onPluginUninstalled(string $pluginSlug): array
+    {
+        $stats = [
+            'permissions_removed' => 0,
+            'groups_removed' => 0,
+            'roles_removed' => 0,
+        ];
+
+        DB::transaction(function () use ($pluginSlug, &$stats) {
+            // Remove permission dependencies first
+            $permissionIds = Permission::forPlugin($pluginSlug)->pluck('id');
+            DB::table('permission_dependencies')
+                ->whereIn('permission_id', $permissionIds)
+                ->orWhereIn('requires_permission_id', $permissionIds)
+                ->delete();
+
+            // Remove role permissions
+            DB::table('role_permissions')
+                ->whereIn('permission_id', $permissionIds)
+                ->delete();
+
+            // Remove user permissions
+            DB::table('user_permissions')
+                ->whereIn('permission_id', $permissionIds)
+                ->delete();
+
+            $stats['permissions_removed'] = Permission::forPlugin($pluginSlug)->delete();
+            $stats['groups_removed'] = PermissionGroup::forPlugin($pluginSlug)->delete();
+
+            // Remove plugin roles
+            $roleIds = Role::forPlugin($pluginSlug)->pluck('id');
+            DB::table('user_roles')->whereIn('role_id', $roleIds)->delete();
+            $stats['roles_removed'] = Role::forPlugin($pluginSlug)->forceDelete();
+        });
+
+        PermissionAudit::logPluginEvent($pluginSlug, PermissionAudit::ACTION_PLUGIN_UNINSTALLED, $stats);
+        $this->clearCache();
+
+        return $stats;
+    }
+
+    // =========================================================================
+    // Wildcard Support
+    // =========================================================================
+
+    /**
+     * Check if user has permission (supports wildcards)
+     */
+    public function checkPermission($user, string $permission, $scope = null): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        // Check exact permission
+        if ($this->userHasPermission($user, $permission, $scope)) {
+            return true;
+        }
+
+        // Check wildcard permissions
+        $parts = explode('.', $permission);
+        $wildcards = [];
+        $current = '';
+
+        foreach ($parts as $i => $part) {
+            if ($i === 0) {
+                $current = $part;
+            } else {
+                $current .= '.' . $part;
+            }
+
+            if ($i < count($parts) - 1) {
+                $wildcards[] = $current . '.*';
+            }
+        }
+
+        foreach ($wildcards as $wildcard) {
+            if ($this->userHasPermission($user, $wildcard, $scope)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Expand a wildcard permission to all matching permissions
+     */
+    public function expandWildcard(string $pattern): array
+    {
+        if (!str_ends_with($pattern, '.*')) {
+            return [$pattern];
+        }
+
+        $prefix = rtrim($pattern, '.*');
+
+        return Permission::active()
+            ->where('slug', 'like', $prefix . '.%')
+            ->where('slug', '!=', $pattern)
+            ->pluck('slug')
+            ->toArray();
+    }
+
+    // =========================================================================
+    // Privilege Escalation Prevention
+    // =========================================================================
+
+    /**
+     * Check if user can grant a permission
+     */
+    public function canUserGrantPermission($grantingUser, string $permission): bool
+    {
+        // Super admin can grant anything
+        if ($this->userHasRole($grantingUser, Role::ROLE_SUPER_ADMIN)) {
+            return true;
+        }
+
+        // Users can only grant permissions they have
+        return $this->checkPermission($grantingUser, $permission);
+    }
+
+    /**
+     * Check if user can edit a role
+     */
+    public function canUserEditRole($user, Role $role): bool
+    {
+        // Cannot edit super admin role unless you are super admin
+        if ($role->slug === Role::ROLE_SUPER_ADMIN) {
+            return $this->userHasRole($user, Role::ROLE_SUPER_ADMIN);
+        }
+
+        // Cannot edit roles with higher level than yours
+        $highestUserRole = $this->getHighestUserRole($user);
+        if ($highestUserRole && $role->level > $highestUserRole->level) {
+            return false;
+        }
+
+        return $this->userHasPermission($user, 'roles.edit');
+    }
+
+    /**
+     * Get user's highest level role
+     */
+    public function getHighestUserRole($user): ?Role
+    {
+        if (!$user || !method_exists($user, 'roles')) {
+            return null;
+        }
+
+        return $user->roles()->orderBy('level', 'desc')->first();
+    }
+
+    /**
+     * Filter permissions a user can grant
+     */
+    public function filterGrantablePermissions($user, array $permissions): array
+    {
+        if ($this->userHasRole($user, Role::ROLE_SUPER_ADMIN)) {
+            return $permissions;
+        }
+
+        return array_filter($permissions, fn($perm) =>
+            is_string($perm) && $this->checkPermission($user, $perm)
+        );
+    }
+
+    // =========================================================================
+    // Statistics
+    // =========================================================================
+
+    /**
+     * Get permission statistics
+     */
+    public function getStatistics(): array
+    {
+        return Cache::remember('permissions:stats', 3600, function () {
+            return [
+                'total_permissions' => Permission::count(),
+                'active_permissions' => Permission::active()->count(),
+                'total_roles' => Role::count(),
+                'active_roles' => Role::active()->count(),
+                'total_groups' => PermissionGroup::count(),
+                'active_groups' => PermissionGroup::active()->count(),
+                'permissions_by_plugin' => Permission::selectRaw('plugin_slug, COUNT(*) as count')
+                    ->groupBy('plugin_slug')
+                    ->pluck('count', 'plugin_slug'),
+            ];
+        });
+    }
+
+    // =========================================================================
+    // Extended Cache
+    // =========================================================================
+
+    /**
+     * Clear all permission-related caches
+     */
+    public function clearCache(): void
+    {
+        Cache::forget('permissions:all');
+        Cache::forget('permissions:grouped_ui');
+        Cache::forget('permissions:stats');
+        Cache::forget('permission_groups:all');
+        Cache::forget('roles:all');
+    }
+
+    /**
+     * Warm permission caches
+     */
+    public function warmCache(): void
+    {
+        $this->getAllPermissions();
+        $this->getAllRoles();
+        $this->getGroups();
+        $this->getGroupedForUI();
+        $this->getStatistics();
     }
 }

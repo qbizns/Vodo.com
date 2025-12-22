@@ -245,6 +245,18 @@ class NavigationService
                 'items' => [
                     ['id' => 'system/settings', 'icon' => 'settings', 'label' => 'Settings', 'url' => '/system/settings'],
                     ['id' => 'system/plugins', 'icon' => 'plug', 'label' => 'Plugins Management', 'url' => '/system/plugins'],
+                    [
+                        'id' => 'system/roles',
+                        'icon' => 'shield',
+                        'label' => 'Permissions & Access',
+                        'url' => '/system/roles',
+                        'children' => [
+                            ['id' => 'roles', 'icon' => 'shield', 'label' => 'Roles', 'url' => '/system/roles'],
+                            ['id' => 'matrix', 'icon' => 'grid', 'label' => 'Permission Matrix', 'url' => '/system/permissions/matrix'],
+                            ['id' => 'rules', 'icon' => 'shieldAlert', 'label' => 'Access Rules', 'url' => '/system/permissions/rules'],
+                            ['id' => 'audit', 'icon' => 'fileText', 'label' => 'Audit Log', 'url' => '/system/permissions/audit'],
+                        ]
+                    ],
                 ]
             ],
         ];
