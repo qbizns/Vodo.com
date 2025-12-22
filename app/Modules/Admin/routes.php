@@ -5,6 +5,8 @@ use App\Modules\Admin\Controllers\DashboardController;
 use App\Modules\Admin\Controllers\PluginController;
 use App\Modules\Admin\Controllers\PluginInstallController;
 use App\Modules\Admin\Controllers\SettingsController;
+use App\Modules\Admin\Controllers\RoleController;
+use App\Modules\Admin\Controllers\PermissionController;
 use Illuminate\Support\Facades\Route;
 
 // Plugin assets route (public, no auth required)
@@ -91,6 +93,55 @@ Route::middleware('auth:admin')->group(function () {
     // System Routes
     Route::prefix('system')->name('admin.system.')->group(function () {
         Route::get('/logs', [App\Modules\Admin\Controllers\SystemController::class, 'logs'])->name('logs');
+    });
+
+    // =========================================================================
+    // Permissions & Access Control Routes
+    // =========================================================================
+
+    // Roles Management
+    Route::prefix('system/roles')->name('admin.roles.')->group(function () {
+        Route::get('/', [RoleController::class, 'index'])->name('index');
+        Route::get('/create', [RoleController::class, 'create'])->name('create');
+        Route::post('/', [RoleController::class, 'store'])->name('store');
+        Route::get('/compare', [RoleController::class, 'compare'])->name('compare');
+        Route::post('/import', [RoleController::class, 'import'])->name('import');
+        Route::get('/{role}', [RoleController::class, 'show'])->name('show');
+        Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');
+        Route::put('/{role}', [RoleController::class, 'update'])->name('update');
+        Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy');
+        Route::post('/{role}/duplicate', [RoleController::class, 'duplicate'])->name('duplicate');
+        Route::get('/{role}/export', [RoleController::class, 'export'])->name('export');
+        Route::get('/{role}/bulk-assign', [RoleController::class, 'bulkAssignForm'])->name('bulk-assign');
+        Route::post('/{role}/bulk-assign', [RoleController::class, 'bulkAssign'])->name('bulk-assign.store');
+    });
+
+    // Permissions Management
+    Route::prefix('system/permissions')->name('admin.permissions.')->group(function () {
+        Route::get('/', [PermissionController::class, 'index'])->name('index');
+        Route::get('/matrix', [PermissionController::class, 'matrix'])->name('matrix');
+        Route::post('/matrix', [PermissionController::class, 'updateMatrix'])->name('matrix.update');
+
+        // User Permissions
+        Route::get('/users/{user}', [PermissionController::class, 'userPermissions'])->name('users.show');
+        Route::put('/users/{user}', [PermissionController::class, 'updateUserPermissions'])->name('users.update');
+        Route::delete('/users/{user}/override', [PermissionController::class, 'clearUserOverride'])->name('users.clear-override');
+
+        // Access Rules
+        Route::get('/rules', [PermissionController::class, 'accessRules'])->name('rules');
+        Route::get('/rules/create', [PermissionController::class, 'createAccessRule'])->name('rules.create');
+        Route::post('/rules', [PermissionController::class, 'storeAccessRule'])->name('rules.store');
+        Route::get('/rules/{rule}/edit', [PermissionController::class, 'editAccessRule'])->name('rules.edit');
+        Route::put('/rules/{rule}', [PermissionController::class, 'updateAccessRule'])->name('rules.update');
+        Route::delete('/rules/{rule}', [PermissionController::class, 'destroyAccessRule'])->name('rules.destroy');
+
+        // Audit Log
+        Route::get('/audit', [PermissionController::class, 'auditLog'])->name('audit');
+
+        // API Endpoints
+        Route::get('/api/check', [PermissionController::class, 'checkPermission'])->name('api.check');
+        Route::get('/api/list', [PermissionController::class, 'listPermissions'])->name('api.list');
+        Route::get('/api/roles', [PermissionController::class, 'listRoles'])->name('api.roles');
     });
     
     

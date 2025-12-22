@@ -4,21 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class Permission extends Model
 {
+    public $timestamps = true;
+
     protected $fillable = [
         'slug',
         'name',
+        'label',
         'description',
         'group',
+        'group_id',
         'category',
         'plugin_slug',
         'is_system',
         'is_active',
+        'is_dangerous',
         'priority',
         'meta',
     ];
@@ -26,7 +33,9 @@ class Permission extends Model
     protected $casts = [
         'is_system' => 'boolean',
         'is_active' => 'boolean',
+        'is_dangerous' => 'boolean',
         'meta' => 'array',
+        'created_at' => 'datetime',
     ];
 
     /**
@@ -43,10 +52,15 @@ class Permission extends Model
     // Relationships
     // =========================================================================
 
+    public function permissionGroup(): BelongsTo
+    {
+        return $this->belongsTo(PermissionGroup::class, 'group_id');
+    }
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'role_permissions')
-            ->withPivot('granted')
+            ->withPivot('granted', 'granted_at', 'granted_by')
             ->withTimestamps();
     }
 
@@ -111,6 +125,26 @@ class Permission extends Model
         // Support wildcard matching: 'posts.*'
         $pattern = str_replace(['*', '.'], ['%', '\.'], $pattern);
         return $query->where('slug', 'like', $pattern);
+    }
+
+    public function scopeDangerous(Builder $query): Builder
+    {
+        return $query->where('is_dangerous', true);
+    }
+
+    public function scopeInPermissionGroup(Builder $query, int $groupId): Builder
+    {
+        return $query->where('group_id', $groupId);
+    }
+
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        return $query->where(function ($q) use ($term) {
+            $q->where('slug', 'like', "%{$term}%")
+              ->orWhere('name', 'like', "%{$term}%")
+              ->orWhere('label', 'like', "%{$term}%")
+              ->orWhere('description', 'like', "%{$term}%");
+        });
     }
 
     // =========================================================================
@@ -216,10 +250,116 @@ class Permission extends Model
         return [
             'slug' => $this->slug,
             'name' => $this->name,
+            'label' => $this->label,
             'description' => $this->description,
             'group' => $this->group,
             'category' => $this->category,
+            'is_dangerous' => $this->is_dangerous,
             'dependencies' => $this->dependencies->pluck('slug')->toArray(),
         ];
+    }
+
+    // =========================================================================
+    // Validation Methods
+    // =========================================================================
+
+    /**
+     * Validate permission name/slug format
+     * Format: module.action or module.submodule.action
+     */
+    public static function validateSlug(string $slug): bool
+    {
+        // Allow wildcard permissions like "invoices.*"
+        if (str_ends_with($slug, '.*')) {
+            $prefix = rtrim($slug, '.*');
+            return (bool) preg_match('/^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)*$/', $prefix);
+        }
+
+        return (bool) preg_match('/^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)+$/', $slug);
+    }
+
+    /**
+     * Check if this is a wildcard permission
+     */
+    public function isWildcard(): bool
+    {
+        return str_ends_with($this->slug, '.*');
+    }
+
+    /**
+     * Get all permissions that this wildcard covers
+     */
+    public function getWildcardMatches(): Collection
+    {
+        if (!$this->isWildcard()) {
+            return collect([$this]);
+        }
+
+        $prefix = rtrim($this->slug, '.*');
+
+        return static::where('slug', 'like', $prefix . '.%')
+            ->where('slug', '!=', $this->slug)
+            ->get();
+    }
+
+    /**
+     * Get all required dependencies for this permission (recursive)
+     */
+    public function getAllDependencies(): Collection
+    {
+        $dependencies = collect();
+        $toProcess = $this->dependencies;
+        $processed = collect([$this->id]);
+
+        while ($toProcess->isNotEmpty()) {
+            $current = $toProcess->shift();
+
+            if ($processed->contains($current->id)) {
+                continue;
+            }
+
+            $processed->push($current->id);
+            $dependencies->push($current);
+
+            $toProcess = $toProcess->merge($current->dependencies);
+        }
+
+        return $dependencies;
+    }
+
+    /**
+     * Get the label or generate one from slug
+     */
+    public function getLabelAttribute($value): string
+    {
+        return $value ?? self::slugToName($this->slug);
+    }
+
+    /**
+     * Get grouped permissions for UI display
+     */
+    public static function getGroupedForUI(): array
+    {
+        $groups = PermissionGroup::active()
+            ->with(['permissions' => fn($q) => $q->active()->orderBy('priority')->orderBy('name')])
+            ->orderBy('position')
+            ->orderBy('name')
+            ->get();
+
+        return $groups->map(fn($group) => [
+            'id' => $group->id,
+            'slug' => $group->slug,
+            'label' => $group->name,
+            'icon' => $group->icon,
+            'plugin' => $group->plugin_slug,
+            'permissions' => $group->permissions->map(fn($p) => [
+                'id' => $p->id,
+                'slug' => $p->slug,
+                'name' => $p->name,
+                'label' => $p->label,
+                'description' => $p->description,
+                'is_dangerous' => $p->is_dangerous,
+            ])->toArray(),
+        ])->toArray();
     }
 }
