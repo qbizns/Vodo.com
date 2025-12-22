@@ -90,7 +90,7 @@
                 <a href="{{ route('admin.plugins.index') }}" class="btn-secondary">
                     {{ __t('common.cancel') }}
                 </a>
-                <button type="button" class="btn-primary" id="nextStep1" onclick="goToStep2()" {{ $fromMarketplace ? '' : 'disabled' }}>
+                <button type="button" class="btn-primary" id="nextStep1" data-wizard-action="step2" {{ $fromMarketplace ? '' : 'disabled' }}>
                     {{ __t('plugins.next_dependencies') }}
                     @include('backend.partials.icon', ['icon' => 'arrowRight'])
                 </button>
@@ -116,14 +116,14 @@
             </div>
 
             <div class="wizard-actions">
-                <button type="button" class="btn-secondary" onclick="goToStep(1)">
+                <button type="button" class="btn-secondary" data-wizard-action="goto" data-step="1">
                     @include('backend.partials.icon', ['icon' => 'arrowLeft'])
                     {{ __t('common.back') }}
                 </button>
-                <button type="button" class="btn-secondary" onclick="cancelInstall()">
+                <button type="button" class="btn-secondary" data-wizard-action="cancel">
                     {{ __t('common.cancel') }}
                 </button>
-                <button type="button" class="btn-primary" id="nextStep2" onclick="goToStep3()" disabled>
+                <button type="button" class="btn-primary" id="nextStep2" data-wizard-action="step3" disabled>
                     {{ __t('plugins.next_permissions') }}
                     @include('backend.partials.icon', ['icon' => 'arrowRight'])
                 </button>
@@ -148,14 +148,14 @@
             </div>
 
             <div class="wizard-actions">
-                <button type="button" class="btn-secondary" onclick="goToStep(2)">
+                <button type="button" class="btn-secondary" data-wizard-action="goto" data-step="2">
                     @include('backend.partials.icon', ['icon' => 'arrowLeft'])
                     {{ __t('common.back') }}
                 </button>
-                <button type="button" class="btn-secondary" onclick="cancelInstall()">
+                <button type="button" class="btn-secondary" data-wizard-action="cancel">
                     {{ __t('common.cancel') }}
                 </button>
-                <button type="button" class="btn-primary" id="nextStep3" onclick="goToStep4()" disabled>
+                <button type="button" class="btn-primary" id="nextStep3" data-wizard-action="step4" disabled>
                     {{ __t('plugins.next_install') }}
                     @include('backend.partials.icon', ['icon' => 'arrowRight'])
                 </button>
@@ -219,7 +219,7 @@
             <div class="install-log" id="installLog"></div>
 
             <div class="wizard-actions">
-                <button type="button" class="btn-secondary" id="cancelInstallBtn" onclick="cancelInstall()">
+                <button type="button" class="btn-secondary" id="cancelInstallBtn" data-wizard-action="cancel">
                     {{ __t('common.cancel') }}
                 </button>
             </div>
@@ -267,20 +267,57 @@ let currentStep = 1;
 let selectedSlug = '{{ $slug ?? '' }}';
 let uploadedFile = null;
 
-// Initialize
-$(document).ready(function() {
-    initUploadZone();
-    initMarketplaceSearch();
-    
-    if (selectedSlug) {
-        // Pre-selected from marketplace
-        checkRequirements();
+// Initialize - use IIFE to ensure it runs on PJAX load too
+(function() {
+    function initWizard() {
+        initUploadZone();
+        initMarketplaceSearch();
+        
+        if (selectedSlug) {
+            // Pre-selected from marketplace - skip to step 2
+            goToStep(2);
+            checkRequirements();
+        }
     }
     
-    $('#acceptPermissions').on('change', function() {
-        $('#nextStep3').prop('disabled', !this.checked);
-    });
-});
+    // Run on document ready
+    if (document.readyState === 'loading') {
+        $(document).ready(initWizard);
+    } else {
+        initWizard();
+    }
+    
+    // Event delegation for checkbox - works with PJAX
+    $(document).off('change.installWizard', '#acceptPermissions')
+        .on('change.installWizard', '#acceptPermissions', function() {
+            $('#nextStep3').prop('disabled', !this.checked);
+        });
+    
+    // Event delegation for wizard actions - CSP compliant
+    $(document).off('click.installWizard', '[data-wizard-action]')
+        .on('click.installWizard', '[data-wizard-action]', function(e) {
+            e.preventDefault();
+            var action = $(this).data('wizard-action');
+            
+            switch(action) {
+                case 'step2':
+                    goToStep2();
+                    break;
+                case 'step3':
+                    goToStep3();
+                    break;
+                case 'step4':
+                    goToStep4();
+                    break;
+                case 'goto':
+                    goToStep(parseInt($(this).data('step')));
+                    break;
+                case 'cancel':
+                    cancelInstall();
+                    break;
+            }
+        });
+})();
 
 function initUploadZone() {
     const zone = document.getElementById('uploadZone');
