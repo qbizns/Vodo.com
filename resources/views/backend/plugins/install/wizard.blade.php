@@ -315,7 +315,7 @@ function initUploadZone() {
 
 function handleFile(file) {
     if (!file.name.endsWith('.zip')) {
-        alert('{{ __t("plugins.only_zip") }}');
+        Vodo.notify.error('{{ __t("plugins.only_zip") }}');
         return;
     }
     
@@ -406,7 +406,7 @@ function checkRequirements() {
             checkDependencies();
         },
         error: function(xhr) {
-            alert(xhr.responseJSON?.message || '{{ __t("plugins.requirements_check_failed") }}');
+            Vodo.notify.error(xhr.responseJSON?.message || '{{ __t("plugins.requirements_check_failed") }}');
             goToStep(1);
         }
     });
@@ -449,7 +449,7 @@ function checkDependencies() {
             }
         },
         error: function(xhr) {
-            alert(xhr.responseJSON?.message || '{{ __t("plugins.dependency_check_failed") }}');
+            Vodo.notify.error(xhr.responseJSON?.message || '{{ __t("plugins.dependency_check_failed") }}');
         }
     });
 }
@@ -620,13 +620,19 @@ function failInstallation(message) {
 }
 
 function cancelInstall() {
-    if (confirm('{{ __t("plugins.confirm_cancel_install") }}')) {
-        if (window.Vodo && Vodo.router) {
-            Vodo.router.navigate('{{ route("admin.plugins.index") }}');
-        } else {
-            window.location.href = '{{ route("admin.plugins.index") }}';
+    Vodo.modals.confirm('{{ __t("plugins.confirm_cancel_install") }}', {
+        title: '{{ __t("common.confirm") }}',
+        confirmText: '{{ __t("common.yes_cancel") }}',
+        confirmClass: 'btn-warning'
+    }).then(function(confirmed) {
+        if (confirmed) {
+            if (window.Vodo && Vodo.router) {
+                Vodo.router.navigate('{{ route("admin.plugins.index") }}');
+            } else {
+                window.location.href = '{{ route("admin.plugins.index") }}';
+            }
         }
-    }
+    });
 }
 </script>
 @endpush

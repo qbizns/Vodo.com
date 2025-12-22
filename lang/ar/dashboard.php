@@ -30,6 +30,7 @@ return [
     'widgets' => 'الودجات',
     'add_widget' => 'إضافة ودجت',
     'remove_widget' => 'إزالة ودجت',
+    'confirm_remove_widget' => 'هل أنت متأكد من إزالة هذا الودجت؟',
     'configure_widget' => 'تكوين ودجت',
     'widget_settings' => 'إعدادات الودجت',
     'refresh_widget' => 'تحديث الودجت',

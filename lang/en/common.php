@@ -31,6 +31,7 @@ return [
     'continue' => 'Continue',
     'apply' => 'Apply',
     'reset' => 'Reset',
+    'yes_cancel' => 'Yes, Cancel',
     'clear' => 'Clear',
     'search' => 'Search',
     'filter' => 'Filter',

@@ -389,7 +389,18 @@
         }
 
         async removeWidget(widgetId, widgetElement) {
-            if (!confirm('Are you sure you want to remove this widget?')) return;
+            const confirmed = await new Promise(resolve => {
+                if (window.Vodo && Vodo.modals) {
+                    Vodo.modals.confirm('{{ __t("dashboard.confirm_remove_widget") }}', {
+                        title: '{{ __t("dashboard.remove_widget") }}',
+                        confirmText: '{{ __t("common.remove") }}',
+                        confirmClass: 'btn-danger'
+                    }).then(resolve);
+                } else {
+                    resolve(confirm('Are you sure you want to remove this widget?'));
+                }
+            });
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`/dashboard/widgets/${widgetId}`, {

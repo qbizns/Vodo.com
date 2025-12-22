@@ -88,7 +88,8 @@
                         @endif
                         
                         <form action="{{ route($routePrefix . '.plugins.destroy', $plugin->slug) }}" method="POST" class="inline-form" 
-                              onsubmit="return confirm('{{ __t('plugins.confirm_uninstall') }}')">
+                              data-confirm="{{ __t('plugins.confirm_uninstall') }}"
+                              data-confirm-title="{{ __t('plugins.uninstall_plugin') }}">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger">

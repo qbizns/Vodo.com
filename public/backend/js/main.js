@@ -1006,6 +1006,31 @@ function initEventHandlers() {
         location.reload();
     });
 
+    // CSP-compliant confirmation for forms with data-confirm attribute
+    $(document).on('submit', 'form[data-confirm]', function (e) {
+        e.preventDefault();
+        const $form = $(this);
+        const message = $form.data('confirm');
+        const title = $form.data('confirm-title') || 'Confirm';
+        
+        if (window.Vodo && Vodo.modals) {
+            Vodo.modals.confirm(message, {
+                title: title,
+                confirmText: 'Confirm',
+                confirmClass: 'btn-danger'
+            }).then(function(confirmed) {
+                if (confirmed) {
+                    // Remove the data-confirm to prevent infinite loop and submit
+                    $form.removeAttr('data-confirm');
+                    $form[0].submit();
+                }
+            });
+        } else if (confirm(message)) {
+            $form.removeAttr('data-confirm');
+            $form[0].submit();
+        }
+    });
+
     // Navigation board item toggle
     $(document).on('click', '.nav-board-item', function () {
         const itemId = $(this).data('item-id');

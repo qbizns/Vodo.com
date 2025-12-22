@@ -31,6 +31,7 @@ return [
     'continue' => 'متابعة',
     'apply' => 'تطبيق',
     'reset' => 'إعادة تعيين',
+    'yes_cancel' => 'نعم، إلغاء',
     'clear' => 'مسح',
     'search' => 'بحث',
     'filter' => 'تصفية',

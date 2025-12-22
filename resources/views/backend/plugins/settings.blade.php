@@ -162,19 +162,25 @@ $('#settingsForm').on('submit', function(e) {
 });
 
 function resetToDefaults() {
-    if (confirm('{{ __t("plugins.confirm_reset_defaults") }}')) {
-        // Reset all form fields to their default values
-        $('#settingsForm')[0].reset();
-        showNotification('info', '{{ __t("plugins.defaults_restored") }}');
-    }
+    Vodo.modals.confirm('{{ __t("plugins.confirm_reset_defaults") }}', {
+        title: '{{ __t("plugins.reset_defaults") }}',
+        confirmText: '{{ __t("common.reset") }}',
+        confirmClass: 'btn-warning'
+    }).then(function(confirmed) {
+        if (confirmed) {
+            // Reset all form fields to their default values
+            $('#settingsForm')[0].reset();
+            Vodo.notify.info('{{ __t("plugins.defaults_restored") }}');
+        }
+    });
 }
 
 function showNotification(type, message) {
-    // Use existing notification system if available
-    if (typeof window.showAlert === 'function') {
+    // Use Vodo notification system
+    if (window.Vodo && Vodo.notify) {
+        Vodo.notify[type] ? Vodo.notify[type](message) : Vodo.notify.info(message);
+    } else if (typeof window.showAlert === 'function') {
         window.showAlert(type, message);
-    } else {
-        alert(message);
     }
 }
 </script>

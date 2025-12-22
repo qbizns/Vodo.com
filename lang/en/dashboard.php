@@ -34,6 +34,7 @@ return [
     'widgets' => 'Widgets',
     'add_widget' => 'Add Widget',
     'remove_widget' => 'Remove Widget',
+    'confirm_remove_widget' => 'Are you sure you want to remove this widget?',
     'configure_widget' => 'Configure Widget',
     'widget_settings' => 'Widget Settings',
     'refresh_widget' => 'Refresh Widget',
