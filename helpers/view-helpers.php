@@ -275,7 +275,7 @@ if (!function_exists('xpath_nth')) {
 if (!function_exists('csp_nonce')) {
     /**
      * Get the CSP nonce for the current request.
-     * 
+     *
      * Use this in Blade templates for inline scripts:
      * <script nonce="{{ csp_nonce() }}">...</script>
      *
@@ -284,5 +284,351 @@ if (!function_exists('csp_nonce')) {
     function csp_nonce(): string
     {
         return request()->attributes->get('csp_nonce', '');
+    }
+}
+
+// =========================================================================
+// View Type Registry Helpers
+// =========================================================================
+
+if (!function_exists('register_view_type')) {
+    /**
+     * Register a custom view type.
+     *
+     * @param \App\Contracts\ViewTypeContract $type The view type instance
+     * @param string|null $pluginSlug Owner plugin slug
+     * @return \App\Services\View\ViewTypeRegistry
+     */
+    function register_view_type(\App\Contracts\ViewTypeContract $type, ?string $pluginSlug = null): \App\Services\View\ViewTypeRegistry
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->register($type, $pluginSlug);
+    }
+}
+
+if (!function_exists('get_view_type')) {
+    /**
+     * Get a view type by name.
+     *
+     * @param string $name View type name
+     * @return \App\Contracts\ViewTypeContract|null
+     */
+    function get_view_type(string $name): ?\App\Contracts\ViewTypeContract
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->get($name);
+    }
+}
+
+if (!function_exists('view_type_exists')) {
+    /**
+     * Check if a view type exists.
+     *
+     * @param string $name View type name
+     * @return bool
+     */
+    function view_type_exists(string $name): bool
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->has($name);
+    }
+}
+
+if (!function_exists('get_view_types')) {
+    /**
+     * Get all registered view types.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    function get_view_types(): \Illuminate\Support\Collection
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->all();
+    }
+}
+
+if (!function_exists('get_view_types_by_category')) {
+    /**
+     * Get view types by category.
+     *
+     * @param string $category Category name (data, board, analytics, workflow, special, utility)
+     * @return \Illuminate\Support\Collection
+     */
+    function get_view_types_by_category(string $category): \Illuminate\Support\Collection
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->getByCategory($category);
+    }
+}
+
+if (!function_exists('view_type_supports')) {
+    /**
+     * Check if a view type supports a specific feature.
+     *
+     * @param string $typeName View type name
+     * @param string $feature Feature name
+     * @return bool
+     */
+    function view_type_supports(string $typeName, string $feature): bool
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->supports($typeName, $feature);
+    }
+}
+
+if (!function_exists('validate_view_definition')) {
+    /**
+     * Validate a view definition against its type schema.
+     *
+     * @param array $definition View definition with 'type' key
+     * @return array Validation errors (empty if valid)
+     */
+    function validate_view_definition(array $definition): array
+    {
+        return app(\App\Services\View\ViewTypeRegistry::class)->validate($definition);
+    }
+}
+
+if (!function_exists('generate_default_view')) {
+    /**
+     * Generate a default view definition for an entity.
+     *
+     * @param string $typeName View type name
+     * @param string $entityName Entity name
+     * @return array|null View definition or null if type not found
+     */
+    function generate_default_view(string $typeName, string $entityName): ?array
+    {
+        $entity = \App\Models\EntityDefinition::where('name', $entityName)->first();
+        if (!$entity) {
+            return null;
+        }
+
+        $fields = \App\Models\EntityField::where('entity_name', $entityName)
+            ->orderBy('form_order')
+            ->get();
+
+        return app(\App\Services\View\ViewTypeRegistry::class)->generateDefault($typeName, $entityName, $fields);
+    }
+}
+
+// =========================================================================
+// View Builder Helpers
+// =========================================================================
+
+if (!function_exists('view_builder')) {
+    /**
+     * Create a new ViewBuilder instance.
+     *
+     * @param string $viewType View type (list, form, kanban, etc.)
+     * @param string $entityName Entity name
+     * @return \App\Services\View\ViewBuilder
+     */
+    function view_builder(string $viewType, string $entityName): \App\Services\View\ViewBuilder
+    {
+        return \App\Services\View\ViewBuilder::make($viewType, $entityName);
+    }
+}
+
+if (!function_exists('list_view')) {
+    /**
+     * Create a list view builder.
+     *
+     * @param string $entityName Entity name
+     * @return \App\Services\View\ViewBuilder
+     */
+    function list_view(string $entityName): \App\Services\View\ViewBuilder
+    {
+        return \App\Services\View\ViewBuilder::list($entityName);
+    }
+}
+
+if (!function_exists('form_view')) {
+    /**
+     * Create a form view builder.
+     *
+     * @param string $entityName Entity name
+     * @return \App\Services\View\ViewBuilder
+     */
+    function form_view(string $entityName): \App\Services\View\ViewBuilder
+    {
+        return \App\Services\View\ViewBuilder::form($entityName);
+    }
+}
+
+if (!function_exists('kanban_view')) {
+    /**
+     * Create a kanban view builder.
+     *
+     * @param string $entityName Entity name
+     * @return \App\Services\View\ViewBuilder
+     */
+    function kanban_view(string $entityName): \App\Services\View\ViewBuilder
+    {
+        return \App\Services\View\ViewBuilder::kanban($entityName);
+    }
+}
+
+if (!function_exists('calendar_view')) {
+    /**
+     * Create a calendar view builder.
+     *
+     * @param string $entityName Entity name
+     * @return \App\Services\View\ViewBuilder
+     */
+    function calendar_view(string $entityName): \App\Services\View\ViewBuilder
+    {
+        return \App\Services\View\ViewBuilder::calendar($entityName);
+    }
+}
+
+if (!function_exists('dashboard_view')) {
+    /**
+     * Create a dashboard view builder.
+     *
+     * @param string $entityName Entity name (optional)
+     * @return \App\Services\View\ViewBuilder
+     */
+    function dashboard_view(string $entityName = ''): \App\Services\View\ViewBuilder
+    {
+        return \App\Services\View\ViewBuilder::dashboard($entityName);
+    }
+}
+
+// =========================================================================
+// UI View Definition Helpers (Odoo-style views)
+// =========================================================================
+
+if (!function_exists('register_ui_view')) {
+    /**
+     * Register a UI view definition (Odoo-style).
+     *
+     * @param string $entityName Entity name
+     * @param string $viewType View type
+     * @param array $definition View definition
+     * @param string|null $pluginSlug Plugin slug
+     * @param string|null $inheritFrom Parent view slug
+     * @return \App\Models\UIViewDefinition
+     */
+    function register_ui_view(
+        string $entityName,
+        string $viewType,
+        array $definition,
+        ?string $pluginSlug = null,
+        ?string $inheritFrom = null
+    ): \App\Models\UIViewDefinition {
+        return app(\App\Services\View\ViewRegistry::class)->registerView(
+            $entityName,
+            $viewType,
+            $definition,
+            $pluginSlug,
+            $inheritFrom
+        );
+    }
+}
+
+if (!function_exists('register_form_view')) {
+    /**
+     * Register a form view for an entity.
+     *
+     * @param string $entityName Entity name
+     * @param array $definition View definition
+     * @param string|null $pluginSlug Plugin slug
+     * @param string|null $inheritFrom Parent view slug
+     * @return \App\Models\UIViewDefinition
+     */
+    function register_form_view(
+        string $entityName,
+        array $definition,
+        ?string $pluginSlug = null,
+        ?string $inheritFrom = null
+    ): \App\Models\UIViewDefinition {
+        return app(\App\Services\View\ViewRegistry::class)->registerFormView(
+            $entityName,
+            $definition,
+            $pluginSlug,
+            $inheritFrom
+        );
+    }
+}
+
+if (!function_exists('register_list_view')) {
+    /**
+     * Register a list view for an entity.
+     *
+     * @param string $entityName Entity name
+     * @param array $definition View definition
+     * @param string|null $pluginSlug Plugin slug
+     * @param string|null $inheritFrom Parent view slug
+     * @return \App\Models\UIViewDefinition
+     */
+    function register_list_view(
+        string $entityName,
+        array $definition,
+        ?string $pluginSlug = null,
+        ?string $inheritFrom = null
+    ): \App\Models\UIViewDefinition {
+        return app(\App\Services\View\ViewRegistry::class)->registerListView(
+            $entityName,
+            $definition,
+            $pluginSlug,
+            $inheritFrom
+        );
+    }
+}
+
+if (!function_exists('register_kanban_view')) {
+    /**
+     * Register a kanban view for an entity.
+     *
+     * @param string $entityName Entity name
+     * @param array $definition View definition
+     * @param string|null $pluginSlug Plugin slug
+     * @param string|null $inheritFrom Parent view slug
+     * @return \App\Models\UIViewDefinition
+     */
+    function register_kanban_view(
+        string $entityName,
+        array $definition,
+        ?string $pluginSlug = null,
+        ?string $inheritFrom = null
+    ): \App\Models\UIViewDefinition {
+        return app(\App\Services\View\ViewRegistry::class)->registerKanbanView(
+            $entityName,
+            $definition,
+            $pluginSlug,
+            $inheritFrom
+        );
+    }
+}
+
+if (!function_exists('get_ui_view')) {
+    /**
+     * Get a UI view definition.
+     *
+     * @param string $entityName Entity name
+     * @param string $viewType View type
+     * @param string|null $slug Specific view slug
+     * @return array|null
+     */
+    function get_ui_view(string $entityName, string $viewType, ?string $slug = null): ?array
+    {
+        return app(\App\Services\View\ViewRegistry::class)->getView($entityName, $viewType, $slug);
+    }
+}
+
+if (!function_exists('extend_ui_view')) {
+    /**
+     * Extend an existing UI view with XPath modifications.
+     *
+     * @param string $parentSlug Parent view slug
+     * @param array $modifications XPath-style modifications
+     * @param string|null $pluginSlug Plugin slug
+     * @return \App\Models\UIViewDefinition
+     */
+    function extend_ui_view(
+        string $parentSlug,
+        array $modifications,
+        ?string $pluginSlug = null
+    ): \App\Models\UIViewDefinition {
+        return app(\App\Services\View\ViewRegistry::class)->extendView(
+            $parentSlug,
+            $modifications,
+            $pluginSlug
+        );
     }
 }

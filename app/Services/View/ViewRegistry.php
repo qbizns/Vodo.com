@@ -4,55 +4,52 @@ declare(strict_types=1);
 
 namespace App\Services\View;
 
+use App\Contracts\ViewRegistryContract;
+use App\Contracts\ViewTypeRegistryContract;
 use App\Models\UIViewDefinition;
 use App\Models\EntityDefinition;
 use App\Models\EntityField;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * View Registry - Manages declarative UI views like Odoo.
- * 
+ * View Registry - Manages declarative UI views (Odoo/Salesforce-inspired).
+ *
+ * This is the central registry for all view definitions in the system.
+ * It integrates with ViewTypeRegistry for type validation and default generation.
+ *
  * Features:
- * - Form view definitions (field groups, widgets, layouts)
- * - List/table view definitions (columns, sorting, grouping)
- * - Kanban view definitions (card templates, grouping)
- * - Search view definitions (filters, groups)
- * - View inheritance and extension
- * 
- * Example form view:
- * 
+ * - 20 canonical view types (list, form, kanban, calendar, etc.)
+ * - View inheritance and XPath-style extensions
+ * - Plugin-aware view registration
+ * - Automatic view generation from entity definitions
+ * - Widget system for field rendering
+ * - Caching for performance
+ *
+ * @example Register a form view
+ * ```php
  * $viewRegistry->registerFormView('invoice', [
  *     'groups' => [
  *         'header' => [
- *             'label' => null,
  *             'columns' => 2,
  *             'fields' => [
  *                 'partner_id' => ['widget' => 'many2one', 'required' => true],
  *                 'date' => ['widget' => 'date'],
  *             ],
  *         ],
- *         'lines' => [
- *             'label' => 'Invoice Lines',
- *             'fields' => [
- *                 'line_ids' => ['widget' => 'one2many', 'tree_view' => 'invoice_line_tree'],
- *             ],
- *         ],
- *         'totals' => [
- *             'label' => 'Totals',
- *             'fields' => [
- *                 'subtotal' => ['readonly' => true],
- *                 'tax_amount' => ['readonly' => true],
- *                 'total' => ['readonly' => true, 'widget' => 'monetary'],
- *             ],
- *         ],
- *     ],
- *     'buttons' => [
- *         ['name' => 'action_confirm', 'label' => 'Confirm', 'type' => 'object'],
- *         ['name' => 'action_cancel', 'label' => 'Cancel', 'type' => 'object', 'confirm' => 'Are you sure?'],
  *     ],
  * ]);
+ * ```
+ *
+ * @example Extend an existing view
+ * ```php
+ * $viewRegistry->extendView('invoice_form', [
+ *     ['xpath' => "//field[@name='amount']", 'position' => 'after', 'content' => [
+ *         'discount' => ['widget' => 'percentage'],
+ *     ]],
+ * ], 'my-plugin');
+ * ```
  */
-class ViewRegistry
+class ViewRegistry implements ViewRegistryContract
 {
     /**
      * Cache prefix.
@@ -60,9 +57,14 @@ class ViewRegistry
     protected const CACHE_PREFIX = 'view_registry:';
 
     /**
-     * Cache TTL.
+     * Cache TTL in seconds.
      */
     protected const CACHE_TTL = 3600;
+
+    /**
+     * View type registry.
+     */
+    protected ViewTypeRegistry $typeRegistry;
 
     /**
      * Widget registry.
@@ -94,9 +96,18 @@ class ViewRegistry
         'money' => 'monetary',
     ];
 
-    public function __construct()
+    public function __construct(?ViewTypeRegistry $typeRegistry = null)
     {
+        $this->typeRegistry = $typeRegistry ?? new ViewTypeRegistry();
         $this->registerBuiltInWidgets();
+    }
+
+    /**
+     * Get the view type registry.
+     */
+    public function getTypeRegistry(): ViewTypeRegistryContract
+    {
+        return $this->typeRegistry;
     }
 
     /**
@@ -173,6 +184,8 @@ class ViewRegistry
 
     /**
      * Register a view of any type.
+     *
+     * @throws \InvalidArgumentException If the view type is invalid
      */
     public function registerView(
         string $entityName,
@@ -181,8 +194,29 @@ class ViewRegistry
         ?string $pluginSlug = null,
         ?string $inheritFrom = null
     ): UIViewDefinition {
+        // Validate view type exists
+        $type = $this->typeRegistry->get($viewType);
+        if (!$type) {
+            throw new \InvalidArgumentException("Unknown view type: {$viewType}");
+        }
+
+        // Validate entity requirement
+        if ($type->requiresEntity() && empty($entityName)) {
+            throw new \InvalidArgumentException("View type '{$viewType}' requires an entity");
+        }
+
+        // Validate the definition against the view type schema
+        $definition['type'] = $viewType;
+        $definition['entity'] = $entityName;
+        $errors = $type->validate($definition);
+        if (!empty($errors)) {
+            throw new \InvalidArgumentException(
+                "Invalid view definition: " . implode(', ', $errors)
+            );
+        }
+
         $slug = $definition['slug'] ?? "{$entityName}_{$viewType}";
-        
+
         if ($pluginSlug) {
             $slug = "{$pluginSlug}_{$slug}";
         }
@@ -196,15 +230,17 @@ class ViewRegistry
         $view = UIViewDefinition::updateOrCreate(
             ['slug' => $slug],
             [
-                'name' => $definition['name'] ?? ucfirst($entityName) . ' ' . ucfirst($viewType),
+                'name' => $definition['name'] ?? ucfirst($entityName) . ' ' . ucfirst(str_replace('-', ' ', $viewType)),
                 'entity_name' => $entityName,
                 'view_type' => $viewType,
                 'priority' => $definition['priority'] ?? 16,
                 'arch' => $definition,
-                'config' => $definition['config'] ?? [],
+                'config' => array_merge($type->getDefaultConfig(), $definition['config'] ?? []),
                 'inherit_id' => $inheritId,
                 'plugin_slug' => $pluginSlug,
                 'is_active' => true,
+                'icon' => $definition['icon'] ?? $type->getIcon(),
+                'description' => $definition['description'] ?? $type->getDescription(),
             ]
         );
 
@@ -275,6 +311,9 @@ class ViewRegistry
 
     /**
      * Generate default view from entity fields.
+     *
+     * Uses the ViewTypeRegistry to generate type-specific default views.
+     * Falls back to legacy generation for basic types if needed.
      */
     public function generateDefaultView(string $entityName, string $viewType): array
     {
@@ -287,6 +326,13 @@ class ViewRegistry
             ->orderBy('form_order')
             ->get();
 
+        // Try to generate using the view type registry first
+        $type = $this->typeRegistry->get($viewType);
+        if ($type) {
+            return $type->generateDefault($entityName, $fields);
+        }
+
+        // Fallback for legacy view types
         return match ($viewType) {
             UIViewDefinition::TYPE_FORM => $this->generateDefaultFormView($entity, $fields),
             UIViewDefinition::TYPE_LIST => $this->generateDefaultListView($entity, $fields),
