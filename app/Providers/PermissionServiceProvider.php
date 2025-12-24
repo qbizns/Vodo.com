@@ -6,7 +6,10 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
 use App\Services\Permission\PermissionRegistry;
+use App\Services\Plugins\HookManager;
+use App\Services\Plugins\Contracts\PluginInterface;
 use App\Models\Permission;
+use App\Models\Plugin;
 use App\Models\Role;
 
 class PermissionServiceProvider extends ServiceProvider
@@ -52,9 +55,41 @@ class PermissionServiceProvider extends ServiceProvider
             $this->app->booted(fn() => $this->createDefaults());
         }
 
+        // Register plugin lifecycle hooks for permissions
+        $this->registerPluginHooks();
+
         if (function_exists('do_action')) {
             do_action('permissions_ready');
         }
+    }
+
+    /**
+     * Register plugin lifecycle hooks for permission management.
+     */
+    protected function registerPluginHooks(): void
+    {
+        // Only register if HookManager is available
+        if (!$this->app->bound(HookManager::class)) {
+            return;
+        }
+
+        $hooks = $this->app->make(HookManager::class);
+        $registry = $this->app->make(PermissionRegistry::class);
+
+        // Listen for plugin activation - register permissions
+        $hooks->addAction(HookManager::HOOK_PLUGIN_ACTIVATED, function (Plugin $plugin, PluginInterface $instance) use ($registry) {
+            $registry->registerPluginPermissions($plugin, $instance);
+        });
+
+        // Listen for plugin deactivation - hide permissions
+        $hooks->addAction(HookManager::HOOK_PLUGIN_DEACTIVATED, function (Plugin $plugin, PluginInterface $instance) use ($registry) {
+            $registry->onPluginDisabled($plugin->slug);
+        });
+
+        // Listen for plugin uninstall - remove permissions
+        $hooks->addAction(HookManager::HOOK_PLUGIN_UNINSTALLED, function (Plugin $plugin) use ($registry) {
+            $registry->onPluginUninstalled($plugin->slug);
+        });
     }
 
     protected function registerMiddleware(): void

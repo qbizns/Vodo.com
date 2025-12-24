@@ -97,17 +97,71 @@ class PermissionController extends Controller
             ->ordered()
             ->get();
 
+        // Get active plugins for filter
+        $plugins = \App\Models\Plugin::active()->get();
+
         // Build matrix data
         $matrix = [];
+        $inheritedMatrix = [];
+        $matrixData = [
+            'permissions' => [],
+            'inherited' => [],
+            'grantable' => [],
+        ];
+        $groupedPermissions = [];
+        
+        // Build role-permission lookup maps for view
+        $rolePermissionMatrix = [];
+        $roleInheritedMatrix = [];
+        foreach ($roles as $role) {
+            $rolePermissionMatrix[$role->id] = [];
+            $roleInheritedMatrix[$role->id] = [];
+            foreach ($role->grantedPermissions as $perm) {
+                $rolePermissionMatrix[$role->id][$perm->id] = true;
+            }
+            // Get inherited permissions (from parent roles)
+            $allPerms = $role->getAllPermissions();
+            foreach ($allPerms as $perm) {
+                if (!isset($rolePermissionMatrix[$role->id][$perm->id])) {
+                    $roleInheritedMatrix[$role->id][$perm->id] = true;
+                }
+            }
+        }
+
         foreach ($groups as $group) {
             $groupData = [
                 'group' => $group,
+                'permissions' => [],
+            ];
+            
+            // Build grouped permissions structure for view
+            $groupedPermissions[$group->slug] = [
+                'name' => $group->name,
+                'icon' => $group->icon ?? 'folder',
+                'plugin' => $group->plugin_slug,
                 'permissions' => [],
             ];
 
             foreach ($group->permissions as $permission) {
                 $permData = [
                     'permission' => $permission,
+                    'roles' => [],
+                ];
+                
+                // Build permission data for grouped view
+                $dependencies = $permission->dependencies ?? [];
+                if ($dependencies instanceof \Illuminate\Support\Collection) {
+                    $dependencies = $dependencies->toArray();
+                }
+                
+                $permissionViewData = [
+                    'id' => $permission->id,
+                    'slug' => $permission->slug,
+                    'name' => $permission->name,
+                    'label' => $permission->label ?? $permission->name,
+                    'description' => $permission->description,
+                    'is_dangerous' => $permission->is_dangerous ?? false,
+                    'dependencies' => is_array($dependencies) ? $dependencies : [],
                     'roles' => [],
                 ];
 
@@ -119,17 +173,34 @@ class PermissionController extends Controller
                         'granted' => $granted,
                         'inherited' => $inherited,
                     ];
+                    
+                    $permissionViewData['roles'][$role->id] = [
+                        'granted' => $granted,
+                        'inherited' => $inherited,
+                    ];
+
+                    // Build flat matrixData for JS
+                    $key = "{$role->id}-{$permission->id}";
+                    $matrixData['permissions'][$key] = $granted;
+                    $matrixData['inherited'][$key] = $inherited;
+                    $matrixData['grantable'][$key] = true; // TODO: implement grantable logic
                 }
 
                 $groupData['permissions'][] = $permData;
+                $groupedPermissions[$group->slug]['permissions'][] = $permissionViewData;
             }
 
             $matrix[] = $groupData;
         }
 
-        return view('backend.permissions.permissions.matrix', [
+        return view('backend.permissions.matrix.index', [
             'roles' => $roles,
-            'matrix' => $matrix,
+            'groups' => $groups,
+            'plugins' => $plugins,
+            'matrix' => $rolePermissionMatrix,
+            'inheritedMatrix' => $roleInheritedMatrix,
+            'matrixData' => $matrixData,
+            'groupedPermissions' => $groupedPermissions,
             'currentPage' => 'permissions-matrix',
             'currentPageLabel' => 'Permission Matrix',
             'currentPageIcon' => 'layoutGrid',
@@ -413,8 +484,9 @@ class PermissionController extends Controller
         $permissions = $this->permissionRegistry->getGroupedForUI();
         $roles = Role::active()->ordered()->get();
 
-        return view('backend.permissions.rules.create', [
+        return view('backend.permissions.rules.form', [
             'permissions' => $permissions,
+            'groupedPermissions' => $permissions,
             'roles' => $roles,
             'conditionTypes' => AccessRule::getConditionTypes(),
             'currentPage' => 'permissions-rules',
@@ -428,21 +500,39 @@ class PermissionController extends Controller
      */
     public function storeAccessRule(Request $request): JsonResponse
     {
+        // Transform conditions from form format to normalized format
+        $this->normalizeConditions($request);
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'permissions' => ['required', 'array', 'min:1'],
             'permissions.*' => ['string'],
-            'conditions' => ['required', 'array', 'min:1'],
-            'conditions.*.type' => ['required', 'string'],
-            'conditions.*.operator' => ['required', 'string'],
-            'conditions.*.value' => ['required'],
+            'conditions' => ['nullable', 'array'],
+            'conditions.*.type' => ['required_with:conditions', 'string'],
+            'conditions.*.operator' => ['required_with:conditions', 'string'],
+            'conditions.*.value' => ['nullable'],
             'action' => ['required', 'in:deny,log'],
             'priority' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'is_active' => ['boolean'],
             'retention_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
+        
+        // Ensure conditions is an array (default to empty)
+        $validated['conditions'] = $validated['conditions'] ?? [];
 
+        // Set creator polymorphic relationship
+        $creatorType = null;
+        $creatorId = null;
+        
+        if (auth()->guard('admin')->check()) {
+            $creatorType = \App\Modules\Admin\Models\Admin::class;
+            $creatorId = auth()->guard('admin')->id();
+        } elseif (auth()->guard('web')->check()) {
+            $creatorType = \App\Models\User::class;
+            $creatorId = auth()->guard('web')->id();
+        }
+        
         $rule = AccessRule::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
@@ -452,7 +542,8 @@ class PermissionController extends Controller
             'priority' => $validated['priority'] ?? 100,
             'is_active' => $validated['is_active'] ?? true,
             'retention_days' => $validated['retention_days'] ?? 90,
-            'created_by' => auth()->id(),
+            'creator_type' => $creatorType,
+            'creator_id' => $creatorId,
         ]);
 
         PermissionAudit::logAccessRuleChange($rule, PermissionAudit::ACTION_ACCESS_RULE_CREATED);
@@ -473,9 +564,10 @@ class PermissionController extends Controller
         $permissions = $this->permissionRegistry->getGroupedForUI();
         $roles = Role::active()->ordered()->get();
 
-        return view('backend.permissions.rules.edit', [
+        return view('backend.permissions.rules.form', [
             'rule' => $rule,
             'permissions' => $permissions,
+            'groupedPermissions' => $permissions,
             'roles' => $roles,
             'conditionTypes' => AccessRule::getConditionTypes(),
             'currentPage' => 'permissions-rules',
@@ -489,20 +581,26 @@ class PermissionController extends Controller
      */
     public function updateAccessRule(Request $request, AccessRule $rule): JsonResponse
     {
+        // Transform conditions from form format to normalized format
+        $this->normalizeConditions($request);
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'permissions' => ['required', 'array', 'min:1'],
             'permissions.*' => ['string'],
-            'conditions' => ['required', 'array', 'min:1'],
-            'conditions.*.type' => ['required', 'string'],
-            'conditions.*.operator' => ['required', 'string'],
-            'conditions.*.value' => ['required'],
+            'conditions' => ['nullable', 'array'],
+            'conditions.*.type' => ['required_with:conditions', 'string'],
+            'conditions.*.operator' => ['required_with:conditions', 'string'],
+            'conditions.*.value' => ['nullable'],
             'action' => ['required', 'in:deny,log'],
             'priority' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'is_active' => ['boolean'],
             'retention_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
+        
+        // Ensure conditions is an array (default to empty)
+        $validated['conditions'] = $validated['conditions'] ?? [];
 
         $changes = [];
         foreach (['name', 'description', 'permissions', 'conditions', 'action', 'priority', 'is_active'] as $field) {
@@ -547,6 +645,28 @@ class PermissionController extends Controller
         ]);
     }
 
+    /**
+     * Test access rule with custom parameters
+     */
+    public function testAccessRule(Request $request, AccessRule $rule): JsonResponse
+    {
+        $validated = $request->validate([
+            'time' => ['nullable', 'date_format:H:i'],
+            'day' => ['nullable', 'string'],
+            'ip' => ['nullable', 'string'],
+            'role' => ['nullable', 'string'],
+            'custom' => ['nullable', 'string'],
+            'permission' => ['required', 'string'],
+        ]);
+        
+        $result = $rule->evaluateWithTestData($validated);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $result
+        ]);
+    }
+
     // =========================================================================
     // Audit Log
     // =========================================================================
@@ -584,20 +704,69 @@ class PermissionController extends Controller
         $logs = $query->latest('created_at')->paginate($request->integer('per_page', 50));
 
         $actionCounts = PermissionAudit::getActionCounts();
+        
+        // Action types for filter dropdown
+        $actions = [
+            PermissionAudit::ACTION_ROLE_CREATED => 'Role Created',
+            PermissionAudit::ACTION_ROLE_UPDATED => 'Role Updated',
+            PermissionAudit::ACTION_ROLE_DELETED => 'Role Deleted',
+            PermissionAudit::ACTION_ROLE_DUPLICATED => 'Role Duplicated',
+            PermissionAudit::ACTION_PERMISSIONS_SYNCED => 'Permissions Updated',
+            PermissionAudit::ACTION_USER_ROLE_ASSIGNED => 'Role Assigned',
+            PermissionAudit::ACTION_USER_ROLE_REMOVED => 'Role Removed',
+            PermissionAudit::ACTION_PERMISSION_GRANTED => 'Permission Granted',
+            PermissionAudit::ACTION_PERMISSION_DENIED => 'Permission Denied',
+            PermissionAudit::ACTION_ACCESS_RULE_CREATED => 'Access Rule Created',
+            PermissionAudit::ACTION_ACCESS_RULE_UPDATED => 'Access Rule Updated',
+            PermissionAudit::ACTION_ACCESS_RULE_DELETED => 'Access Rule Deleted',
+        ];
+        
+        // Users for filter dropdown
+        $users = User::select('id', 'name')->orderBy('name')->get();
 
         return view('backend.permissions.audit.index', [
             'logs' => $logs,
             'actionCounts' => $actionCounts,
+            'actions' => $actions,
+            'users' => $users,
             'filters' => [
-                'search' => $search,
-                'action' => $action,
-                'target_type' => $targetType,
+                'search' => $search ?? null,
+                'action' => $action ?? null,
+                'target_type' => $targetType ?? null,
                 'from' => $request->input('from'),
                 'to' => $request->input('to'),
             ],
             'currentPage' => 'permissions-audit',
             'currentPageLabel' => 'Audit Log',
             'currentPageIcon' => 'clipboardList',
+        ]);
+    }
+
+    /**
+     * Get single audit log entry details (JSON response)
+     */
+    public function auditLogShow(PermissionAudit $audit): JsonResponse
+    {
+        $log = $audit;
+        
+        return response()->json([
+            'success' => true,
+            'log' => [
+                'id' => $log->id,
+                'action' => $log->action,
+                'action_label' => $log->action_label ?? ucwords(str_replace('_', ' ', $log->action)),
+                'created_at_formatted' => $log->created_at->format('F j, Y \a\t H:i:s'),
+                'created_at_relative' => $log->created_at->diffForHumans(),
+                'user_name' => $log->user?->name ?? 'System',
+                'user_email' => $log->user?->email,
+                'ip_address' => $log->ip_address,
+                'user_agent' => $log->user_agent,
+                'target_type' => $log->target_type,
+                'target_id' => $log->target_id,
+                'target_name' => $log->target_name,
+                'changes' => $log->changes,
+                'affected_users_count' => $log->affected_users_count ?? null,
+            ],
         ]);
     }
 
@@ -678,5 +847,60 @@ class PermissionController extends Controller
                 'user_count' => $r->getUserCount(),
             ]),
         ]);
+    }
+    
+    /**
+     * Normalize conditions from form format to storage format.
+     * Handles value_from/value_to (time) and days[] (day) formats.
+     */
+    protected function normalizeConditions(Request $request): void
+    {
+        $conditions = $request->input('conditions', []);
+        
+        if (!is_array($conditions)) {
+            return;
+        }
+        
+        $normalized = [];
+        foreach ($conditions as $index => $condition) {
+            $type = $condition['type'] ?? 'time';
+            $operator = $condition['operator'] ?? 'between';
+            $value = $condition['value'] ?? null;
+            
+            // If value is already set, use it
+            if ($value !== null) {
+                $normalized[$index] = [
+                    'type' => $type,
+                    'operator' => $operator,
+                    'value' => $value,
+                ];
+                continue;
+            }
+            
+            // Transform based on type
+            switch ($type) {
+                case 'time':
+                    $from = $condition['value_from'] ?? '09:00';
+                    $to = $condition['value_to'] ?? '17:00';
+                    $value = [$from, $to];
+                    break;
+                    
+                case 'day':
+                    $value = $condition['days'] ?? [];
+                    break;
+                    
+                default:
+                    $value = '';
+                    break;
+            }
+            
+            $normalized[$index] = [
+                'type' => $type,
+                'operator' => $operator,
+                'value' => $value,
+            ];
+        }
+        
+        $request->merge(['conditions' => $normalized]);
     }
 }

@@ -37,6 +37,12 @@ Route::middleware('auth:console')->group(function () {
         Route::post('/{slug}/widgets/layout', [DashboardController::class, 'savePluginLayout'])->name('plugin.widgets.layout');
     });
 
+    // User Preferences API Routes
+    Route::prefix('api/user')->name('console.user.')->group(function () {
+        Route::get('/fav-menus', [DashboardController::class, 'getFavMenus'])->name('fav-menus');
+        Route::post('/fav-menus/toggle', [DashboardController::class, 'toggleFavMenu'])->name('fav-menus.toggle');
+    });
+
     // Plugin Management Routes
     Route::prefix('system/plugins')->name('console.plugins.')->group(function () {
         Route::get('/', [PluginController::class, 'index'])->name('index');

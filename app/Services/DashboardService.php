@@ -216,39 +216,44 @@ class DashboardService
      */
     protected function initializeDefaultWidgets(string $userType, int $userId, string $dashboard): void
     {
-        $defaults = [
-            [
-                'widget_id' => 'welcome',
-                'plugin_slug' => null,
-                'position' => 0,
-                'col' => 0,
-                'row' => 0,
-                'width' => 4,
-                'height' => 1,
-            ],
-            [
-                'widget_id' => 'quick-actions',
-                'plugin_slug' => null,
-                'position' => 1,
-                'col' => 0,
-                'row' => 1,
-                'width' => 2,
-                'height' => 1,
-            ],
-        ];
+        $defaults = [];
 
-        foreach ($defaults as $widget) {
+        if ($userType === 'console') {
+            $defaults = [
+                ['widget_id' => 'welcome', 'width' => 4, 'height' => 1, 'row' => 0],
+                ['widget_id' => 'background-tasks', 'plugin_slug' => null, 'width' => 2, 'height' => 1, 'row' => 1],
+                ['widget_id' => 'resource-monitoring', 'plugin_slug' => null, 'width' => 2, 'height' => 1, 'row' => 1],
+            ];
+        } elseif ($userType === 'admin') {
+            $defaults = [
+                ['widget_id' => 'welcome', 'width' => 4, 'height' => 1, 'row' => 0],
+                ['widget_id' => 'quick-actions', 'width' => 2, 'height' => 1, 'row' => 1],
+                ['widget_id' => 'recent-activity', 'width' => 2, 'height' => 2, 'row' => 1],
+            ];
+        } elseif ($userType === 'owner') {
+            $defaults = [
+                ['widget_id' => 'welcome', 'width' => 4, 'height' => 1, 'row' => 0],
+                ['widget_id' => 'quick-actions', 'width' => 4, 'height' => 1, 'row' => 1],
+            ];
+        } else {
+            // Fallback default
+            $defaults = [
+                ['widget_id' => 'welcome', 'width' => 4, 'height' => 1, 'row' => 0],
+            ];
+        }
+
+        foreach ($defaults as $index => $widget) {
             DashboardWidget::create([
                 'user_type' => $userType,
                 'user_id' => $userId,
                 'dashboard' => $dashboard,
                 'widget_id' => $widget['widget_id'],
-                'plugin_slug' => $widget['plugin_slug'],
-                'position' => $widget['position'],
-                'col' => $widget['col'],
-                'row' => $widget['row'],
-                'width' => $widget['width'],
-                'height' => $widget['height'],
+                'plugin_slug' => $widget['plugin_slug'] ?? null,
+                'position' => $index,
+                'col' => $widget['col'] ?? 0,
+                'row' => $widget['row'] ?? $index,
+                'width' => $widget['width'] ?? 2,
+                'height' => $widget['height'] ?? 1,
                 'visible' => true,
             ]);
         }

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasTenant;
 
 class Setting extends Model
 {
+    use HasTenant;
     /**
      * The attributes that are mass assignable.
      *

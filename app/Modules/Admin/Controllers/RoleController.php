@@ -77,16 +77,59 @@ class RoleController extends Controller
      */
     public function create(): View
     {
-        $roles = Role::active()->ordered()->get();
+        $parentRoles = Role::active()
+            ->withCount('permissions')
+            ->ordered()
+            ->get();
         $permissions = $this->permissionRegistry->getGroupedForUI();
 
+        // Get locked permissions (permissions the current user doesn't have)
+        $lockedPermissions = $this->getLockedPermissions($permissions);
+
         return view('backend.permissions.roles.create', [
-            'roles' => $roles,
+            'parentRoles' => $parentRoles,
             'permissions' => $permissions,
+            'selectedPermissions' => [],
+            'inheritedPermissions' => [],
+            'lockedPermissions' => $lockedPermissions,
             'currentPage' => 'permissions-roles',
             'currentPageLabel' => 'Create Role',
             'currentPageIcon' => 'shield',
         ]);
+    }
+
+    /**
+     * Get permissions that the current user cannot grant (locked permissions)
+     */
+    protected function getLockedPermissions(array $groupedPermissions): array
+    {
+        $lockedPermissions = [];
+        $currentUser = auth()->user();
+
+        if (!$currentUser) {
+            return [];
+        }
+
+        // Admin users (backend admins) can grant anything
+        if ($currentUser instanceof \App\Modules\Admin\Models\Admin) {
+            return [];
+        }
+
+        // Super admin can grant anything
+        if ($this->permissionRegistry->userHasRole($currentUser, \App\Models\Role::ROLE_SUPER_ADMIN)) {
+            return [];
+        }
+
+        foreach ($groupedPermissions as $group) {
+            foreach ($group['permissions'] ?? [] as $permission) {
+                $slug = $permission['slug'] ?? null;
+                if ($slug && !$this->permissionRegistry->checkPermission($currentUser, $slug)) {
+                    $lockedPermissions[] = $permission['id'];
+                }
+            }
+        }
+
+        return $lockedPermissions;
     }
 
     /**
@@ -185,15 +228,59 @@ class RoleController extends Controller
      */
     public function show(Role $role): View
     {
+        $role->loadCount('users');
         $role->load(['parent', 'children', 'grantedPermissions', 'users' => fn($q) => $q->limit(10)]);
 
         $inheritedPermissions = $role->getInheritedPermissions();
         $allPermissions = $role->getAllPermissions();
+        $directPermissionIds = $role->grantedPermissions->pluck('id')->toArray();
+        
+        // Calculate permission stats
+        $directCount = $role->grantedPermissions->count();
+        $inheritedCount = $inheritedPermissions->count();
+        $permissionStats = [
+            'total' => $directCount + $inheritedCount,
+            'direct' => $directCount,
+            'inherited' => $inheritedCount,
+        ];
+        
+        // Build grouped permissions for the view
+        $groupedPermissions = [];
+        foreach ($allPermissions as $permission) {
+            $groupSlug = $permission->group?->slug ?? 'general';
+            $groupName = $permission->group?->name ?? 'General';
+            
+            if (!isset($groupedPermissions[$groupSlug])) {
+                $groupedPermissions[$groupSlug] = [
+                    'name' => $groupName,
+                    'permissions' => [],
+                ];
+            }
+            
+            $groupedPermissions[$groupSlug]['permissions'][] = [
+                'id' => $permission->id,
+                'slug' => $permission->slug,
+                'name' => $permission->name,
+                'label' => $permission->label ?? $permission->name,
+                'description' => $permission->description,
+                'is_dangerous' => $permission->is_dangerous ?? false,
+                'inherited' => !in_array($permission->id, $directPermissionIds),
+            ];
+        }
+        
+        // Sort groups alphabetically
+        ksort($groupedPermissions);
+        
+        // Get users for display (already loaded with limit)
+        $users = $role->users;
 
         return view('backend.permissions.roles.show', [
             'role' => $role,
             'inheritedPermissions' => $inheritedPermissions,
             'allPermissions' => $allPermissions,
+            'permissionStats' => $permissionStats,
+            'groupedPermissions' => $groupedPermissions,
+            'users' => $users,
             'currentPage' => 'permissions-roles',
             'currentPageLabel' => $role->name,
             'currentPageIcon' => 'shield',
@@ -210,21 +297,26 @@ class RoleController extends Controller
             abort(403, 'You do not have permission to edit this role.');
         }
 
-        $roles = Role::active()
+        $parentRoles = Role::active()
             ->where('id', '!=', $role->id)
+            ->withCount('permissions')
             ->ordered()
             ->get();
 
         $permissions = $this->permissionRegistry->getGroupedForUI();
-        $rolePermissionIds = $role->grantedPermissions->pluck('id')->toArray();
-        $inheritedPermissionIds = $role->getInheritedPermissions()->pluck('id')->toArray();
+        $selectedPermissions = $role->grantedPermissions->pluck('id')->toArray();
+        $inheritedPermissions = $role->getInheritedPermissions()->pluck('id')->toArray();
+
+        // Get locked permissions (permissions the current user doesn't have)
+        $lockedPermissions = $this->getLockedPermissions($permissions);
 
         return view('backend.permissions.roles.edit', [
             'role' => $role,
-            'roles' => $roles,
+            'parentRoles' => $parentRoles,
             'permissions' => $permissions,
-            'rolePermissionIds' => $rolePermissionIds,
-            'inheritedPermissionIds' => $inheritedPermissionIds,
+            'selectedPermissions' => $selectedPermissions,
+            'inheritedPermissions' => $inheritedPermissions,
+            'lockedPermissions' => $lockedPermissions,
             'currentPage' => 'permissions-roles',
             'currentPageLabel' => 'Edit ' . $role->name,
             'currentPageIcon' => 'shield',
@@ -433,36 +525,61 @@ class RoleController extends Controller
     {
         $roleIds = $request->input('roles', []);
         $roles = Role::whereIn('id', $roleIds)
+            ->withCount('permissions')
             ->with('grantedPermissions')
             ->get();
 
-        // Build permission matrix
-        $allPermissions = Permission::active()->ordered()->get();
-        $matrix = [];
+        $comparison = null;
 
-        foreach ($allPermissions as $permission) {
-            $row = [
-                'permission' => $permission,
-                'roles' => [],
-            ];
-
+        if ($roles->count() >= 2) {
+            // Get all permissions for each role (including inherited)
+            $rolePermissions = [];
             foreach ($roles as $role) {
-                $hasPermission = $role->grantedPermissions->contains('id', $permission->id);
-                $inherited = !$hasPermission && $role->getAllPermissions()->contains('id', $permission->id);
-
-                $row['roles'][$role->id] = [
-                    'granted' => $hasPermission,
-                    'inherited' => $inherited,
-                ];
+                $rolePermissions[$role->id] = $role->getAllPermissions()->pluck('slug')->toArray();
             }
 
-            $matrix[$permission->group][] = $row;
+            // Find common permissions (in all roles)
+            $common = array_values(array_intersect(...array_values($rolePermissions)));
+
+            // Find unique permissions per role
+            $unique = [];
+            foreach ($roles as $role) {
+                $otherPermissions = [];
+                foreach ($rolePermissions as $otherId => $perms) {
+                    if ($otherId !== $role->id) {
+                        $otherPermissions = array_merge($otherPermissions, $perms);
+                    }
+                }
+                $otherPermissions = array_unique($otherPermissions);
+                $unique[$role->id] = array_values(array_diff($rolePermissions[$role->id], $otherPermissions));
+            }
+
+            // Build comparison result
+            $comparison = [
+                'roles' => $roles->map(fn($r) => [
+                    'id' => $r->id,
+                    'name' => $r->name,
+                    'slug' => $r->slug,
+                    'color' => $r->color ?? '#6B7280',
+                    'permissions_count' => $r->permissions_count,
+                ])->toArray(),
+                'common' => $common,
+                'unique' => $unique,
+                'differences_count' => [
+                    'common' => count($common),
+                ],
+            ];
+
+            // Add unique counts
+            foreach ($unique as $roleId => $perms) {
+                $comparison['differences_count']['only_in_' . $roleId] = count($perms);
+            }
         }
 
         return view('backend.permissions.roles.compare', [
             'roles' => $roles,
-            'matrix' => $matrix,
-            'allRoles' => Role::active()->ordered()->get(),
+            'comparison' => $comparison,
+            'allRoles' => Role::active()->withCount('permissions')->ordered()->get(),
             'currentPage' => 'permissions-roles',
             'currentPageLabel' => 'Compare Roles',
             'currentPageIcon' => 'gitCompare',
@@ -530,15 +647,33 @@ class RoleController extends Controller
     /**
      * Bulk assign role to users form
      */
-    public function bulkAssignForm(Role $role): View
+    public function bulkAssignForm(Role $role, Request $request): View
     {
-        $users = User::whereDoesntHave('roles', fn($q) => $q->where('role_id', $role->id))
-            ->orderBy('name')
-            ->paginate(50);
+        $role->loadCount('users');
+        $role->load('grantedPermissions');
+
+        // Get users who already have this role
+        $existingUserIds = DB::table('user_roles')
+            ->where('role_id', $role->id)
+            ->pluck('user_id')
+            ->toArray();
+
+        // Query all users with optional search
+        $query = User::query();
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('name')->paginate(50)->withQueryString();
 
         return view('backend.permissions.roles.bulk-assign', [
             'role' => $role,
             'users' => $users,
+            'existingUserIds' => $existingUserIds,
             'currentPage' => 'permissions-roles',
             'currentPageLabel' => 'Bulk Assign: ' . $role->name,
             'currentPageIcon' => 'users',
@@ -551,13 +686,15 @@ class RoleController extends Controller
     public function bulkAssign(Request $request, Role $role): JsonResponse
     {
         $validated = $request->validate([
-            'user_ids' => ['required', 'array', 'min:1'],
-            'user_ids.*' => ['exists:users,id'],
+            'users' => ['required', 'array', 'min:1'],
+            'users.*' => ['exists:users,id'],
             'expires_at' => ['nullable', 'date', 'after:now'],
+            'notify_users' => ['nullable', 'boolean'],
         ]);
 
-        $userIds = $validated['user_ids'];
+        $userIds = $validated['users'];
         $expiresAt = $validated['expires_at'] ?? null;
+        $notifyUsers = $validated['notify_users'] ?? false;
 
         $assignedCount = 0;
 
@@ -578,6 +715,8 @@ class RoleController extends Controller
                     'updated_at' => now(),
                 ]);
                 $assignedCount++;
+
+                // TODO: Send notification email if $notifyUsers is true
             }
         }
 

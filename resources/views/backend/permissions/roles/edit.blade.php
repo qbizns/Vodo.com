@@ -52,10 +52,10 @@ Edit Role: {{ $role->name }}
         @include('backend.permissions.roles._form', [
             'role' => $role,
             'permissions' => $permissions,
-            'selectedPermissions' => old('permissions', $selectedPermissions),
-            'inheritedPermissions' => $inheritedPermissions,
+            'selectedPermissions' => old('permissions', $selectedPermissions ?? []),
+            'inheritedPermissions' => $inheritedPermissions ?? [],
             'lockedPermissions' => $lockedPermissions ?? [],
-            'parentRoles' => $parentRoles,
+            'parentRoles' => $parentRoles ?? [],
             'plugins' => $plugins ?? []
         ])
 
@@ -105,9 +105,9 @@ document.getElementById('roleForm')?.addEventListener('submit', function(e) {
 
     Vodo.api.put(form.action, data).then(response => {
         if (response.success) {
-            Vodo.notification.success(response.message || 'Role updated successfully');
+            Vodo.notifications.success(response.message || 'Role updated successfully');
             if (response.redirect) {
-                Vodo.pjax.load(response.redirect);
+                window.location.href = response.redirect;
             }
         }
     }).catch(error => {
@@ -124,27 +124,21 @@ document.getElementById('roleForm')?.addEventListener('submit', function(e) {
                 }
             });
         }
-        Vodo.notification.error(error.message || 'Failed to update role');
+        Vodo.notifications.error(error.message || 'Failed to update role');
     });
 });
 
 function deleteRole() {
-    Vodo.modal.confirm({
-        title: 'Delete Role',
-        message: 'Are you sure you want to delete this role? This action cannot be undone. Users with this role will lose these permissions.',
-        confirmText: 'Delete',
-        confirmClass: 'btn-danger',
-        onConfirm: () => {
-            Vodo.api.delete('{{ route('admin.roles.destroy', $role) }}').then(response => {
-                if (response.success) {
-                    Vodo.notification.success(response.message || 'Role deleted successfully');
-                    Vodo.pjax.load('{{ route('admin.roles.index') }}');
-                }
-            }).catch(error => {
-                Vodo.notification.error(error.message || 'Failed to delete role');
-            });
-        }
-    });
+    if (confirm('Are you sure you want to delete this role? This action cannot be undone. Users with this role will lose these permissions.')) {
+        Vodo.api.delete('{{ route('admin.roles.destroy', $role) }}').then(response => {
+            if (response.success) {
+                Vodo.notifications.success(response.message || 'Role deleted successfully');
+                window.location.href = '{{ route('admin.roles.index') }}';
+            }
+        }).catch(error => {
+            Vodo.notifications.error(error.message || 'Failed to delete role');
+        });
+    }
 }
 </script>
 @endsection

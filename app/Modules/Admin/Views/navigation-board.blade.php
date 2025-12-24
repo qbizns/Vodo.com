@@ -8,7 +8,7 @@
         
         @include('backend.pages.navigation-board', [
             'allNavGroups' => $allNavGroups,
-            'visibleItems' => $visibleItems,
+            'userFavMenus' => $userFavMenus,
         ])
     </div>
 @else
@@ -25,7 +25,7 @@
     @section('page-content')
         @include('backend.pages.navigation-board', [
             'allNavGroups' => $allNavGroups,
-            'visibleItems' => $visibleItems,
+            'userFavMenus' => $userFavMenus,
         ])
     @endsection
 @endif

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Traits\HasPermissions;
-use App\Traits\HasTenant;
 use App\Traits\HasAudit;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,7 +29,6 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
     use HasPermissions;
-    use HasTenant;
     use HasAudit;
 
     /**
@@ -52,6 +50,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public const LOCKOUT_DURATION = 15;
 
     /**
+     * Panel role constants - determine which panels a user can access.
+     */
+    public const ROLE_CONSOLE_ADMIN = 'console_admin';
+    public const ROLE_OWNER = 'owner';
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_CLIENT = 'client';
+
+    /**
      * The attributes that are mass assignable.
      */
     protected $fillable = [
@@ -62,11 +68,13 @@ class User extends Authenticatable implements MustVerifyEmail
         'tenant_id',
         'company_id',
         'branch_id',
+        'company_name',
         'phone',
         'avatar',
         'timezone',
         'locale',
         'settings',
+        'fav_menus',
         'two_factor_enabled',
         'last_login_at',
         'last_login_ip',
@@ -91,6 +99,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'settings' => 'array',
+            'fav_menus' => 'array',
             'two_factor_enabled' => 'boolean',
             'must_change_password' => 'boolean',
             'failed_login_attempts' => 'integer',
@@ -171,7 +180,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Suspend the account.
      */
-    public function suspend(string $reason = null): self
+    public function suspend(?string $reason = null): self
     {
         $this->status = self::STATUS_SUSPENDED;
         $this->save();
@@ -227,7 +236,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Record a successful login.
      */
-    public function recordSuccessfulLogin(string $ip = null): self
+    public function recordSuccessfulLogin(?string $ip = null): self
     {
         $this->update([
             'failed_login_attempts' => 0,
@@ -375,6 +384,73 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // =========================================================================
+    // Panel Access Methods
+    // =========================================================================
+
+    /**
+     * Check if user can access the Console panel (SaaS platform management).
+     */
+    public function canAccessConsole(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(self::ROLE_CONSOLE_ADMIN);
+    }
+
+    /**
+     * Check if user can access the Owner panel (business owner management).
+     */
+    public function canAccessOwner(): bool
+    {
+        return $this->isSuperAdmin() 
+            || $this->hasRole(self::ROLE_CONSOLE_ADMIN)
+            || $this->hasRole(self::ROLE_OWNER);
+    }
+
+    /**
+     * Check if user can access the Admin panel (backend administration).
+     */
+    public function canAccessAdmin(): bool
+    {
+        return $this->isSuperAdmin() 
+            || $this->hasRole(self::ROLE_CONSOLE_ADMIN)
+            || $this->hasRole(self::ROLE_OWNER)
+            || $this->hasRole(self::ROLE_ADMIN)
+            || $this->isAdmin();
+    }
+
+    /**
+     * Check if user can access the Client panel (client area).
+     */
+    public function canAccessClient(): bool
+    {
+        // All authenticated users can access client area
+        return true;
+    }
+
+    /**
+     * Check if user is a console admin (highest level).
+     */
+    public function isConsoleAdmin(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(self::ROLE_CONSOLE_ADMIN);
+    }
+
+    /**
+     * Check if user is an owner.
+     */
+    public function isOwner(): bool
+    {
+        return $this->hasRole(self::ROLE_OWNER);
+    }
+
+    /**
+     * Check if user is a client.
+     */
+    public function isClient(): bool
+    {
+        return $this->hasRole(self::ROLE_CLIENT);
+    }
+
+    // =========================================================================
     // Relationships
     // =========================================================================
 
@@ -498,5 +574,68 @@ class User extends Authenticatable implements MustVerifyEmail
             'timezone' => $this->timezone,
             'locale' => $this->locale,
         ];
+    }
+
+    // =========================================================================
+    // Favorite Menus
+    // =========================================================================
+
+    /**
+     * Default favorite menu items for new users.
+     */
+    public const DEFAULT_FAV_MENUS = ['dashboard', 'sites', 'databases'];
+
+    /**
+     * Get user's favorite menu items.
+     */
+    public function getFavMenus(): array
+    {
+        $favMenus = $this->fav_menus;
+        
+        // Return defaults if null or empty
+        if (empty($favMenus)) {
+            return self::DEFAULT_FAV_MENUS;
+        }
+        
+        return $favMenus;
+    }
+
+    /**
+     * Set user's favorite menu items.
+     */
+    public function setFavMenus(array $menuIds): self
+    {
+        $this->update(['fav_menus' => array_values(array_unique($menuIds))]);
+        return $this;
+    }
+
+    /**
+     * Toggle a menu item in favorites.
+     * Returns true if item was added, false if removed.
+     */
+    public function toggleFavMenu(string $menuId): bool
+    {
+        // Use raw database value, not the defaults-enhanced getFavMenus()
+        $favMenus = $this->fav_menus ?? [];
+        
+        if (in_array($menuId, $favMenus)) {
+            // Remove from favorites
+            $favMenus = array_values(array_filter($favMenus, fn($id) => $id !== $menuId));
+            $this->update(['fav_menus' => $favMenus]);
+            return false;
+        } else {
+            // Add to favorites
+            $favMenus[] = $menuId;
+            $this->update(['fav_menus' => array_values(array_unique($favMenus))]);
+            return true;
+        }
+    }
+
+    /**
+     * Check if a menu item is in favorites.
+     */
+    public function hasFavMenu(string $menuId): bool
+    {
+        return in_array($menuId, $this->getFavMenus());
     }
 }

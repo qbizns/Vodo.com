@@ -2,7 +2,9 @@
 
 namespace App\Http\ViewComposers;
 
+use App\Models\User;
 use App\Services\NavigationService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class NavigationComposer
@@ -36,8 +38,36 @@ class NavigationComposer
             $view->with('navGroups', $navGroups);
         }
 
+        // Get user's favorite menus from database
+        if (!$view->offsetExists('favMenus')) {
+            $favMenus = $this->getUserFavMenus($modulePrefix);
+            $view->with('favMenus', $favMenus);
+        }
+
         // Also provide the navigation service for advanced use cases
         $view->with('navigationService', $this->navigationService);
+    }
+
+    /**
+     * Get user's favorite menus based on the current guard.
+     */
+    protected function getUserFavMenus(string $modulePrefix): array
+    {
+        // Determine the guard from the module prefix
+        $guard = match($modulePrefix) {
+            'admin' => 'admin',
+            'console' => 'console',
+            'owner' => 'owner',
+            default => 'web',
+        };
+
+        $user = Auth::guard($guard)->user();
+        
+        if ($user && method_exists($user, 'getFavMenus')) {
+            return $user->getFavMenus();
+        }
+
+        return User::DEFAULT_FAV_MENUS;
     }
 
     /**

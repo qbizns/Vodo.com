@@ -22,6 +22,9 @@ Route::middleware(['guest:admin'])->group(function () {
         ->name('admin.login.submit');
 });
 
+// Public debug route
+Route::get('/public-debug-dashboard', [DashboardController::class, 'index'])->name('admin.public_debug_dashboard');
+
 // Authenticated routes
 Route::middleware('auth:admin')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -43,6 +46,12 @@ Route::middleware('auth:admin')->group(function () {
         Route::get('/{slug}', [DashboardController::class, 'pluginDashboard'])->name('plugin');
         Route::get('/{slug}/widgets', [DashboardController::class, 'getPluginWidgets'])->name('plugin.widgets');
         Route::post('/{slug}/widgets/layout', [DashboardController::class, 'savePluginLayout'])->name('plugin.widgets.layout');
+    });
+
+    // User Preferences API Routes
+    Route::prefix('api/user')->name('admin.user.')->group(function () {
+        Route::get('/fav-menus', [DashboardController::class, 'getFavMenus'])->name('fav-menus');
+        Route::post('/fav-menus/toggle', [DashboardController::class, 'toggleFavMenu'])->name('fav-menus.toggle');
     });
 
     // Plugin Management Routes
@@ -134,9 +143,11 @@ Route::middleware('auth:admin')->group(function () {
         Route::get('/rules/{rule}/edit', [PermissionController::class, 'editAccessRule'])->name('rules.edit');
         Route::put('/rules/{rule}', [PermissionController::class, 'updateAccessRule'])->name('rules.update');
         Route::delete('/rules/{rule}', [PermissionController::class, 'destroyAccessRule'])->name('rules.destroy');
+        Route::post('/rules/{rule}/test', [PermissionController::class, 'testAccessRule'])->name('rules.test');
 
         // Audit Log
         Route::get('/audit', [PermissionController::class, 'auditLog'])->name('audit');
+        Route::get('/audit/{audit}', [PermissionController::class, 'auditLogShow'])->name('audit.show');
 
         // API Endpoints
         Route::get('/api/check', [PermissionController::class, 'checkPermission'])->name('api.check');

@@ -1,16 +1,18 @@
 {{-- Dynamic Settings Field Component --}}
+{{-- Uses vanilla JS for conditional visibility (no Alpine) --}}
 @php
 $fieldId = str_replace('.', '_', $field['key']);
 $fieldName = $field['key'];
 $fieldType = $field['type'] ?? 'text';
 $fieldValue = $value;
 $isRequired = !empty($field['rules']) && str_contains($field['rules'], 'required');
+$hasCondition = !empty($field['condition']);
 @endphp
 
 <div class="settings-field" 
-     @if(!empty($field['condition']))
-     x-data="{ show: true }"
-     x-show="show"
+     id="field_{{ $fieldId }}_wrapper"
+     @if($hasCondition)
+     data-condition="{{ json_encode($field['condition']) }}"
      @endif
 >
     <label for="{{ $fieldId }}" class="settings-label">

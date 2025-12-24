@@ -110,7 +110,7 @@
             
             <div class="user-menu-divider"></div>
             
-            <form action="{{ $logoutUrl ?? route(($modulePrefix ?? 'admin') . '.logout') }}" method="POST" style="margin: 0;">
+            <form action="{{ $logoutUrl ?? route(($modulePrefix ?? 'admin') . '.logout') }}" method="POST" style="margin: 0;" data-ajax="false">
                 @csrf
                 <button type="submit" class="user-menu-item logout" style="width: 100%; border: none; background: none; cursor: pointer;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

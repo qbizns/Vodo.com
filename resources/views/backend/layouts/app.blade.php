@@ -23,6 +23,8 @@
             'system/plugins' => 'plugins',
             'settings' => 'settings',
             'plugins' => 'plugins',
+            'system/roles' => 'permissions',
+            'system/permissions' => 'permissions',
         ];
         
         // First check direct mapping
@@ -33,6 +35,8 @@
             $prefixCssMap = [
                 'system/plugins/' => 'plugins',  // system/plugins/marketplace, system/plugins/install, etc.
                 'system/settings/' => 'settings',
+                'system/roles/' => 'permissions',  // system/roles/create, system/roles/edit, etc.
+                'system/permissions/' => 'permissions',  // Permission matrix, audit, rules, etc.
             ];
             foreach ($prefixCssMap as $prefix => $css) {
                 if (str_starts_with($currentPage, $prefix)) {
@@ -99,6 +103,7 @@
             currentPageLabel: '{{ $currentPageLabel ?? __t("dashboard.title") }}',
             currentPageIcon: '{{ $currentPageIcon ?? "layoutDashboard" }}',
             navGroups: @json($navGroups ?? []),
+            favMenus: @json($favMenus ?? ['dashboard', 'sites', 'databases']),
             locale: '{{ current_locale() }}',
             direction: '{{ text_direction() }}',
             isRtl: {{ is_rtl() ? 'true' : 'false' }}
@@ -122,6 +127,12 @@
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.components.js') }}"></script>
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.modals.js') }}"></script>
     <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.notifications.js') }}"></script>
+    
+    {{-- Page-specific JS modules --}}
+    @if($requiredCss === 'permissions')
+    <script nonce="{{ csp_nonce() }}" src="{{ asset('backend/js/vodo.permissions.js') }}"></script>
+    @endif
+    
     <script nonce="{{ csp_nonce() }}">
         // Initialize Vodo framework
         Vodo.init();

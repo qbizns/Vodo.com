@@ -107,48 +107,92 @@ class PermissionsSeeder extends Seeder
     protected function createRoles(): void
     {
         $roles = [
+            // System roles (highest priority)
             [
                 'slug' => Role::ROLE_SUPER_ADMIN,
                 'name' => 'Super Admin',
-                'description' => 'Full access to all features',
-                'level' => 100,
+                'description' => 'Full access to all features and all panels',
+                'level' => 1000,
                 'is_system' => true,
+                'color' => '#7C3AED',
+                'icon' => 'crown',
+            ],
+            
+            // Panel access roles
+            [
+                'slug' => 'console_admin',
+                'name' => 'Console Admin',
+                'description' => 'SaaS platform management - can access Console panel',
+                'level' => 900,
+                'is_system' => true,
+                'color' => '#DC2626',
+                'icon' => 'server',
+            ],
+            [
+                'slug' => 'owner',
+                'name' => 'Owner',
+                'description' => 'Business owner - can access Owner and Admin panels',
+                'level' => 800,
+                'is_system' => true,
+                'color' => '#2563EB',
+                'icon' => 'building',
             ],
             [
                 'slug' => Role::ROLE_ADMIN,
                 'name' => 'Admin',
-                'description' => 'Administrative access',
-                'level' => 90,
+                'description' => 'Backend administrator - can access Admin panel',
+                'level' => 700,
                 'is_system' => true,
+                'color' => '#059669',
+                'icon' => 'shield',
             ],
+            [
+                'slug' => 'client',
+                'name' => 'Client',
+                'description' => 'Client area user - can access Client panel',
+                'level' => 100,
+                'is_default' => true,
+                'is_system' => true,
+                'color' => '#6B7280',
+                'icon' => 'user',
+            ],
+            
+            // Content roles
             [
                 'slug' => Role::ROLE_MODERATOR,
                 'name' => 'Moderator',
                 'description' => 'Content moderation access',
-                'level' => 70,
+                'level' => 500,
                 'is_system' => true,
+                'color' => '#F59E0B',
+                'icon' => 'eye',
             ],
             [
                 'slug' => Role::ROLE_EDITOR,
                 'name' => 'Editor',
                 'description' => 'Content editing access',
-                'level' => 50,
+                'level' => 400,
                 'is_system' => true,
+                'color' => '#8B5CF6',
+                'icon' => 'edit',
             ],
             [
                 'slug' => Role::ROLE_AUTHOR,
                 'name' => 'Author',
                 'description' => 'Content creation access',
-                'level' => 30,
+                'level' => 300,
                 'is_system' => true,
+                'color' => '#EC4899',
+                'icon' => 'fileText',
             ],
             [
                 'slug' => Role::ROLE_SUBSCRIBER,
                 'name' => 'Subscriber',
                 'description' => 'Basic subscriber access',
-                'level' => 10,
-                'is_default' => true,
+                'level' => 200,
                 'is_system' => true,
+                'color' => '#64748B',
+                'icon' => 'userCheck',
             ],
         ];
 

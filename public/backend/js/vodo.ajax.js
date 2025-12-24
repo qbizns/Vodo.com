@@ -340,6 +340,12 @@
                 const $pjax = $temp.find('#pjax-content');
 
                 if ($pjax.length) {
+                    // Extract header content from hidden div (can contain HTML)
+                    const $header = $pjax.find('#pjax-header');
+                    const headerHtml = $header.html() || $pjax.data('page-header') || '';
+                    $header.remove();
+
+                    // Extract header actions from hidden div
                     const $headerActions = $pjax.find('#pjax-header-actions');
                     const headerActionsHtml = $headerActions.html();
                     $headerActions.remove();
@@ -347,7 +353,7 @@
                     return {
                         content: $pjax.html(),
                         title: $pjax.data('page-title'),
-                        header: $pjax.data('page-header'),
+                        header: headerHtml.trim(),
                         headerActions: headerActionsHtml,
                         css: $pjax.data('require-css'),
                         hideTitleBar: $pjax.data('hide-title-bar') === true || $pjax.data('hide-title-bar') === 'true',

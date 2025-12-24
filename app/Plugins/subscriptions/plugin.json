@@ -1,0 +1,81 @@
+{
+    "name": "subscriptions",
+    "title": "Subscriptions",
+    "description": "SaaS subscription and plan management system. Handle subscription plans, billing cycles, trials, and user subscriptions.",
+    "version": "1.0.0",
+    "author": {
+        "name": "Vodo",
+        "email": "support@vodo.com",
+        "url": "https://vodo.com"
+    },
+    "homepage": "https://vodo.com/plugins/subscriptions",
+    "documentation": "https://docs.vodo.com/plugins/subscriptions",
+    "license": "MIT",
+    "category": "billing",
+    "tags": ["subscriptions", "plans", "billing", "saas", "payments", "recurring"],
+    "icon": "resources/assets/icon.svg",
+    "screenshots": [],
+    "requirements": {
+        "php": "^8.2",
+        "system": "^1.0",
+        "extensions": []
+    },
+    "dependencies": {},
+    "optional_dependencies": {},
+    "autoload": {
+        "psr-4": {
+            "Subscriptions\\": "src/"
+        }
+    },
+    "providers": [
+        "Subscriptions\\Providers\\SubscriptionsServiceProvider"
+    ],
+    "entry_class": "SubscriptionsPlugin",
+    "is_premium": false,
+    "requires_license": false,
+    "settings": {
+        "has_settings_page": true,
+        "settings_route": "admin.plugins.subscriptions.settings"
+    },
+    "navigation": {
+        "categories": [],
+        "items": [
+            {
+                "id": "subscriptions",
+                "label": "Subscriptions",
+                "icon": "creditCard",
+                "url": "/plugins/subscriptions",
+                "category": "Billing",
+                "order": 15
+            },
+            {
+                "id": "subscriptions-plans",
+                "label": "Plans",
+                "icon": "package",
+                "url": "/plugins/subscriptions/plans",
+                "category": "Billing",
+                "order": 10,
+                "parent": "subscriptions"
+            },
+            {
+                "id": "subscriptions-list",
+                "label": "Subscriptions",
+                "icon": "repeat",
+                "url": "/plugins/subscriptions/subscriptions",
+                "category": "Billing",
+                "order": 20,
+                "parent": "subscriptions"
+            },
+            {
+                "id": "subscriptions-invoices",
+                "label": "Invoices",
+                "icon": "fileText",
+                "url": "/plugins/subscriptions/invoices",
+                "category": "Billing",
+                "order": 30,
+                "parent": "subscriptions"
+            }
+        ]
+    }
+}
+

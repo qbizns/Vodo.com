@@ -169,6 +169,45 @@
     }
 
     /**
+     * Load page-specific JavaScript modules
+     * Maps CSS names to their corresponding JS modules
+     */
+    async function loadPageJs(cssNames) {
+        if (!cssNames) return;
+
+        // Map CSS names to JS module paths
+        const jsModuleMap = {
+            'permissions': 'vodo.permissions.js'
+        };
+
+        const names = cssNames.split(',').map(s => s.trim()).filter(Boolean);
+        const loadedJs = window._loadedJs || new Set();
+        window._loadedJs = loadedJs;
+
+        const promises = names.map(name => {
+            const jsModule = jsModuleMap[name];
+            if (!jsModule || loadedJs.has(jsModule)) return Promise.resolve();
+
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = `/backend/js/${jsModule}`;
+                script.onload = () => {
+                    loadedJs.add(jsModule);
+                    Vodo.log(`Loaded JS module: ${jsModule}`);
+                    resolve();
+                };
+                script.onerror = () => {
+                    Vodo.warn(`Failed to load JS: ${jsModule}`);
+                    resolve();
+                };
+                document.head.appendChild(script);
+            });
+        });
+
+        return Promise.all(promises);
+    }
+
+    /**
      * Execute inline scripts from loaded content
      */
     function executeInlineScripts($container) {
@@ -251,6 +290,8 @@
             // Load CSS first
             if (fragment.css) {
                 await loadPageCss(fragment.css);
+                // Also load page-specific JS modules
+                await loadPageJs(fragment.css);
             }
 
             // Hide skeleton
@@ -295,7 +336,8 @@
                     if ($titleBar.length) {
                         let $pageTitle = $titleBar.find(this.config.titleContainer);
                         if ($pageTitle.length) {
-                            $pageTitle.text(fragment.header || title);
+                            // Use .html() to allow HTML content in header (like badges)
+                            $pageTitle.html(fragment.header || title);
                         }
 
                         // Update header actions

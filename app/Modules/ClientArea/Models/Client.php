@@ -2,36 +2,29 @@
 
 namespace App\Modules\ClientArea\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use App\Models\User;
 
-class Client extends Authenticatable
+/**
+ * @deprecated This class is deprecated. Use App\Models\User with 'client' role instead.
+ * 
+ * Client panel access is now controlled via roles:
+ * - Any authenticated user can access the Client panel
+ * - Use User::canAccessClient() to check panel access
+ * 
+ * @see \App\Models\User
+ */
+class Client extends User
 {
-    use HasFactory, Notifiable;
-
-    protected $table = 'clients';
-
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'phone',
-        'is_active',
-    ];
-
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    protected function casts(): array
+    /**
+     * @deprecated Use User model with client role instead
+     */
+    public function __construct(array $attributes = [])
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-        ];
+        trigger_error(
+            'Client model is deprecated. Use App\Models\User with client role instead.',
+            E_USER_DEPRECATED
+        );
+        parent::__construct($attributes);
     }
 }
 

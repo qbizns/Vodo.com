@@ -1,5 +1,5 @@
 {{-- Permission Matrix (Screen 3 - Permissions & Access Control) --}}
-{{-- PJAX Layout for SPA navigation --}}
+{{-- Uses Vodo.permissions.PermissionMatrix (vanilla JS, no Alpine) --}}
 
 @extends('backend.layouts.pjax')
 
@@ -26,7 +26,18 @@
 @endsection
 
 @section('content')
-<div class="permission-matrix-page" x-data="permissionMatrix(@json($matrixData))">
+@php
+$matrixConfig = [
+    'permissions' => $matrixData['permissions'] ?? [],
+    'inherited' => $matrixData['inherited'] ?? [],
+    'grantable' => $matrixData['grantable'] ?? [],
+    'groups' => array_keys($groupedPermissions ?? [])
+];
+@endphp
+<div class="permission-matrix-page" 
+     data-component="matrix"
+     data-config="{{ json_encode($matrixConfig) }}"
+     data-save-url="{{ route('admin.permissions.matrix.update') }}">
     {{-- Filters --}}
     <div class="matrix-toolbar mb-4">
         <div class="search-filter-group">
@@ -35,18 +46,17 @@
                 <input type="text"
                        class="search-input"
                        placeholder="Search permissions..."
-                       x-model="searchQuery"
-                       @input.debounce.300ms="filterMatrix">
+                       data-role="search">
             </div>
 
-            <select class="filter-select" x-model="groupFilter" @change="filterMatrix">
+            <select class="filter-select" data-role="group-filter">
                 <option value="">All Groups</option>
                 @foreach($groups as $group)
                     <option value="{{ $group->slug }}">{{ $group->name }}</option>
                 @endforeach
             </select>
 
-            <select class="filter-select" x-model="pluginFilter" @change="filterMatrix">
+            <select class="filter-select" data-role="plugin-filter">
                 <option value="">All Plugins</option>
                 <option value="core">Core</option>
                 @foreach($plugins as $plugin)
@@ -55,17 +65,17 @@
             </select>
 
             <label class="checkbox-label">
-                <input type="checkbox" x-model="showChangesOnly" @change="filterMatrix">
+                <input type="checkbox" data-role="changes-only">
                 <span>Show changes only</span>
             </label>
         </div>
 
         <div class="matrix-actions">
-            <button type="button" class="btn-secondary btn-sm" @click="collapseAll">
+            <button type="button" class="btn-secondary btn-sm" data-action="collapse-all">
                 @include('backend.partials.icon', ['icon' => 'minimize2'])
                 Collapse All
             </button>
-            <button type="button" class="btn-secondary btn-sm" @click="expandAll">
+            <button type="button" class="btn-secondary btn-sm" data-action="expand-all">
                 @include('backend.partials.icon', ['icon' => 'maximize2'])
                 Expand All
             </button>
@@ -73,15 +83,15 @@
     </div>
 
     {{-- Change Counter --}}
-    <div class="changes-bar" x-show="changeCount > 0">
+    <div class="changes-bar" style="display: none;">
         <span class="changes-count">
-            <span x-text="changeCount"></span> unsaved changes
+            <span data-count="changes">0</span> unsaved changes
         </span>
         <div class="changes-actions">
-            <button type="button" class="btn-secondary btn-sm" @click="resetChanges">
+            <button type="button" class="btn-secondary btn-sm" data-action="reset">
                 Reset Changes
             </button>
-            <button type="button" class="btn-primary btn-sm" @click="saveChanges">
+            <button type="button" class="btn-primary btn-sm" data-action="save">
                 Save Changes
             </button>
         </div>
@@ -95,8 +105,8 @@
                     <tr>
                         <th class="permission-col sticky-col">Permission</th>
                         @foreach($roles as $role)
-                            <th class="role-col"
-                                :class="{ 'super-admin': {{ $role->is_system && $role->slug === 'super-admin' ? 'true' : 'false' }} }">
+                            @php $isSuperAdmin = $role->is_system && $role->slug === 'super-admin'; @endphp
+                            <th class="role-col {{ $isSuperAdmin ? 'super-admin' : '' }}">
                                 <div class="role-header">
                                     <span class="role-color" style="background-color: {{ $role->color }};"></span>
                                     <span class="role-name">{{ $role->name }}</span>
@@ -104,12 +114,14 @@
                                         <span class="role-badge">System</span>
                                     @endif
                                 </div>
-                                <button type="button"
-                                        class="btn-link btn-xs"
-                                        @click="toggleColumn({{ $role->id }})"
-                                        :disabled="{{ $role->slug === 'super-admin' ? 'true' : 'false' }}">
-                                    Toggle All
-                                </button>
+                                @if(!$isSuperAdmin)
+                                    <button type="button"
+                                            class="btn-link btn-xs"
+                                            data-action="toggle-column"
+                                            data-role-id="{{ $role->id }}">
+                                        Toggle All
+                                    </button>
+                                @endif
                             </th>
                         @endforeach
                     </tr>
@@ -117,32 +129,31 @@
                 <tbody>
                     @foreach($groupedPermissions as $groupSlug => $group)
                         {{-- Group Header --}}
-                        <tr class="group-row"
-                            x-show="isGroupVisible('{{ $groupSlug }}')"
-                            @click="toggleGroup('{{ $groupSlug }}')">
+                        <tr class="group-row" data-group="{{ $groupSlug }}">
                             <td class="group-cell sticky-col" colspan="{{ count($roles) + 1 }}">
-                                <span class="group-icon">
-                                    @include('backend.partials.icon', ['icon' => 'folder'])
-                                </span>
-                                <span class="group-name">{{ $group['name'] }}</span>
-                                <span class="group-count">({{ count($group['permissions']) }})</span>
-                                @if($group['plugin'] ?? null)
-                                    <span class="group-plugin">{{ $group['plugin'] }}</span>
-                                @endif
-                                <span class="group-chevron" :class="{ 'expanded': expandedGroups['{{ $groupSlug }}'] }">
-                                    @include('backend.partials.icon', ['icon' => 'chevronDown'])
-                                </span>
+                                <div class="group-cell-content">
+                                    <div class="group-info">
+                                        <span class="group-icon">
+                                            @include('backend.partials.icon', ['icon' => 'folder'])
+                                        </span>
+                                        <span class="group-name">{{ $group['name'] }}</span>
+                                        <span class="group-count">({{ count($group['permissions']) }})</span>
+                                        @if($group['plugin'] ?? null)
+                                            <span class="group-plugin">{{ $group['plugin'] }}</span>
+                                        @endif
+                                    </div>
+                                    <span class="group-chevron expanded">
+                                        @include('backend.partials.icon', ['icon' => 'chevronDown'])
+                                    </span>
+                                </div>
                             </td>
                         </tr>
 
                         {{-- Permission Rows --}}
                         @foreach($group['permissions'] as $permission)
-                            <tr class="permission-row"
-                                x-show="isPermissionVisible('{{ $groupSlug }}', '{{ $permission['slug'] }}')"
-                                :class="{
-                                    'dangerous': {{ $permission['is_dangerous'] ? 'true' : 'false' }},
-                                    'has-changes': hasPermissionChanges({{ $permission['id'] }})
-                                }">
+                            <tr class="permission-row {{ $permission['is_dangerous'] ? 'dangerous' : '' }}"
+                                data-group="{{ $groupSlug }}"
+                                data-perm-slug="{{ $permission['slug'] }}">
                                 <td class="permission-cell sticky-col">
                                     <span class="permission-name">
                                         {{ $permission['label'] ?? $permission['slug'] }}
@@ -164,35 +175,26 @@
                                         $isGranted = isset($matrix[$role->id][$permission['id']]);
                                         $isInherited = isset($inheritedMatrix[$role->id][$permission['id']]);
                                     @endphp
-                                    <td class="matrix-cell"
-                                        :class="{
-                                            'super-admin': {{ $isSuperAdmin ? 'true' : 'false' }},
-                                            'inherited': isInherited({{ $role->id }}, {{ $permission['id'] }}),
-                                            'changed': isChanged({{ $role->id }}, {{ $permission['id'] }})
-                                        }">
+                                    <td class="matrix-cell {{ $isSuperAdmin ? 'super-admin' : '' }} {{ $isInherited ? 'inherited' : '' }}">
                                         @if($isSuperAdmin)
                                             <span class="matrix-check all" title="All permissions">
                                                 @include('backend.partials.icon', ['icon' => 'checkCircle'])
                                             </span>
                                         @else
                                             <button type="button"
-                                                    class="matrix-toggle"
-                                                    :class="{
-                                                        'granted': isGranted({{ $role->id }}, {{ $permission['id'] }}),
-                                                        'inherited': isInherited({{ $role->id }}, {{ $permission['id'] }})
-                                                    }"
-                                                    @click="toggle({{ $role->id }}, {{ $permission['id'] }})"
-                                                    :disabled="isInherited({{ $role->id }}, {{ $permission['id'] }}) || !canGrant({{ $permission['id'] }})">
-                                                <template x-if="isGranted({{ $role->id }}, {{ $permission['id'] }})">
+                                                    class="matrix-toggle {{ $isGranted ? 'granted' : '' }} {{ $isInherited ? 'inherited' : '' }}"
+                                                    data-role-id="{{ $role->id }}"
+                                                    data-perm-id="{{ $permission['id'] }}"
+                                                    {{ $isInherited ? 'disabled' : '' }}>
+                                                @if($isGranted)
                                                     <span class="toggle-check">
                                                         @include('backend.partials.icon', ['icon' => 'check'])
                                                     </span>
-                                                </template>
-                                                <template x-if="isInherited({{ $role->id }}, {{ $permission['id'] }}) && !isGranted({{ $role->id }}, {{ $permission['id'] }})">
+                                                @elseif($isInherited)
                                                     <span class="toggle-inherited">
                                                         @include('backend.partials.icon', ['icon' => 'cornerDownRight'])
                                                     </span>
-                                                </template>
+                                                @endif
                                             </button>
                                         @endif
                                     </td>
@@ -204,7 +206,8 @@
             </table>
         </div>
     </div>
-
+    <br>
+    
     {{-- Legend --}}
     <div class="matrix-legend mt-4">
         <div class="legend-item">
@@ -235,189 +238,28 @@
 </div>
 
 <script>
-function permissionMatrix(data) {
-    return {
-        // Initial state
-        permissions: data.permissions || {},
-        inherited: data.inherited || {},
-        grantable: new Set(data.grantable || []),
-        groups: data.groups || [],
-
-        // UI state
-        changes: {},
-        expandedGroups: {},
-        searchQuery: '',
-        groupFilter: '',
-        pluginFilter: '',
-        showChangesOnly: false,
-
-        init() {
-            // Expand all groups by default
-            this.groups.forEach(g => {
-                this.expandedGroups[g] = true;
-            });
-        },
-
-        // Permission state
-        isGranted(roleId, permissionId) {
-            const key = `${roleId}-${permissionId}`;
-            if (this.changes.hasOwnProperty(key)) {
-                return this.changes[key];
+(function() {
+    function initMatrix() {
+        var container = document.querySelector('.permission-matrix-page[data-component="matrix"]');
+        if (!container || container.dataset.initialized) return;
+        
+        try {
+            var config = JSON.parse(container.dataset.config);
+            if (window.Vodo && window.Vodo.permissions && window.Vodo.permissions.PermissionMatrix) {
+                new Vodo.permissions.PermissionMatrix(container, config);
+                container.dataset.initialized = 'true';
             }
-            return !!this.permissions[key];
-        },
-
-        isInherited(roleId, permissionId) {
-            return !!this.inherited[`${roleId}-${permissionId}`];
-        },
-
-        canGrant(permissionId) {
-            return this.grantable.has(permissionId);
-        },
-
-        isChanged(roleId, permissionId) {
-            return this.changes.hasOwnProperty(`${roleId}-${permissionId}`);
-        },
-
-        hasPermissionChanges(permissionId) {
-            return Object.keys(this.changes).some(k => k.endsWith(`-${permissionId}`));
-        },
-
-        // Actions
-        toggle(roleId, permissionId) {
-            if (this.isInherited(roleId, permissionId) || !this.canGrant(permissionId)) return;
-
-            const key = `${roleId}-${permissionId}`;
-            const current = this.isGranted(roleId, permissionId);
-            const original = !!this.permissions[key];
-
-            if (current === original) {
-                // First change
-                this.changes[key] = !current;
-            } else if (!current === original) {
-                // Reverting to original
-                delete this.changes[key];
-            } else {
-                this.changes[key] = !current;
-            }
-
-            this.updateSaveButton();
-        },
-
-        toggleColumn(roleId) {
-            // Get all visible permissions
-            const visiblePermissions = document.querySelectorAll('.permission-row:not([style*="display: none"]) .matrix-toggle');
-            const roleToggles = Array.from(visiblePermissions).filter(el => {
-                const cell = el.closest('td');
-                const row = el.closest('tr');
-                const cells = Array.from(row.querySelectorAll('td'));
-                const roleIndex = cells.indexOf(cell);
-                // Match by role position (role index in the matrix)
-                return true; // Simplified - in real implementation, match by role
-            });
-
-            // Check if all are granted
-            const allGranted = roleToggles.every(el => el.classList.contains('granted'));
-
-            // Toggle all
-            roleToggles.forEach(el => {
-                // Extract role and permission IDs and toggle
-            });
-        },
-
-        toggleRow(permissionId) {
-            // Similar logic for row toggle
-        },
-
-        // Group management
-        toggleGroup(groupSlug) {
-            this.expandedGroups[groupSlug] = !this.expandedGroups[groupSlug];
-        },
-
-        expandAll() {
-            this.groups.forEach(g => {
-                this.expandedGroups[g] = true;
-            });
-        },
-
-        collapseAll() {
-            this.groups.forEach(g => {
-                this.expandedGroups[g] = false;
-            });
-        },
-
-        // Filtering
-        isGroupVisible(groupSlug) {
-            if (this.groupFilter && this.groupFilter !== groupSlug) return false;
-            // Add plugin filter logic
-            return true;
-        },
-
-        isPermissionVisible(groupSlug, permissionSlug) {
-            if (!this.expandedGroups[groupSlug]) return false;
-
-            if (this.showChangesOnly) {
-                // Check if this permission has any changes
-                const hasChanges = Object.keys(this.changes).some(k => k.includes(permissionSlug));
-                if (!hasChanges) return false;
-            }
-
-            if (this.searchQuery) {
-                const query = this.searchQuery.toLowerCase();
-                return permissionSlug.toLowerCase().includes(query);
-            }
-
-            return true;
-        },
-
-        filterMatrix() {
-            // Handled by x-show directives
-        },
-
-        // Changes management
-        get changeCount() {
-            return Object.keys(this.changes).length;
-        },
-
-        resetChanges() {
-            this.changes = {};
-            this.updateSaveButton();
-        },
-
-        updateSaveButton() {
-            const btn = document.getElementById('saveMatrixBtn');
-            if (btn) {
-                btn.style.display = this.changeCount > 0 ? '' : 'none';
-            }
-        },
-
-        async saveChanges() {
-            if (this.changeCount === 0) return;
-
-            try {
-                const response = await Vodo.api.post('{{ route('admin.permissions.matrix.update') }}', {
-                    changes: this.changes
-                });
-
-                if (response.success) {
-                    // Update local state
-                    Object.entries(this.changes).forEach(([key, value]) => {
-                        if (value) {
-                            this.permissions[key] = true;
-                        } else {
-                            delete this.permissions[key];
-                        }
-                    });
-
-                    this.changes = {};
-                    this.updateSaveButton();
-                    Vodo.notification.success(response.message || 'Matrix updated successfully');
-                }
-            } catch (error) {
-                Vodo.notification.error(error.message || 'Failed to save changes');
-            }
+        } catch (e) {
+            console.error('Failed to initialize PermissionMatrix:', e);
         }
-    };
-}
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initMatrix, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', initMatrix);
+    }
+    document.addEventListener('pjax:complete', initMatrix);
+})();
 </script>
 @endsection

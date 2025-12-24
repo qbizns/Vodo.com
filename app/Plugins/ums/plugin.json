@@ -1,0 +1,81 @@
+{
+    "name": "ums",
+    "title": "User Management System",
+    "description": "Comprehensive plugin for managing users, profiles, roles, permissions, and user-related operations in the admin panel.",
+    "version": "1.0.0",
+    "author": {
+        "name": "Vodo",
+        "email": "support@vodo.com",
+        "url": "https://vodo.com"
+    },
+    "homepage": "https://vodo.com/plugins/ums",
+    "documentation": "https://docs.vodo.com/plugins/ums",
+    "license": "MIT",
+    "category": "administration",
+    "tags": ["users", "management", "profiles", "authentication", "admin"],
+    "icon": "resources/assets/icon.svg",
+    "screenshots": [],
+    "requirements": {
+        "php": "^8.2",
+        "system": "^1.0",
+        "extensions": []
+    },
+    "dependencies": {},
+    "optional_dependencies": {},
+    "autoload": {
+        "psr-4": {
+            "Ums\\": "src/"
+        }
+    },
+    "providers": [
+        "Ums\\Providers\\UmsServiceProvider"
+    ],
+    "entry_class": "UmsPlugin",
+    "is_premium": false,
+    "requires_license": false,
+    "settings": {
+        "has_settings_page": true,
+        "settings_route": "admin.plugins.ums.settings"
+    },
+    "navigation": {
+        "categories": [],
+        "items": [
+            {
+                "id": "ums",
+                "label": "User Management",
+                "icon": "users",
+                "url": "/plugins/ums",
+                "category": "Administration",
+                "order": 5
+            },
+            {
+                "id": "ums-users",
+                "label": "Users",
+                "icon": "user",
+                "url": "/plugins/ums/users",
+                "category": "Administration",
+                "order": 10,
+                "parent": "ums"
+            },
+            {
+                "id": "ums-roles",
+                "label": "Roles",
+                "icon": "shield",
+                "url": "/plugins/ums/roles",
+                "category": "Administration",
+                "order": 20,
+                "parent": "ums"
+            },
+            {
+                "id": "ums-permissions",
+                "label": "Permissions",
+                "icon": "key",
+                "url": "/plugins/ums/permissions",
+                "category": "Administration",
+                "order": 30,
+                "parent": "ums"
+            }
+        ]
+    }
+}
+

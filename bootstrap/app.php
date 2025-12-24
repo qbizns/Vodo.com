@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.errors' => \App\Http\Middleware\ApiErrorHandler::class,
             'security.headers' => \App\Http\Middleware\SecurityHeadersMiddleware::class,
             'compress' => \App\Http\Middleware\CompressResponse::class,
+            'panel' => \App\Http\Middleware\PanelAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

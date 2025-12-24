@@ -113,7 +113,12 @@
                 success: function (response) {
                     hideLoading();
                     Vodo.notify.success(response.message || 'Operation completed');
-                    if (window.Vodo && Vodo.router) {
+                    // Hard reload for activate/deactivate to ensure all plugin changes take effect
+                    if (action === 'activate' || action === 'deactivate') {
+                        setTimeout(function() {
+                            location.reload(true);
+                        }, 500);
+                    } else if (window.Vodo && Vodo.router) {
                         Vodo.router.refresh();
                     } else {
                         location.reload();
@@ -278,7 +283,10 @@
                 if (response.success) {
                     Vodo.notify.success(response.message || 'Success');
                     setTimeout(function () {
-                        if (window.Vodo && Vodo.router) {
+                        // Hard reload for activate/deactivate to ensure all plugin changes take effect
+                        if (action === 'activate' || action === 'deactivate') {
+                            location.reload(true);
+                        } else if (window.Vodo && Vodo.router) {
                             Vodo.router.refresh();
                         } else {
                             location.reload();

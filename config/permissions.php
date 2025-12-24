@@ -34,7 +34,7 @@ return [
             'name' => 'Administrator',
             'description' => 'Administrative access to most features',
             'level' => 900,
-            'permissions' => ['admin.*', 'users.*', 'settings.*'],
+            'permissions' => ['admin.*', 'users.*', 'roles.*', 'settings.*'],
         ],
         [
             'slug' => 'moderator',
@@ -97,6 +97,16 @@ return [
         ['slug' => 'content.publish', 'name' => 'Publish Content', 'group' => 'content'],
         ['slug' => 'content.moderate', 'name' => 'Moderate Content', 'group' => 'content'],
         ['slug' => 'content.*', 'name' => 'Full Content Management', 'group' => 'content'],
+
+        // Roles & Permissions
+        ['slug' => 'roles.view', 'name' => 'View Roles', 'group' => 'roles'],
+        ['slug' => 'roles.create', 'name' => 'Create Roles', 'group' => 'roles'],
+        ['slug' => 'roles.edit', 'name' => 'Edit Roles', 'group' => 'roles'],
+        ['slug' => 'roles.delete', 'name' => 'Delete Roles', 'group' => 'roles'],
+        ['slug' => 'roles.assign', 'name' => 'Assign Roles to Users', 'group' => 'roles'],
+        ['slug' => 'roles.*', 'name' => 'Full Role Management', 'group' => 'roles'],
+        ['slug' => 'permissions.view', 'name' => 'View Permissions', 'group' => 'roles'],
+        ['slug' => 'permissions.audit', 'name' => 'View Permission Audit Log', 'group' => 'roles'],
 
         // Settings
         ['slug' => 'settings.view', 'name' => 'View Settings', 'group' => 'settings'],
@@ -184,6 +194,7 @@ return [
         'general' => 'General',
         'admin' => 'Administration',
         'users' => 'User Management',
+        'roles' => 'Roles & Permissions',
         'content' => 'Content',
         'settings' => 'Settings',
         'plugins' => 'Plugins',

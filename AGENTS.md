@@ -5,11 +5,17 @@ Vodo is a Laravel-based admin panel with a custom PJAX SPA architecture. All cod
 
 ---
 
+## Database and laravel
+because we are working in docker enviroment so you can not directly access to php artisen or mysql database so i create those tools
+
+### Database and artisan
+- you can use ./art.sh to run any artisen command
+- you can use ./php.sh to run any php command
+
 ## Architecture Principles
 
 ### Frontend Stack
 - **Navigation**: PJAX-based SPA (Single Page Application)
-- **Interactivity**: Alpine.js for reactive components
 - **API Calls**: `Vodo.api` namespace only
 - **Notifications**: `Vodo.notification` system
 - **Modals**: `Vodo.modal` for dialogs and confirmations
@@ -122,58 +128,6 @@ $this->hooks->doAction('action_name', $context);
 @section('content')
 {{-- Page content here --}}
 @endsection
-```
-
-#### Alpine.js Components
-```blade
-{{-- Define Alpine component with x-data --}}
-<div x-data="componentName(@json($serverData))">
-    {{-- Use x-model for two-way binding --}}
-    <input type="text" x-model="searchQuery">
-
-    {{-- Use x-show for conditional display --}}
-    <div x-show="isVisible" x-cloak>Content</div>
-
-    {{-- Use x-for for lists --}}
-    <template x-for="item in items" :key="item.id">
-        <div x-text="item.name"></div>
-    </template>
-
-    {{-- Use @click for events --}}
-    <button @click="handleAction">Action</button>
-</div>
-
-<script>
-function componentName(serverData) {
-    return {
-        // State
-        searchQuery: '',
-        items: serverData.items || [],
-        isVisible: false,
-
-        // Lifecycle
-        init() {
-            // Called when component initializes
-        },
-
-        // Methods
-        async handleAction() {
-            // Use Vodo.api for AJAX calls
-            try {
-                const response = await Vodo.api.post('/api/endpoint', {
-                    data: this.searchQuery
-                });
-
-                if (response.success) {
-                    Vodo.notification.success(response.message);
-                }
-            } catch (error) {
-                Vodo.notification.error(error.message);
-            }
-        }
-    };
-}
-</script>
 ```
 
 ### JavaScript

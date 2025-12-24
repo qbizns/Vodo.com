@@ -2,24 +2,36 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Main Database Seeder
+ * 
+ * Seeds the database with initial data including:
+ * - Default roles and permissions
+ * - Super admin users for all panels
+ * - Test users (optional)
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // 1. Create default permissions and roles
+        $this->call(PermissionsSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // 2. Create permission groups and bind permissions to groups
+        $this->call(PermissionGroupsBindingSeeder::class);
+
+        // 3. Create super admin users for all panels
+        $this->call(SuperAdminSeeder::class);
+
+        // 4. Seed plugins table
+        $this->call(PluginsSeeder::class);
+
+        // 5. Optionally create test users (uncomment for development)
+        // $this->call(TestUsersSeeder::class);
     }
 }

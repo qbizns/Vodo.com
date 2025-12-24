@@ -72,11 +72,11 @@ document.getElementById('roleForm')?.addEventListener('submit', function(e) {
 
     Vodo.api.post(form.action, data).then(response => {
         if (response.success) {
-            Vodo.notification.success(response.message || 'Role created successfully');
+            Vodo.notifications.success(response.message || 'Role created successfully');
             if (response.redirect) {
-                Vodo.pjax.load(response.redirect);
+                window.location.href = response.redirect;
             } else {
-                Vodo.pjax.load('{{ route('admin.roles.index') }}');
+                window.location.href = '{{ route('admin.roles.index') }}';
             }
         }
     }).catch(error => {
@@ -93,7 +93,7 @@ document.getElementById('roleForm')?.addEventListener('submit', function(e) {
                 }
             });
         }
-        Vodo.notification.error(error.message || 'Failed to create role');
+        Vodo.notifications.error(error.message || 'Failed to create role');
     });
 });
 </script>

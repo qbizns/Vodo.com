@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Plugins;
 
 use App\Models\Plugin;
+use App\Models\Setting;
+use App\Services\Tenant\TenantManager;
 use App\Services\Plugins\Contracts\PluginInterface;
 use App\Exceptions\Plugins\PluginException;
 use App\Exceptions\Plugins\PluginNotFoundException;
@@ -126,6 +128,16 @@ class PluginManager
     {
         $plugin = $this->findOrFail($slug);
 
+        // Resolve tenant context
+        $tenantId = null;
+        try {
+            $tenantId = app(TenantManager::class)->getCurrentTenantId();
+        } catch (\Throwable $e) {}
+
+        if ($tenantId) {
+            return $this->activateForTenant($plugin, $tenantId);
+        }
+
         if ($plugin->isActive()) {
             return $plugin;
         }
@@ -206,11 +218,29 @@ class PluginManager
     {
         $plugin = $this->findOrFail($slug);
 
+        // Resolve tenant context
+        $tenantId = null;
+        try {
+            $tenantId = app(TenantManager::class)->getCurrentTenantId();
+        } catch (\Throwable $e) {}
+
+        if ($tenantId) {
+            return $this->deactivateForTenant($plugin, $tenantId);
+        }
+
         if ($plugin->isInactive()) {
             return $plugin;
         }
 
-        // Check for dependent plugins
+        // Strict protection for core plugins
+        if (!$plugin->canDeactivate()) {
+            throw PluginException::forPlugin(
+                $slug,
+                "Cannot deactivate: This is a core plugin or has active dependents."
+            );
+        }
+
+        // Check for dependent plugins (extra safety)
         $this->checkDependents($plugin);
 
         return DB::transaction(function () use ($plugin, $slug) {
@@ -849,5 +879,62 @@ class PluginManager
         $pattern = '/^App\\\\Plugins\\\\[a-zA-Z_][a-zA-Z0-9_]*\\\\[a-zA-Z_][a-zA-Z0-9_]*$/';
         
         return (bool) preg_match($pattern, $className);
+    }
+
+    /**
+     * Activate a plugin for a specific tenant.
+     */
+    protected function activateForTenant(Plugin $plugin, int $tenantId): Plugin
+    {
+        // Must be globally installed/enabled first
+        if ($plugin->status !== Plugin::STATUS_ACTIVE) {
+            throw PluginActivationException::forPlugin(
+                $plugin->slug,
+                "Plugin must be globally installed and active before it can be activated for a tenant."
+            );
+        }
+
+        $this->validateDependencies($plugin);
+
+        $activePlugins = Setting::getValue('active_plugins', [], 'plugins');
+        
+        if (!in_array($plugin->slug, $activePlugins)) {
+            $activePlugins[] = $plugin->slug;
+            Setting::setValue('active_plugins', array_values($activePlugins), 'plugins');
+            
+            // Rebuild tenant-specific cache
+            $this->rebuildProviderCache();
+            
+            Log::info("Plugin activated for tenant [{$tenantId}]: {$plugin->slug}");
+        }
+
+        return $plugin;
+    }
+
+    /**
+     * Deactivate a plugin for a specific tenant.
+     */
+    protected function deactivateForTenant(Plugin $plugin, int $tenantId): Plugin
+    {
+        if ($plugin->is_core) {
+            throw PluginException::forPlugin(
+                $plugin->slug,
+                "Cannot deactivate a core plugin for a tenant."
+            );
+        }
+
+        $activePlugins = Setting::getValue('active_plugins', [], 'plugins');
+        
+        if (($key = array_search($plugin->slug, $activePlugins)) !== false) {
+            unset($activePlugins[$key]);
+            Setting::setValue('active_plugins', array_values($activePlugins), 'plugins');
+            
+            // Rebuild tenant-specific cache
+            $this->rebuildProviderCache();
+            
+            Log::info("Plugin deactivated for tenant [{$tenantId}]: {$plugin->slug}");
+        }
+
+        return $plugin;
     }
 }

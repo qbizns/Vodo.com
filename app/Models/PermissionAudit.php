@@ -78,6 +78,25 @@ class PermissionAudit extends Model
     public const TARGET_PLUGIN = 'plugin';
 
     // =========================================================================
+    // Helper Methods
+    // =========================================================================
+
+    /**
+     * Get the current user ID for audit logging.
+     * Returns null if logged in as admin (not in users table).
+     */
+    protected static function getCurrentUserId(): ?int
+    {
+        // Only return user_id if logged in via the web guard (users table)
+        if (auth()->guard('web')->check()) {
+            return auth()->guard('web')->id();
+        }
+        
+        // Admin users are not in the users table, so return null
+        return null;
+    }
+
+    // =========================================================================
     // Relationships
     // =========================================================================
 
@@ -225,7 +244,7 @@ class PermissionAudit extends Model
     public static function logRoleChange(Role $role, string $action, ?array $changes = null): static
     {
         return static::create([
-            'user_id' => auth()->id(),
+            'user_id' => static::getCurrentUserId(),
             'action' => $action,
             'target_type' => self::TARGET_ROLE,
             'target_id' => $role->id,
@@ -242,7 +261,7 @@ class PermissionAudit extends Model
     public static function logPermissionSync(Role $role, array $added, array $removed): static
     {
         return static::create([
-            'user_id' => auth()->id(),
+            'user_id' => static::getCurrentUserId(),
             'action' => self::ACTION_PERMISSIONS_SYNCED,
             'target_type' => self::TARGET_ROLE,
             'target_id' => $role->id,
@@ -262,7 +281,7 @@ class PermissionAudit extends Model
     public static function logUserRoleChange(User $targetUser, Role $role, string $action): static
     {
         return static::create([
-            'user_id' => auth()->id(),
+            'user_id' => static::getCurrentUserId(),
             'action' => $action,
             'target_type' => self::TARGET_USER,
             'target_id' => $targetUser->id,
@@ -282,7 +301,7 @@ class PermissionAudit extends Model
     public static function logUserPermissionChange(User $targetUser, Permission $permission, string $action, ?string $reason = null): static
     {
         return static::create([
-            'user_id' => auth()->id(),
+            'user_id' => static::getCurrentUserId(),
             'action' => $action,
             'target_type' => self::TARGET_USER,
             'target_id' => $targetUser->id,
@@ -303,7 +322,7 @@ class PermissionAudit extends Model
     public static function logAccessRuleChange(AccessRule $rule, string $action, ?array $changes = null): static
     {
         return static::create([
-            'user_id' => auth()->id(),
+            'user_id' => static::getCurrentUserId(),
             'action' => $action,
             'target_type' => self::TARGET_ACCESS_RULE,
             'target_id' => $rule->id,
@@ -320,7 +339,7 @@ class PermissionAudit extends Model
     public static function logPluginEvent(string $pluginSlug, string $action, ?array $changes = null): static
     {
         return static::create([
-            'user_id' => auth()->id(),
+            'user_id' => static::getCurrentUserId(),
             'action' => $action,
             'target_type' => self::TARGET_PLUGIN,
             'target_id' => null,

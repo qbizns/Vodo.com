@@ -1,5 +1,5 @@
 {{-- User Permissions (Screen 4 - Permissions & Access Control) --}}
-{{-- PJAX Layout for SPA navigation --}}
+{{-- Uses vanilla JS, no Alpine --}}
 
 @extends('backend.layouts.pjax')
 
@@ -36,7 +36,19 @@
 @endsection
 
 @section('content')
-<div class="user-permissions-page" x-data="userPermissions(@json($permissionData))">
+@php
+$permConfig = [
+    'effectiveCount' => $permissionData['effectiveCount'] ?? 0,
+    'fromRolesCount' => $permissionData['fromRolesCount'] ?? 0,
+    'grantedOverrides' => $permissionData['grantedOverrides'] ?? 0,
+    'deniedOverrides' => $permissionData['deniedOverrides'] ?? 0
+];
+@endphp
+<div class="user-permissions-page" 
+     data-component="user-permissions"
+     data-config="{{ json_encode($permConfig) }}"
+     data-update-url="{{ route('admin.permissions.users.update', $user) }}"
+     data-clear-url="{{ route('admin.permissions.users.clear-override', $user) }}">
     {{-- User Info --}}
     <div class="card mb-6">
         <div class="card-body">
@@ -53,7 +65,7 @@
                 </div>
                 <div class="permission-stats">
                     <span class="stat">
-                        <strong x-text="effectiveCount"></strong> effective permissions
+                        <strong data-stat="effective">{{ $permConfig['effectiveCount'] }}</strong> effective permissions
                     </span>
                 </div>
             </div>
@@ -64,7 +76,7 @@
     <div class="card mb-6">
         <div class="card-header">
             <h3>Assigned Roles</h3>
-            <button type="button" class="btn-secondary btn-sm" @click="showAddRoleModal = true">
+            <button type="button" class="btn-secondary btn-sm" data-action="show-add-role">
                 @include('backend.partials.icon', ['icon' => 'plus'])
                 Add Role
             </button>
@@ -72,7 +84,7 @@
         <div class="card-body">
             <div class="roles-grid">
                 @forelse($userRoles as $userRole)
-                    <div class="role-assignment-card">
+                    <div class="role-assignment-card" data-role-id="{{ $userRole->id }}">
                         <div class="role-info">
                             <div class="role-color" style="background-color: {{ $userRole->color }};"></div>
                             <div>
@@ -87,7 +99,8 @@
                         @endif
                         <button type="button"
                                 class="btn-link btn-sm danger"
-                                @click="removeRole({{ $userRole->id }})">
+                                data-action="remove-role"
+                                data-role-id="{{ $userRole->id }}">
                             Remove
                         </button>
                     </div>
@@ -109,11 +122,11 @@
             <h3>Permission Overrides</h3>
             <div class="card-header-actions">
                 @if(count($overrides) > 0)
-                    <button type="button" class="btn-link danger" @click="clearAllOverrides">
+                    <button type="button" class="btn-link danger" data-action="clear-overrides">
                         Clear All
                     </button>
                 @endif
-                <button type="button" class="btn-secondary btn-sm" @click="showAddOverrideModal = true">
+                <button type="button" class="btn-secondary btn-sm" data-action="show-add-override">
                     @include('backend.partials.icon', ['icon' => 'plus'])
                     Add Override
                 </button>
@@ -142,7 +155,7 @@
                     </thead>
                     <tbody>
                         @foreach($overrides as $override)
-                            <tr>
+                            <tr data-permission="{{ $override['permission'] }}">
                                 <td>
                                     <code>{{ $override['permission'] }}</code>
                                     @if($override['expires_at'])
@@ -181,7 +194,8 @@
                                 <td>
                                     <button type="button"
                                             class="btn-link danger"
-                                            @click="removeOverride('{{ $override['permission'] }}')">
+                                            data-action="remove-override"
+                                            data-permission="{{ $override['permission'] }}">
                                         @include('backend.partials.icon', ['icon' => 'x'])
                                     </button>
                                 </td>
@@ -194,7 +208,7 @@
                     <p>No permission overrides set for this user.</p>
                     <button type="button"
                             class="btn-link mt-2"
-                            @click="showAddOverrideModal = true">
+                            data-action="show-add-override">
                         Add an override
                     </button>
                 </div>
@@ -209,17 +223,23 @@
             <div class="card-header-actions">
                 <button type="button"
                         class="btn-secondary btn-sm"
-                        @click="expandAllGroups = !expandAllGroups">
-                    <span x-text="expandAllGroups ? 'Collapse All' : 'Expand All'"></span>
+                        data-action="expand-all">
+                    <span class="expand-text">Expand All</span>
+                    <span class="collapse-text" style="display: none;">Collapse All</span>
                 </button>
             </div>
         </div>
         <div class="card-body">
             <div class="permission-summary mb-4">
-                Total: <strong x-text="effectiveCount"></strong> permissions
-                (<span x-text="fromRolesCount"></span> from roles
-                <span x-show="grantedOverrides > 0">+ <span x-text="grantedOverrides"></span> granted</span>
-                <span x-show="deniedOverrides > 0">- <span x-text="deniedOverrides"></span> denied</span>)
+                Total: <strong data-stat="effective">{{ $permConfig['effectiveCount'] }}</strong> permissions
+                (<span data-stat="from-roles">{{ $permConfig['fromRolesCount'] }}</span> from roles
+                @if($permConfig['grantedOverrides'] > 0)
+                    + <span data-stat="granted">{{ $permConfig['grantedOverrides'] }}</span> granted
+                @endif
+                @if($permConfig['deniedOverrides'] > 0)
+                    - <span data-stat="denied">{{ $permConfig['deniedOverrides'] }}</span> denied
+                @endif
+                )
             </div>
 
             <div class="search-input-wrapper mb-4">
@@ -227,30 +247,26 @@
                 <input type="text"
                        class="search-input"
                        placeholder="Search permissions..."
-                       x-model="searchQuery">
+                       data-role="search">
             </div>
 
             <div class="effective-permissions">
                 @foreach($groupedEffective as $groupSlug => $group)
-                    <div class="permission-group-view"
-                         x-show="isGroupVisible('{{ $groupSlug }}')">
-                        <div class="permission-group-header"
-                             @click="toggleGroup('{{ $groupSlug }}')">
+                    <div class="permission-group-view" data-group="{{ $groupSlug }}">
+                        <div class="permission-group-header" data-group="{{ $groupSlug }}">
                             @include('backend.partials.icon', ['icon' => 'folder'])
                             <span class="group-name">{{ $group['name'] }}</span>
                             <span class="group-count">
                                 {{ $group['allowed'] }}/{{ count($group['permissions']) }} allowed
                             </span>
-                            <span class="group-chevron"
-                                  :class="{ 'expanded': expandedGroups['{{ $groupSlug }}'] || expandAllGroups }">
+                            <span class="group-chevron">
                                 @include('backend.partials.icon', ['icon' => 'chevronDown'])
                             </span>
                         </div>
-                        <div class="permission-group-items"
-                             x-show="expandedGroups['{{ $groupSlug }}'] || expandAllGroups">
+                        <div class="permission-group-items" style="display: none;">
                             @foreach($group['permissions'] as $perm)
                                 <div class="effective-permission-item {{ $perm['allowed'] ? 'allowed' : 'denied' }}"
-                                     x-show="isPermissionVisible('{{ $perm['slug'] }}')">
+                                     data-slug="{{ $perm['slug'] }}">
                                     <span class="permission-status">
                                         @if($perm['allowed'])
                                             @include('backend.partials.icon', ['icon' => 'check'])
@@ -280,19 +296,19 @@
     </div>
 
     {{-- Add Role Modal --}}
-    <div class="modal" x-show="showAddRoleModal" style="display: none;" x-cloak>
-        <div class="modal-backdrop" @click="showAddRoleModal = false"></div>
+    <div class="modal" id="addRoleModal" style="display: none;">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Add Role</h3>
-                <button type="button" class="modal-close" @click="showAddRoleModal = false">
+                <button type="button" class="modal-close">
                     @include('backend.partials.icon', ['icon' => 'x'])
                 </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Select Role</label>
-                    <select class="form-select" x-model="newRoleId">
+                    <select class="form-select" id="newRoleId">
                         <option value="">-- Select a role --</option>
                         @foreach($availableRoles as $role)
                             <option value="{{ $role->id }}">
@@ -303,17 +319,17 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Expiration (optional)</label>
-                    <input type="date" class="form-input" x-model="newRoleExpiry">
+                    <input type="date" class="form-input" id="newRoleExpiry">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" @click="showAddRoleModal = false">
+                <button type="button" class="btn-secondary modal-close">
                     Cancel
                 </button>
                 <button type="button"
                         class="btn-primary"
-                        @click="addRole"
-                        :disabled="!newRoleId">
+                        data-action="add-role"
+                        disabled>
                     Add Role
                 </button>
             </div>
@@ -321,19 +337,19 @@
     </div>
 
     {{-- Add Override Modal --}}
-    <div class="modal" x-show="showAddOverrideModal" style="display: none;" x-cloak>
-        <div class="modal-backdrop" @click="showAddOverrideModal = false"></div>
+    <div class="modal" id="addOverrideModal" style="display: none;">
+        <div class="modal-backdrop"></div>
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Add Permission Override</h3>
-                <button type="button" class="modal-close" @click="showAddOverrideModal = false">
+                <button type="button" class="modal-close">
                     @include('backend.partials.icon', ['icon' => 'x'])
                 </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Permission</label>
-                    <select class="form-select" x-model="newOverridePermission">
+                    <select class="form-select" id="newOverridePermission">
                         <option value="">-- Select permission --</option>
                         @foreach($allPermissions as $perm)
                             <option value="{{ $perm->slug }}">{{ $perm->label ?? $perm->slug }}</option>
@@ -344,28 +360,28 @@
                     <label class="form-label">Action</label>
                     <div class="flex gap-4">
                         <label class="radio-label">
-                            <input type="radio" x-model="newOverrideAction" value="grant">
+                            <input type="radio" name="override_action" value="grant" checked>
                             <span>Grant (allow)</span>
                         </label>
                         <label class="radio-label">
-                            <input type="radio" x-model="newOverrideAction" value="deny">
+                            <input type="radio" name="override_action" value="deny">
                             <span>Deny (revoke)</span>
                         </label>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Expiration (optional)</label>
-                    <input type="date" class="form-input" x-model="newOverrideExpiry">
+                    <input type="date" class="form-input" id="newOverrideExpiry">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" @click="showAddOverrideModal = false">
+                <button type="button" class="btn-secondary modal-close">
                     Cancel
                 </button>
                 <button type="button"
                         class="btn-primary"
-                        @click="addOverride"
-                        :disabled="!newOverridePermission || !newOverrideAction">
+                        data-action="add-override"
+                        disabled>
                     Add Override
                 </button>
             </div>
@@ -374,146 +390,219 @@
 </div>
 
 <script>
-function userPermissions(data) {
-    return {
-        effectiveCount: data.effectiveCount || 0,
-        fromRolesCount: data.fromRolesCount || 0,
-        grantedOverrides: data.grantedOverrides || 0,
-        deniedOverrides: data.deniedOverrides || 0,
-
-        // UI State
-        showAddRoleModal: false,
-        showAddOverrideModal: false,
-        expandedGroups: {},
-        expandAllGroups: false,
-        searchQuery: '',
-
-        // New role form
-        newRoleId: '',
-        newRoleExpiry: '',
-
-        // New override form
-        newOverridePermission: '',
-        newOverrideAction: 'grant',
-        newOverrideExpiry: '',
-
-        toggleGroup(slug) {
-            this.expandedGroups[slug] = !this.expandedGroups[slug];
-        },
-
-        isGroupVisible(slug) {
-            if (!this.searchQuery) return true;
-            // Would need to check if any permissions in group match
-            return true;
-        },
-
-        isPermissionVisible(slug) {
-            if (!this.searchQuery) return true;
-            return slug.toLowerCase().includes(this.searchQuery.toLowerCase());
-        },
-
-        async addRole() {
-            if (!this.newRoleId) return;
-
-            try {
-                const response = await Vodo.api.post('{{ route('admin.permissions.users.update', $user) }}', {
-                    action: 'add_role',
-                    role_id: this.newRoleId,
-                    expires_at: this.newRoleExpiry || null
-                });
-
-                if (response.success) {
-                    Vodo.notification.success(response.message || 'Role added');
-                    this.showAddRoleModal = false;
-                    location.reload();
-                }
-            } catch (error) {
-                Vodo.notification.error(error.message || 'Failed to add role');
+(function() {
+    function initUserPermissions() {
+        var container = document.querySelector('.user-permissions-page[data-component="user-permissions"]');
+        if (!container || container.dataset.initialized) return;
+        
+        var expandedGroups = {};
+        var expandAllGroups = false;
+        var updateUrl = container.dataset.updateUrl;
+        var clearUrl = container.dataset.clearUrl;
+        
+        // Group toggles
+        container.addEventListener('click', function(e) {
+            var header = e.target.closest('.permission-group-header');
+            if (header) {
+                var slug = header.dataset.group;
+                expandedGroups[slug] = !expandedGroups[slug];
+                updateGroupVisibility(slug);
             }
-        },
-
-        async removeRole(roleId) {
-            Vodo.modal.confirm({
-                title: 'Remove Role',
-                message: 'Are you sure you want to remove this role from the user?',
-                confirmText: 'Remove',
-                confirmClass: 'btn-danger',
-                onConfirm: async () => {
-                    try {
-                        const response = await Vodo.api.post('{{ route('admin.permissions.users.update', $user) }}', {
-                            action: 'remove_role',
-                            role_id: roleId
-                        });
-
-                        if (response.success) {
-                            Vodo.notification.success(response.message || 'Role removed');
-                            location.reload();
-                        }
-                    } catch (error) {
-                        Vodo.notification.error(error.message || 'Failed to remove role');
-                    }
-                }
+        });
+        
+        // Expand/collapse all
+        container.querySelector('[data-action="expand-all"]')?.addEventListener('click', function() {
+            expandAllGroups = !expandAllGroups;
+            var btn = this;
+            btn.querySelector('.expand-text').style.display = expandAllGroups ? 'none' : '';
+            btn.querySelector('.collapse-text').style.display = expandAllGroups ? '' : 'none';
+            
+            container.querySelectorAll('.permission-group-view').forEach(function(group) {
+                var slug = group.dataset.group;
+                expandedGroups[slug] = expandAllGroups;
+                updateGroupVisibility(slug);
             });
-        },
-
-        async addOverride() {
-            if (!this.newOverridePermission || !this.newOverrideAction) return;
-
-            try {
-                const response = await Vodo.api.post('{{ route('admin.permissions.users.update', $user) }}', {
-                    action: 'add_override',
-                    permission: this.newOverridePermission,
-                    granted: this.newOverrideAction === 'grant',
-                    expires_at: this.newOverrideExpiry || null
+        });
+        
+        // Search
+        var searchInput = container.querySelector('[data-role="search"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                var query = searchInput.value.toLowerCase();
+                
+                container.querySelectorAll('.effective-permission-item').forEach(function(item) {
+                    var slug = item.dataset.slug?.toLowerCase() || '';
+                    item.style.display = !query || slug.includes(query) ? '' : 'none';
                 });
-
-                if (response.success) {
-                    Vodo.notification.success(response.message || 'Override added');
-                    this.showAddOverrideModal = false;
-                    location.reload();
-                }
-            } catch (error) {
-                Vodo.notification.error(error.message || 'Failed to add override');
-            }
-        },
-
-        async removeOverride(permission) {
-            try {
-                const response = await Vodo.api.post('{{ route('admin.permissions.users.update', $user) }}', {
-                    action: 'remove_override',
-                    permission: permission
-                });
-
-                if (response.success) {
-                    Vodo.notification.success(response.message || 'Override removed');
-                    location.reload();
-                }
-            } catch (error) {
-                Vodo.notification.error(error.message || 'Failed to remove override');
-            }
-        },
-
-        async clearAllOverrides() {
-            Vodo.modal.confirm({
-                title: 'Clear All Overrides',
-                message: 'Are you sure you want to clear all permission overrides for this user?',
-                confirmText: 'Clear All',
-                confirmClass: 'btn-danger',
-                onConfirm: async () => {
-                    try {
-                        const response = await Vodo.api.delete('{{ route('admin.permissions.users.clear-override', $user) }}');
-
-                        if (response.success) {
-                            Vodo.notification.success(response.message || 'Overrides cleared');
-                            location.reload();
-                        }
-                    } catch (error) {
-                        Vodo.notification.error(error.message || 'Failed to clear overrides');
-                    }
-                }
             });
         }
-    };
-}
+        
+        // Show add role modal
+        container.querySelectorAll('[data-action="show-add-role"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('addRoleModal').style.display = 'flex';
+            });
+        });
+        
+        // Show add override modal
+        container.querySelectorAll('[data-action="show-add-override"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('addOverrideModal').style.display = 'flex';
+            });
+        });
+        
+        // Close modals
+        container.querySelectorAll('.modal-close, .modal-backdrop').forEach(function(el) {
+            el.addEventListener('click', function() {
+                container.querySelectorAll('.modal').forEach(function(m) {
+                    m.style.display = 'none';
+                });
+            });
+        });
+        
+        // Enable/disable add role button
+        var newRoleSelect = container.querySelector('#newRoleId');
+        var addRoleBtn = container.querySelector('[data-action="add-role"]');
+        if (newRoleSelect && addRoleBtn) {
+            newRoleSelect.addEventListener('change', function() {
+                addRoleBtn.disabled = !newRoleSelect.value;
+            });
+        }
+        
+        // Enable/disable add override button
+        var newOverrideSelect = container.querySelector('#newOverridePermission');
+        var addOverrideBtn = container.querySelector('[data-action="add-override"]');
+        if (newOverrideSelect && addOverrideBtn) {
+            newOverrideSelect.addEventListener('change', function() {
+                addOverrideBtn.disabled = !newOverrideSelect.value;
+            });
+        }
+        
+        // Add role
+        if (addRoleBtn) {
+            addRoleBtn.addEventListener('click', function() {
+                var roleId = newRoleSelect.value;
+                var expiry = container.querySelector('#newRoleExpiry')?.value || null;
+                
+                if (!roleId) return;
+                
+                Vodo.api.post(updateUrl, {
+                    action: 'add_role',
+                    role_id: roleId,
+                    expires_at: expiry
+                }).then(function(response) {
+                    if (response.success) {
+                        Vodo.notifications.success(response.message || 'Role added');
+                        location.reload();
+                    }
+                }).catch(function(error) {
+                    Vodo.notifications.error(error.message || 'Failed to add role');
+                });
+            });
+        }
+        
+        // Remove role
+        container.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action="remove-role"]');
+            if (btn) {
+                if (!confirm('Are you sure you want to remove this role from the user?')) return;
+                
+                var roleId = btn.dataset.roleId;
+                
+                Vodo.api.post(updateUrl, {
+                    action: 'remove_role',
+                    role_id: roleId
+                }).then(function(response) {
+                    if (response.success) {
+                        Vodo.notifications.success(response.message || 'Role removed');
+                        location.reload();
+                    }
+                }).catch(function(error) {
+                    Vodo.notifications.error(error.message || 'Failed to remove role');
+                });
+            }
+        });
+        
+        // Add override
+        if (addOverrideBtn) {
+            addOverrideBtn.addEventListener('click', function() {
+                var permission = newOverrideSelect.value;
+                var action = container.querySelector('[name="override_action"]:checked')?.value || 'grant';
+                var expiry = container.querySelector('#newOverrideExpiry')?.value || null;
+                
+                if (!permission) return;
+                
+                Vodo.api.post(updateUrl, {
+                    action: 'add_override',
+                    permission: permission,
+                    granted: action === 'grant',
+                    expires_at: expiry
+                }).then(function(response) {
+                    if (response.success) {
+                        Vodo.notifications.success(response.message || 'Override added');
+                        location.reload();
+                    }
+                }).catch(function(error) {
+                    Vodo.notifications.error(error.message || 'Failed to add override');
+                });
+            });
+        }
+        
+        // Remove override
+        container.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action="remove-override"]');
+            if (btn) {
+                var permission = btn.dataset.permission;
+                
+                Vodo.api.post(updateUrl, {
+                    action: 'remove_override',
+                    permission: permission
+                }).then(function(response) {
+                    if (response.success) {
+                        Vodo.notifications.success(response.message || 'Override removed');
+                        location.reload();
+                    }
+                }).catch(function(error) {
+                    Vodo.notifications.error(error.message || 'Failed to remove override');
+                });
+            }
+        });
+        
+        // Clear all overrides
+        container.querySelector('[data-action="clear-overrides"]')?.addEventListener('click', function() {
+            if (!confirm('Are you sure you want to clear all permission overrides for this user?')) return;
+            
+            Vodo.api.delete(clearUrl).then(function(response) {
+                if (response.success) {
+                    Vodo.notifications.success(response.message || 'Overrides cleared');
+                    location.reload();
+                }
+            }).catch(function(error) {
+                Vodo.notifications.error(error.message || 'Failed to clear overrides');
+            });
+        });
+        
+        function updateGroupVisibility(slug) {
+            var group = container.querySelector('.permission-group-view[data-group="' + slug + '"]');
+            if (group) {
+                var content = group.querySelector('.permission-group-items');
+                var chevron = group.querySelector('.group-chevron');
+                var isExpanded = expandedGroups[slug] || expandAllGroups;
+                
+                if (content) content.style.display = isExpanded ? '' : 'none';
+                if (chevron) chevron.classList.toggle('expanded', isExpanded);
+            }
+        }
+        
+        container.dataset.initialized = 'true';
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initUserPermissions, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', initUserPermissions);
+    }
+    document.addEventListener('pjax:complete', initUserPermissions);
+})();
 </script>
 @endsection

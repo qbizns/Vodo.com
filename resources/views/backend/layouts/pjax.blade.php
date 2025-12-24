@@ -38,10 +38,13 @@
     <div id="pjax-content" 
          data-page-title="@yield('title', __t('common.page'))" 
          data-page-id="@yield('page-id', '')"
-         data-page-header="@yield('header', '')"
          data-require-css="@yield('require-css', '')">
         
-        {{-- Header actions for PJAX to update --}}
+        {{-- Header content for PJAX to update (can contain HTML) --}}
+        <div id="pjax-header" style="display:none;">
+            @yield('header')
+        </div>
+        
         {{-- Header actions for PJAX to update --}}
         <div id="pjax-header-actions" style="display:none;">
             @yield('header-actions')

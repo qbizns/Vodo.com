@@ -17,6 +17,14 @@ use Illuminate\Support\Collection;
  * {
  *     use HasPermissions;
  * }
+ * 
+ * All users are stored in a single 'users' table.
+ * Panel access is controlled via roles:
+ * - super_admin: Full system access
+ * - console_admin: SaaS platform management
+ * - owner: Business owner management
+ * - admin: Backend administration
+ * - client: Client area access
  */
 trait HasPermissions
 {

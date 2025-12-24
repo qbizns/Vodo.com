@@ -2,35 +2,29 @@
 
 namespace App\Modules\Console\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use App\Models\User;
 
-class ConsoleUser extends Authenticatable
+/**
+ * @deprecated This class is deprecated. Use App\Models\User with 'console_admin' role instead.
+ * 
+ * Console panel access is now controlled via roles:
+ * - Users with 'super_admin' or 'console_admin' role can access the Console panel
+ * - Use User::canAccessConsole() to check panel access
+ * 
+ * @see \App\Models\User
+ */
+class ConsoleUser extends User
 {
-    use HasFactory, Notifiable;
-
-    protected $table = 'console_users';
-
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'is_active',
-    ];
-
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    protected function casts(): array
+    /**
+     * @deprecated Use User model with console_admin role instead
+     */
+    public function __construct(array $attributes = [])
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-        ];
+        trigger_error(
+            'ConsoleUser is deprecated. Use App\Models\User with console_admin role instead.',
+            E_USER_DEPRECATED
+        );
+        parent::__construct($attributes);
     }
 }
 

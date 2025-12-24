@@ -268,9 +268,12 @@ class DashboardController extends Controller
      */
     public function navigationBoard(): View
     {
+        $user = Auth::guard('console')->user();
+        $favMenus = $user ? $user->getFavMenus() : \App\Models\User::DEFAULT_FAV_MENUS;
+
         return view('console::navigation-board', [
             'allNavGroups' => $this->getAllNavGroups(),
-            'visibleItems' => ['dashboard', 'sites', 'databases'],
+            'userFavMenus' => $favMenus,
         ]);
     }
 
@@ -284,6 +287,55 @@ class DashboardController extends Controller
         return view('console::placeholder', [
             'pageSlug' => $page,
             'pageTitle' => $pageTitle,
+        ]);
+    }
+
+    /**
+     * Get user's favorite menus (AJAX).
+     */
+    public function getFavMenus(): JsonResponse
+    {
+        $user = Auth::guard('console')->user();
+        $favMenus = $user ? $user->getFavMenus() : \App\Models\User::DEFAULT_FAV_MENUS;
+
+        return response()->json([
+            'success' => true,
+            'fav_menus' => $favMenus,
+        ]);
+    }
+
+    /**
+     * Toggle a menu item in user's favorites (AJAX).
+     */
+    public function toggleFavMenu(Request $request): JsonResponse
+    {
+        $request->validate([
+            'item_id' => 'required|string|max:100',
+        ]);
+
+        $user = Auth::guard('console')->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated',
+            ], 401);
+        }
+
+        $itemId = $request->input('item_id');
+        $isAdded = $user->toggleFavMenu($itemId);
+        
+        // Refresh user to get the latest fav_menus from DB
+        $user->refresh();
+        
+        // Return raw fav_menus, not the defaults-enhanced version
+        $favMenus = $user->fav_menus ?? [];
+        
+        return response()->json([
+            'success' => true,
+            'message' => $isAdded ? 'Added to favorites' : 'Removed from favorites',
+            'is_favorite' => $isAdded,
+            'fav_menus' => $favMenus,
         ]);
     }
 }

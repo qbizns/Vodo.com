@@ -45,11 +45,13 @@ class ProcessViewExtensions
         }
 
         // If we have extensions for this view, process them
+        /*
         if ($viewName && $this->registry->hasExtensions($viewName)) {
             $content = $response->getContent();
             $processedContent = $this->extender->process($viewName, $content);
             $response->setContent($processedContent);
         }
+        */
 
         return $response;
     }

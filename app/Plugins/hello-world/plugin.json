@@ -44,7 +44,7 @@
                 "id": "hello-world-dashboard",
                 "label": "Dashboard",
                 "icon": "layoutDashboard",
-                "url": "/dashboard/hello-world",
+                "url": "/plugins/hello-world",
                 "category": "Utilities",
                 "order": 1
             },
@@ -52,7 +52,7 @@
                 "id": "hello-world",
                 "label": "Hello World",
                 "icon": "smile",
-                "route": "index",
+                "url": "/plugins/hello-world",
                 "category": "Utilities",
                 "order": 10
             },
@@ -60,7 +60,7 @@
                 "id": "hello-world-greetings",
                 "label": "Greetings",
                 "icon": "messageSquare",
-                "route": "greetings",
+                "url": "/plugins/hello-world/greetings",
                 "category": "Utilities",
                 "order": 11
             }

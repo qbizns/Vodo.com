@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Plugin;
+use App\Models\Setting;
+use App\Services\Tenant\TenantManager;
 use App\Services\Plugins\HookManager;
 use App\Services\Plugins\PluginCacheManager;
 use App\Services\Plugins\PluginInstaller;
@@ -122,6 +124,14 @@ class PluginServiceProvider extends ServiceProvider
      */
     protected function getActivePlugins(PluginCacheManager $cacheManager): array
     {
+        // Resolve tenant context
+        $tenantId = null;
+        try {
+            $tenantId = app(TenantManager::class)->getCurrentTenantId();
+        } catch (\Throwable $e) {
+            // Context not available yet
+        }
+
         // Try cache first if enabled
         if (config('plugins.use_cache', true)) {
             $cached = $cacheManager->getActivePlugins();
@@ -145,15 +155,46 @@ class PluginServiceProvider extends ServiceProvider
         $plugins = [];
 
         try {
-            $activePlugins = Plugin::active()->get();
-
-            foreach ($activePlugins as $plugin) {
+            // 1. Get core plugins (always active)
+            $corePlugins = Plugin::core()->get();
+            foreach ($corePlugins as $plugin) {
                 $plugins[$plugin->slug] = [
                     'main_class' => $plugin->getMainClassName(),
                     'path' => $plugin->getFullPath(),
                     'version' => $plugin->version,
                 ];
             }
+
+            // 2. Get tenant-specific plugins if in tenant context
+            if ($tenantId) {
+                $activeSlugs = Setting::getValue('active_plugins', [], 'plugins');
+                
+                if (!empty($activeSlugs)) {
+                    $tenantPlugins = Plugin::whereIn('slug', $activeSlugs)
+                        ->where('is_core', false)
+                        ->where('status', Plugin::STATUS_ACTIVE) // Must be globally active/installed
+                        ->get();
+
+                    foreach ($tenantPlugins as $plugin) {
+                        $plugins[$plugin->slug] = [
+                            'main_class' => $plugin->getMainClassName(),
+                            'path' => $plugin->getFullPath(),
+                            'version' => $plugin->version,
+                        ];
+                    }
+                }
+            } else {
+                // No tenant context - load all globally active plugins
+                $activePlugins = Plugin::active()->where('is_core', false)->get();
+                foreach ($activePlugins as $plugin) {
+                    $plugins[$plugin->slug] = [
+                        'main_class' => $plugin->getMainClassName(),
+                        'path' => $plugin->getFullPath(),
+                        'version' => $plugin->version,
+                    ];
+                }
+            }
+
         } catch (\Throwable $e) {
             Log::error('Failed to load plugins from database', [
                 'error' => $e->getMessage(),
@@ -183,6 +224,13 @@ class PluginServiceProvider extends ServiceProvider
 
             if (!$plugin) {
                 Log::warning("Plugin in cache but not in database: {$slug}");
+                $cacheManager->markPluginError($slug);
+                return;
+            }
+
+            // Verify plugin is actually active in database (cache might be stale)
+            if ($plugin->status !== Plugin::STATUS_ACTIVE && !$plugin->is_core) {
+                Log::debug("Plugin in cache but not active in database: {$slug}, removing from cache");
                 $cacheManager->markPluginError($slug);
                 return;
             }

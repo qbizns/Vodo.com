@@ -466,16 +466,6 @@ class PermissionRegistry
     }
 
     // =========================================================================
-    // Cache
-    // =========================================================================
-
-    public function clearCache(): void
-    {
-        Cache::forget('permissions:all');
-        Cache::forget('roles:all');
-    }
-
-    // =========================================================================
     // Documentation
     // =========================================================================
 
@@ -548,6 +538,51 @@ class PermissionRegistry
     // =========================================================================
     // Plugin Lifecycle
     // =========================================================================
+
+    /**
+     * Register permissions from a plugin.
+     * Called when a plugin is activated to register its permissions in the database.
+     * Also handles reactivation of existing permissions when plugin was previously deactivated.
+     *
+     * @param \App\Models\Plugin $plugin The plugin model instance
+     * @param \App\Services\Plugins\Contracts\PluginInterface $instance The plugin instance
+     */
+    public function registerPluginPermissions($plugin, $instance): void
+    {
+        // First, reactivate any existing permissions for this plugin
+        // This handles the case where plugin was previously deactivated
+        $this->onPluginEnabled($plugin->slug);
+
+        // Get permissions from plugin's getPermissions() method
+        $permissions = method_exists($instance, 'getPermissions')
+            ? $instance->getPermissions()
+            : [];
+
+        if (empty($permissions)) {
+            return;
+        }
+
+        // Create or update permission group with plugin name
+        $group = $this->registerGroup([
+            'slug' => $plugin->slug,
+            'name' => $plugin->name,
+            'icon' => 'plug',
+            'active' => true,
+        ], $plugin->slug);
+
+        // Register each permission (creates new or updates existing)
+        foreach ($permissions as $permSlug => $config) {
+            $this->registerPermission([
+                'slug' => $permSlug,
+                'name' => $config['label'] ?? Permission::slugToName($permSlug),
+                'label' => $config['label'] ?? null,
+                'description' => $config['description'] ?? null,
+                'group' => $plugin->slug,
+                'dangerous' => $config['dangerous'] ?? false,
+                'active' => true, // Ensure permission is active on registration/reactivation
+            ], $plugin->slug);
+        }
+    }
 
     /**
      * Handle plugin enabled event - reactivate permissions
@@ -708,9 +743,19 @@ class PermissionRegistry
      */
     public function canUserEditRole($user, Role $role): bool
     {
+        // Admin users (backend admins) have full role management access
+        if ($user instanceof \App\Modules\Admin\Models\Admin) {
+            return true;
+        }
+
+        // Super admin can edit any role
+        if ($this->userHasRole($user, Role::ROLE_SUPER_ADMIN)) {
+            return true;
+        }
+
         // Cannot edit super admin role unless you are super admin
         if ($role->slug === Role::ROLE_SUPER_ADMIN) {
-            return $this->userHasRole($user, Role::ROLE_SUPER_ADMIN);
+            return false;
         }
 
         // Cannot edit roles with higher level than yours

@@ -82,6 +82,9 @@ class Role extends Model
         return $this->permissions()->wherePivot('granted', false);
     }
 
+    /**
+     * Get all users with this role
+     */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(config('auth.providers.users.model', 'App\Models\User'), 'user_roles')
@@ -89,6 +92,9 @@ class Role extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Get active users with this role (non-expired)
+     */
     public function activeUsers(): BelongsToMany
     {
         return $this->users()

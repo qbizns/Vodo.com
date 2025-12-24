@@ -99,10 +99,11 @@ class InputSanitizationMiddleware
         $result = [];
 
         foreach ($data as $key => $value) {
-            $fullKey = $prefix ? "{$prefix}.{$key}" : $key;
+            $keyStr = (string) $key;
+            $fullKey = $prefix ? "{$prefix}.{$keyStr}" : $keyStr;
 
             // Skip excluded fields
-            if ($this->isExcludedField($fullKey, $key)) {
+            if ($this->isExcludedField($fullKey, $keyStr)) {
                 $result[$key] = $value;
                 continue;
             }
@@ -167,10 +168,11 @@ class InputSanitizationMiddleware
     protected function checkArrayForPatterns(array $data, string $prefix): void
     {
         foreach ($data as $key => $value) {
-            $fullKey = $prefix ? "{$prefix}.{$key}" : $key;
+            $keyStr = (string) $key;
+            $fullKey = $prefix ? "{$prefix}.{$keyStr}" : $keyStr;
 
             // Skip excluded fields
-            if ($this->isExcludedField($fullKey, $key)) {
+            if ($this->isExcludedField($fullKey, $keyStr)) {
                 continue;
             }
 

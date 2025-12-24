@@ -1031,49 +1031,25 @@ function initEventHandlers() {
         }
     });
 
-    // Navigation board item toggle
-    $(document).on('click', '.nav-board-item', function () {
-        const itemId = $(this).data('item-id');
-        const $item = $(this);
-        const $star = $item.find('.star-icon');
-
-        // Get current visible items
-        const visibleItems = getVisibleNavItems();
-
-        // Toggle visibility
-        if (visibleItems.has(itemId)) {
-            visibleItems.delete(itemId);
-            $item.removeClass('visible');
-            $star.attr('fill', 'none');
-        } else {
-            visibleItems.add(itemId);
-            $item.addClass('visible');
-            $star.attr('fill', 'currentColor');
-        }
-
-        // Save to localStorage
-        localStorage.setItem('visibleNavItems', JSON.stringify([...visibleItems]));
-
-        // Update sidebar to reflect changes immediately
-        renderSidebar();
-    });
+    // Navigation board item toggle is now handled by inline script in navigation-board.blade.php
+    // The click handlers for star icon (save to DB) and label (PJAX navigate) are defined there
 }
 
 // ============================================
-// Visible Nav Items Management
+// Favorite Menu Items Management
 // ============================================
 
+function getFavMenus() {
+    // Get favorite menus from BackendConfig (loaded from database)
+    // Default favorite items: dashboard, sites, databases
+    const defaultFavMenus = ['dashboard', 'sites', 'databases'];
+    const favMenus = window.BackendConfig?.favMenus || defaultFavMenus;
+    return new Set(Array.isArray(favMenus) ? favMenus : defaultFavMenus);
+}
+
+// Alias for backward compatibility
 function getVisibleNavItems() {
-    // Load visible nav items from localStorage
-    // Default visible items: dashboard, sites, databases
-    let visibleNavItems = new Set(['dashboard', 'sites', 'databases']);
-    try {
-        const saved = localStorage.getItem('visibleNavItems');
-        if (saved) {
-            visibleNavItems = new Set(JSON.parse(saved));
-        }
-    } catch (e) { }
-    return visibleNavItems;
+    return getFavMenus();
 }
 
 // ============================================
@@ -1088,7 +1064,8 @@ function renderSidebar() {
     const navGroups = window.BackendConfig?.navGroups || [];
     if (navGroups.length === 0) return;
 
-    const visibleNavItems = getVisibleNavItems();
+    // Get favorite menus from BackendConfig (database-backed)
+    const favMenus = getFavMenus();
     const currentPage = window.BackendConfig?.currentPage || 'dashboard';
 
     // Clear existing nav items
@@ -1097,10 +1074,10 @@ function renderSidebar() {
     let hasVisibleItems = false;
 
     navGroups.forEach((group, groupIndex) => {
-        // Filter items by visibility
-        const visibleItems = group.items.filter(item => visibleNavItems.has(item.id));
+        // Filter items by favorites
+        const visibleItems = group.items.filter(item => favMenus.has(item.id));
 
-        // Skip group if no visible items
+        // Skip group if no favorite items
         if (visibleItems.length === 0) {
             return;
         }
@@ -1117,7 +1094,7 @@ function renderSidebar() {
             `);
         }
 
-        // Navigation items (only visible ones)
+        // Navigation items (only favorite ones)
         visibleItems.forEach(item => {
             const isActive = currentPage === item.id;
             const iconHtml = getNavIcon(item.icon);

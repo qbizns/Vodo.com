@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Plugins;
 
 use App\Models\Plugin;
+use App\Services\Tenant\TenantManager;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
 
@@ -42,7 +43,7 @@ class PluginCacheManager
      */
     public function __construct()
     {
-        $this->cachePath = base_path('bootstrap/cache/plugins.php');
+        // Path is resolved dynamically
     }
 
     /**
@@ -50,7 +51,18 @@ class PluginCacheManager
      */
     public function getCachePath(): string
     {
-        return $this->cachePath;
+        try {
+            $tenantManager = app(TenantManager::class);
+            $tenantId = $tenantManager->getCurrentTenantId();
+            
+            if ($tenantId) {
+                return base_path("bootstrap/cache/plugins_{$tenantId}.php");
+            }
+        } catch (\Throwable $e) {
+            // Fallback to default if TenantManager is not available or errors
+        }
+
+        return base_path('bootstrap/cache/plugins.php');
     }
 
     /**
@@ -58,7 +70,7 @@ class PluginCacheManager
      */
     public function exists(): bool
     {
-        return file_exists($this->cachePath) && is_readable($this->cachePath);
+        return file_exists($this->getCachePath()) && is_readable($this->getCachePath());
     }
 
     /**
@@ -77,7 +89,7 @@ class PluginCacheManager
         }
 
         try {
-            $data = require $this->cachePath;
+            $data = require $this->getCachePath();
 
             // Validate structure
             if (!is_array($data) || !isset($data['plugins']) || !is_array($data['plugins'])) {
@@ -91,7 +103,7 @@ class PluginCacheManager
         } catch (\Throwable $e) {
             Log::error('Failed to load plugin cache', [
                 'error' => $e->getMessage(),
-                'path' => $this->cachePath,
+                'path' => $this->getCachePath(),
             ]);
             return null;
         }
@@ -153,7 +165,7 @@ class PluginCacheManager
      */
     protected function write(array $data): bool
     {
-        $directory = dirname($this->cachePath);
+        $directory = dirname($this->getCachePath());
 
         // Ensure directory exists
         if (!is_dir($directory)) {
@@ -171,7 +183,7 @@ class PluginCacheManager
         $content .= "return " . var_export($data, true) . ";\n";
 
         // Write to temp file first (atomic write pattern)
-        $tempPath = $this->cachePath . '.tmp.' . uniqid();
+        $tempPath = $this->getCachePath() . '.tmp.' . uniqid();
 
         try {
             if (file_put_contents($tempPath, $content, LOCK_EX) === false) {
@@ -180,10 +192,10 @@ class PluginCacheManager
             }
 
             // Atomic rename
-            if (!rename($tempPath, $this->cachePath)) {
+            if (!rename($tempPath, $this->getCachePath())) {
                 Log::error('Failed to rename cache file', [
                     'from' => $tempPath,
-                    'to' => $this->cachePath,
+                    'to' => $this->getCachePath(),
                 ]);
                 @unlink($tempPath);
                 return false;
@@ -191,7 +203,7 @@ class PluginCacheManager
 
             // Clear opcache for this file if available
             if (function_exists('opcache_invalidate')) {
-                opcache_invalidate($this->cachePath, true);
+                opcache_invalidate($this->getCachePath(), true);
             }
 
             // Clear in-memory cache
@@ -222,10 +234,10 @@ class PluginCacheManager
         }
 
         try {
-            $result = unlink($this->cachePath);
+            $result = unlink($this->getCachePath());
 
             if ($result && function_exists('opcache_invalidate')) {
-                opcache_invalidate($this->cachePath, true);
+                opcache_invalidate($this->getCachePath(), true);
             }
 
             return $result;
@@ -270,7 +282,7 @@ class PluginCacheManager
         if (!$this->exists()) {
             return [
                 'exists' => false,
-                'path' => $this->cachePath,
+                'path' => $this->getCachePath(),
             ];
         }
 
@@ -278,12 +290,12 @@ class PluginCacheManager
 
         return [
             'exists' => true,
-            'path' => $this->cachePath,
+            'path' => $this->getCachePath(),
             'generated_at' => $data['generated_at'] ?? 'unknown',
             'plugin_count' => count($data['plugins'] ?? []),
             'plugins' => array_keys($data['plugins'] ?? []),
-            'file_size' => filesize($this->cachePath),
-            'file_mtime' => date('Y-m-d H:i:s', filemtime($this->cachePath)),
+            'file_size' => filesize($this->getCachePath()),
+            'file_mtime' => date('Y-m-d H:i:s', filemtime($this->getCachePath())),
         ];
     }
 

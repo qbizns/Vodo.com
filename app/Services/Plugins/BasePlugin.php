@@ -408,6 +408,114 @@ abstract class BasePlugin implements PluginInterface
     }
 
     /**
+     * Get menu items for this plugin.
+     * Override in child class to provide custom menu items.
+     * 
+     * @return array Menu items array with structure:
+     * [
+     *     [
+     *         'id' => 'plugin-menu',
+     *         'label' => 'Plugin Menu',
+     *         'icon' => 'plug',
+     *         'url' => '/plugins/my-plugin',      // Direct URL
+     *         'route' => 'plugins.my-plugin.index', // Or route name
+     *         'permission' => 'plugin.view',      // Optional permission check
+     *         'category' => 'Plugins',            // Navigation category
+     *         'position' => 50,                   // Sort position
+     *         'panels' => ['admin', 'console'],   // Optional panel restrictions
+     *         'children' => [                     // Optional sub-menu items
+     *             [
+     *                 'id' => 'child-item',
+     *                 'label' => 'Child Item',
+     *                 'icon' => 'circle',
+     *                 'url' => '/plugins/my-plugin/child',
+     *             ]
+     *         ],
+     *     ],
+     * ]
+     */
+    public function getMenuItems(): array
+    {
+        // First check if navigation items are defined in the manifest
+        if (isset($this->manifest['navigation']['items']) && !empty($this->manifest['navigation']['items'])) {
+            return $this->convertManifestNavigationToMenuItems($this->manifest['navigation']['items']);
+        }
+
+        return [];
+    }
+
+    /**
+     * Convert manifest navigation items to the standard menu format.
+     */
+    protected function convertManifestNavigationToMenuItems(array $manifestItems): array
+    {
+        $menuItems = [];
+
+        foreach ($manifestItems as $item) {
+            // Skip children items that have a parent (they'll be processed with their parent)
+            if (isset($item['parent'])) {
+                continue;
+            }
+
+            $menuItem = [
+                'id' => $item['id'] ?? $this->plugin->slug,
+                'icon' => $item['icon'] ?? 'plug',
+                'label' => $item['label'] ?? $this->plugin->name,
+                'category' => $item['category'] ?? 'Plugins',
+            ];
+
+            // Set URL or route
+            if (isset($item['url'])) {
+                $menuItem['url'] = $item['url'];
+            } elseif (isset($item['route'])) {
+                $menuItem['route'] = $item['route'];
+            } else {
+                $menuItem['url'] = "/plugins/{$this->plugin->slug}";
+            }
+
+            // Optional fields
+            if (isset($item['permission'])) {
+                $menuItem['permission'] = $item['permission'];
+            }
+            if (isset($item['order'])) {
+                $menuItem['position'] = $item['order'];
+            }
+            if (isset($item['panels'])) {
+                $menuItem['panels'] = $item['panels'];
+            }
+
+            // Find and process children
+            $children = array_filter($manifestItems, fn($i) => ($i['parent'] ?? null) === $item['id']);
+            if (!empty($children)) {
+                $menuItem['children'] = [];
+                foreach ($children as $child) {
+                    $childItem = [
+                        'id' => $child['id'] ?? "{$this->plugin->slug}-child",
+                        'icon' => $child['icon'] ?? 'circle',
+                        'label' => $child['label'] ?? 'Item',
+                    ];
+
+                    if (isset($child['url'])) {
+                        $childItem['url'] = $child['url'];
+                    } elseif (isset($child['route'])) {
+                        $childItem['route'] = $child['route'];
+                    }
+
+                    if (isset($child['permission'])) {
+                        $childItem['permission'] = $child['permission'];
+                    }
+
+                    $menuItem['children'][] = $childItem;
+                }
+            }
+
+            $menuItems[] = $menuItem;
+        }
+
+        return $menuItems;
+    }
+
+    /**
      * Add navigation items via the hook system.
      */
     protected function addNavigationItem(array $item, string $category = 'Plugins'): void
