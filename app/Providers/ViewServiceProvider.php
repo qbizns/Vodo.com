@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Contracts\ViewRegistryContract;
+use App\Contracts\ViewTypeRegistryContract;
+use App\Services\View\ViewBuilder;
 use App\Services\View\ViewCompiler;
 use App\Services\View\ViewRegistry;
+use App\Services\View\ViewTypeRegistry;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -26,16 +30,26 @@ class ViewServiceProvider extends ServiceProvider
             return new ViewCompiler();
         });
 
+        // Register ViewTypeRegistry as singleton
+        $this->app->singleton(ViewTypeRegistry::class, function ($app) {
+            return new ViewTypeRegistry();
+        });
+
         // Register ViewRegistry as singleton
         $this->app->singleton(ViewRegistry::class, function ($app) {
             return new ViewRegistry(
-                $app->make(ViewCompiler::class)
+                $app->make(ViewTypeRegistry::class)
             );
         });
 
         // Register aliases
         $this->app->alias(ViewRegistry::class, 'view.registry');
         $this->app->alias(ViewCompiler::class, 'view.compiler');
+        $this->app->alias(ViewTypeRegistry::class, 'view.types');
+
+        // Bind contracts
+        $this->app->bind(ViewRegistryContract::class, ViewRegistry::class);
+        $this->app->bind(ViewTypeRegistryContract::class, ViewTypeRegistry::class);
     }
 
     /**
