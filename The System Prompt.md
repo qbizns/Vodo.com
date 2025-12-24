@@ -449,4 +449,543 @@ When I propose a design:
 
 ---
 
+## PART 8: VIEW REGISTRY SYSTEM
+
+### 8.1 View Registry Architecture
+
+The View Registry is the central system for managing all UI views in the platform. It follows an Odoo/Salesforce-inspired pattern.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      VIEW REGISTRY SYSTEM                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────┐    ┌──────────────────┐                   │
+│  │  ViewTypeRegistry │◄───│  Plugin A        │                   │
+│  │  (20 canonical)   │    │  registers types │                   │
+│  └────────┬─────────┘    └──────────────────┘                   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐    ┌──────────────────┐                   │
+│  │   ViewRegistry    │◄───│  Plugin B        │                   │
+│  │  (definitions)    │    │  registers views │                   │
+│  └────────┬─────────┘    └──────────────────┘                   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐    ┌──────────────────┐                   │
+│  │ ViewExtensionReg │◄───│  Plugin C        │                   │
+│  │  (XPath mods)     │    │  extends views   │                   │
+│  └────────┬─────────┘    └──────────────────┘                   │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌──────────────────┐                                           │
+│  │   ViewCompiler    │                                           │
+│  │  (renders final)  │                                           │
+│  └──────────────────┘                                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 View Definition Structure
+
+Every view definition follows this structure:
+
+```php
+[
+    'type' => 'list',              // One of 20 canonical types
+    'entity' => 'customers',       // Entity this view is for
+    'slug' => 'customers_list',    // Unique identifier
+    'name' => 'Customer List',     // Human-readable name
+    'priority' => 16,              // Lower = higher priority
+    'arch' => [                    // Architecture definition
+        'columns' => [...],
+        'filters' => [...],
+        'actions' => [...],
+        'config' => [...],
+    ],
+    'inherit_id' => null,          // Parent view for inheritance
+    'plugin_slug' => 'crm',        // Owning plugin
+]
+```
+
+### 8.3 View Registration API
+
+```php
+// Method 1: Direct registration
+$viewRegistry->registerListView('customers', [
+    'columns' => ['name', 'email', 'status'],
+    'filters' => ['status'],
+    'default_sort' => 'name',
+], 'my-plugin');
+
+// Method 2: Fluent builder
+view_for_entity('customers')
+    ->list([
+        'columns' => ['name', 'email', 'status'],
+    ])
+    ->form([
+        'sections' => [
+            'basic' => ['name', 'email'],
+        ],
+    ])
+    ->register('my-plugin');
+
+// Method 3: Entity-based (in Entity class)
+public function views(): void
+{
+    $this->view('list')
+        ->columns(['name', 'email', 'status'])
+        ->filters(['status']);
+}
+```
+
+### 8.4 View Extension Patterns
+
+```php
+// XPath-based extension
+view_registry()->extendView('customers_form', [
+    [
+        'xpath' => '//field[@name="email"]',
+        'position' => 'after',
+        'content' => [
+            'phone' => ['widget' => 'phone', 'label' => 'Phone'],
+        ],
+    ],
+], 'my-plugin');
+
+// Add column to list
+add_view_column('customers_list', 'loyalty_tier', [
+    'label' => 'Loyalty',
+    'widget' => 'badge',
+], after: 'status');
+
+// Add section to form
+add_view_section('customers_form', 'loyalty', [
+    'label' => 'Loyalty Program',
+    'fields' => ['loyalty_points', 'loyalty_level'],
+], after: 'basic');
+```
+
+### 8.5 Widget System
+
+Widgets define how fields are rendered in views:
+
+| Widget | Field Types | Usage |
+|--------|-------------|-------|
+| `char` | string | Single-line text |
+| `text` | text | Multi-line text |
+| `html` | text, html | Rich text editor |
+| `integer` | integer | Whole numbers |
+| `float` | decimal | Decimal numbers |
+| `monetary` | decimal, money | Currency display |
+| `date` | date | Date picker |
+| `datetime` | datetime | Date + time picker |
+| `checkbox` | boolean | True/false toggle |
+| `selection` | select | Dropdown select |
+| `many2one` | relation | Single related record |
+| `one2many` | relation | List of related records |
+| `many2many` | relation | Multiple related records |
+| `image` | image | Image upload/display |
+| `binary` | file | File upload |
+| `statusbar` | select, string | Workflow status bar |
+| `priority` | integer, select | Star rating |
+| `badge` | string, select | Colored badge |
+| `tags` | json, relation | Tag cloud |
+| `progressbar` | integer, decimal | Progress indicator |
+
+### 8.6 View Hooks
+
+```php
+// Fired when a view type is registered
+add_action('view_type_registered', function($type, $config) {
+    // Log, validate, etc.
+});
+
+// Fired when a view is registered
+add_action('view_registered', function($view, $definition) {
+    // Add default extensions, validate, etc.
+});
+
+// Fired before rendering
+add_action('view_rendering', function($view, &$data) {
+    // Modify data before render
+});
+
+// Filter view definition
+add_filter('view_definition', function($definition, $slug) {
+    // Modify definition dynamically
+    return $definition;
+});
+
+// Filter view columns
+add_filter('view_columns', function($columns, $view) {
+    // Add/remove columns dynamically
+    return $columns;
+});
+```
+
+---
+
+## PART 9: CORE SERVICE REGISTRIES
+
+### 9.1 Available Registries
+
+| Registry | Purpose | Helper Functions |
+|----------|---------|------------------|
+| `ViewRegistry` | UI view definitions | `register_view()`, `get_view()` |
+| `ViewTypeRegistry` | View type handlers | `register_view_type()` |
+| `EntityRegistry` | Dynamic entities | `register_entity()`, `get_entity()` |
+| `FieldTypeRegistry` | Custom field types | `register_field_type()` |
+| `PermissionRegistry` | Permissions | `register_permission()` |
+| `MenuRegistry` | Navigation menus | `register_menu()`, `add_menu_item()` |
+| `ShortcodeRegistry` | Content shortcodes | `register_shortcode()` |
+| `ApiRegistry` | REST endpoints | `register_api_endpoint()` |
+| `HookManager` | Actions & filters | `add_action()`, `add_filter()` |
+
+### 9.2 Registry Pattern
+
+All registries follow this pattern:
+
+```php
+// Register
+$registry->register($name, $config, $pluginSlug);
+
+// Get
+$registry->get($name);
+
+// Check existence
+$registry->exists($name);
+
+// Get all
+$registry->all();
+
+// Get by plugin
+$registry->getByPlugin($pluginSlug);
+
+// Unregister
+$registry->unregister($name, $pluginSlug);
+
+// Clear cache
+$registry->clearCache();
+```
+
+---
+
+## PART 10: FRONTEND ARCHITECTURE
+
+### 10.1 PJAX SPA Framework
+
+The platform uses a custom PJAX (Push State + AJAX) framework. NO external frontend frameworks.
+
+```javascript
+// Navigation (NEVER use window.location)
+Vodo.pjax.load('/admin/customers');
+
+// API calls (NEVER use fetch directly)
+Vodo.api.get('/api/customers').then(response => {});
+Vodo.api.post('/api/customers', data).then(response => {});
+Vodo.api.put('/api/customers/1', data).then(response => {});
+Vodo.api.delete('/api/customers/1').then(response => {});
+
+// Notifications (NEVER use alert)
+Vodo.notification.success('Saved successfully');
+Vodo.notification.error('Failed to save');
+Vodo.notification.warning('Please check the form');
+Vodo.notification.info('Processing...');
+
+// Modals (NEVER use confirm)
+Vodo.modal.confirm({
+    title: 'Delete Customer',
+    message: 'Are you sure you want to delete this customer?',
+    confirmText: 'Delete',
+    confirmClass: 'btn-danger',
+    onConfirm: () => { /* handle delete */ }
+});
+```
+
+### 10.2 Blade Layout Structure
+
+```blade
+@extends('backend.layouts.pjax')
+
+@section('title', 'Page Title')
+@section('page-id', 'section/page-name')
+@section('require-css', 'page-name')
+
+@section('header', 'Page Header')
+
+@section('header-actions')
+    <a href="{{ route('admin.section.create') }}" class="btn-primary">
+        @include('backend.partials.icon', ['icon' => 'plus'])
+        <span>Create</span>
+    </a>
+@endsection
+
+@section('content')
+    {{-- Page content --}}
+@endsection
+```
+
+### 10.3 CSS Guidelines
+
+- Page CSS: `public/backend/css/pages/{page-name}.css`
+- Use BEM naming: `.block__element--modifier`
+- Use CSS variables: `var(--primary)`, `var(--bg-surface-1)`
+- NEVER use inline styles in Blade templates
+- NEVER use custom Tailwind classes in plugin views
+
+---
+
+## PART 11: PLUGIN DEVELOPMENT
+
+### 11.1 Plugin Lifecycle Hooks
+
+```php
+// Plugin activated
+add_action('plugin_activated', function($plugin) {
+    // Run migrations, register entities, etc.
+});
+
+// Plugin deactivated
+add_action('plugin_deactivated', function($plugin) {
+    // Cleanup resources
+});
+
+// All plugins loaded
+add_action('plugins_loaded', function() {
+    // Cross-plugin integrations
+});
+```
+
+### 11.2 Plugin Manifest (plugin.json)
+
+```json
+{
+    "name": "my-plugin",
+    "title": "My Plugin",
+    "version": "1.0.0",
+    "author": {"name": "Author", "email": "author@example.com"},
+    "dependencies": {
+        "core-plugin": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {"MyPlugin\\": "src/"}
+    },
+    "providers": ["MyPlugin\\Providers\\MyPluginServiceProvider"],
+    "entry_class": "MyPluginClass",
+    "navigation": {
+        "items": [
+            {
+                "id": "my-plugin",
+                "label": "My Plugin",
+                "icon": "box",
+                "url": "/plugins/my-plugin",
+                "category": "Plugins"
+            }
+        ]
+    }
+}
+```
+
+### 11.3 Plugin ServiceProvider
+
+```php
+class MyPluginServiceProvider extends PluginServiceProvider
+{
+    public function register(): void
+    {
+        // Register bindings
+    }
+
+    public function boot(): void
+    {
+        // Register entities
+        $this->registerEntities();
+
+        // Register views
+        $this->registerViews();
+
+        // Register permissions
+        $this->registerPermissions();
+
+        // Add hooks
+        $this->registerHooks();
+    }
+
+    protected function registerViews(): void
+    {
+        view_for_entity('my_entity')
+            ->list(['columns' => ['name', 'status']])
+            ->form(['sections' => ['main' => ['name', 'status']]])
+            ->register($this->pluginSlug);
+    }
+}
+```
+
+---
+
+## PART 12: TESTING REQUIREMENTS
+
+### 12.1 Test Categories
+
+| Category | Location | Purpose |
+|----------|----------|---------|
+| Unit | `tests/Unit/` | Isolated component tests |
+| Feature | `tests/Feature/` | Integration tests |
+| Plugin | `plugins/*/tests/` | Plugin-specific tests |
+
+### 12.2 View Testing
+
+```php
+class CustomerViewTest extends TestCase
+{
+    public function test_list_view_renders_correctly(): void
+    {
+        $view = get_view('customers_list');
+
+        $this->assertNotNull($view);
+        $this->assertArrayHasKey('columns', $view);
+        $this->assertContains('name', array_keys($view['columns']));
+    }
+
+    public function test_form_view_has_required_sections(): void
+    {
+        $view = get_view('customers_form');
+
+        $this->assertArrayHasKey('sections', $view);
+        $this->assertArrayHasKey('basic', $view['sections']);
+    }
+}
+```
+
+### 12.3 Plugin Testing
+
+```php
+class MyPluginTest extends PluginTestCase
+{
+    protected string $pluginSlug = 'my-plugin';
+
+    public function test_plugin_registers_entities(): void
+    {
+        $this->assertTrue(entity_exists('my_entity'));
+    }
+
+    public function test_plugin_registers_views(): void
+    {
+        $this->assertTrue(view_exists('my_entity_list'));
+        $this->assertTrue(view_exists('my_entity_form'));
+    }
+}
+```
+
+---
+
+## PART 13: PERFORMANCE GUIDELINES
+
+### 13.1 View Performance
+
+- Views are cached for 1 hour by default
+- Cache is invalidated on view modification
+- XPath compilation is cached separately
+- Use `lazy_load: true` for nested views
+
+### 13.2 Entity Performance
+
+- Use `show_in_list: false` for large text fields
+- Index all filterable columns
+- Use computed fields sparingly
+- Eager load relationships in list views
+
+### 13.3 Caching Strategy
+
+```php
+// View cache
+Cache::remember("view:{$slug}", 3600, fn() => $view);
+
+// Entity cache
+Cache::remember("entity:{$name}", 3600, fn() => $entity);
+
+// Clear on modification
+Cache::forget("view:{$slug}");
+do_action('cache_cleared', 'view', $slug);
+```
+
+---
+
+## PART 14: SECURITY CHECKLIST
+
+### 14.1 View Security
+
+- [ ] All user input is sanitized
+- [ ] XPath expressions are validated
+- [ ] View permissions are checked
+- [ ] No raw HTML injection possible
+- [ ] CSRF tokens on all forms
+
+### 14.2 Plugin Security
+
+- [ ] No dangerous file extensions allowed
+- [ ] Plugin manifest validated
+- [ ] Autoload paths restricted
+- [ ] Database queries use bindings
+- [ ] API endpoints require authentication
+
+---
+
+## PART 15: QUICK REFERENCE
+
+### 15.1 Helper Functions
+
+```php
+// Views
+register_view($name, $content, $config, $pluginSlug);
+get_view($name);
+extend_view($slug, $modifications, $pluginSlug);
+render_view($slug, $data);
+
+// Entities
+register_entity($name, $config, $pluginSlug);
+get_entity($name);
+entity_exists($name);
+create_entity_record($entity, $data);
+
+// Hooks
+add_action($hook, $callback, $priority);
+add_filter($filter, $callback, $priority);
+do_action($hook, ...$args);
+apply_filters($filter, $value, ...$args);
+
+// Permissions
+register_permission($name, $config, $pluginSlug);
+user_can($permission);
+check_permission($user, $permission);
+```
+
+### 15.2 Common Patterns
+
+```php
+// Register entity with views
+register_entity('products', [
+    'labels' => ['singular' => 'Product', 'plural' => 'Products'],
+    'fields' => [
+        'name' => ['type' => 'string', 'required' => true],
+        'price' => ['type' => 'decimal', 'widget' => 'monetary'],
+    ],
+], 'my-plugin');
+
+view_for_entity('products')
+    ->list(['columns' => ['name', 'price']])
+    ->form(['sections' => ['main' => ['name', 'price']]])
+    ->register('my-plugin');
+
+// Extend another plugin's view
+extend_view('customers_form', [
+    ['xpath' => '//section[@name="basic"]', 'position' => 'after', 'content' => [
+        'custom_section' => ['label' => 'Custom', 'fields' => ['custom_field']],
+    ]],
+], 'my-plugin');
+```
+
+---
+
 Remember: Your job is to help me build a correct, scalable, maintainable system—even if that means frequently challenging my decisions. A good partner disagrees when it matters.
