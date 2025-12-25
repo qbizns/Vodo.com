@@ -123,7 +123,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('subscription_id')->references('id')->on('integration_trigger_subscriptions')->onDelete('cascade');
-            $table->index(['subscription_id', 'deduplication_key']);
+            $table->index(['subscription_id', 'deduplication_key'], 'int_trigger_events_sub_dedup_idx');
             $table->index(['flow_id', 'status']);
         });
 
@@ -186,8 +186,8 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
 
-            $table->index(['connector_name', 'action_name', 'status']);
-            $table->index(['connection_id', 'created_at']);
+            $table->index(['connector_name', 'action_name', 'status'], 'int_action_exec_conn_action_status_idx');
+            $table->index(['connection_id', 'created_at'], 'int_action_exec_connection_created_idx');
         });
 
         // Credential access log (audit trail)
@@ -201,7 +201,7 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamp('created_at');
 
-            $table->index(['credential_id', 'created_at']);
+            $table->index(['credential_id', 'created_at'], 'int_cred_access_log_cred_created_idx');
         });
     }
 
