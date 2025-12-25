@@ -11,7 +11,7 @@ return [
     |
     */
 
-    'create_defaults' => true,
+    'create_defaults' => false, // Disabled - use seeders instead for proper group_id
 
     /*
     |--------------------------------------------------------------------------

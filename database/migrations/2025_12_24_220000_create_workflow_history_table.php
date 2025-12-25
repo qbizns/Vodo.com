@@ -11,6 +11,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Skip if table already exists (created in platform_tables migration)
+        if (Schema::hasTable('workflow_history')) {
+            return;
+        }
+
         Schema::create('workflow_history', function (Blueprint $table) {
             $table->id();
             $table->string('workflow', 100)->index();

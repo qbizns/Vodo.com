@@ -99,8 +99,8 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       # Do NOT use root in production - use limited user
-      PMA_USER: ${MYSQL_USER:-vodo}
-      PMA_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       UPLOAD_LIMIT: 50M
     ports:
       - "${PHPMYADMIN_PORT:-8080}:80"
