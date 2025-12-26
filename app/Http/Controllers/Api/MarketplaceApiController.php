@@ -10,6 +10,7 @@ use App\Services\Marketplace\MarketplaceClient;
 use App\Services\Marketplace\PluginManager;
 use App\Services\Marketplace\LicenseManager;
 use App\Services\Marketplace\UpdateManager;
+use App\Services\Tenant\TenantManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -19,8 +20,17 @@ class MarketplaceApiController extends Controller
         protected MarketplaceClient $client,
         protected PluginManager $pluginManager,
         protected LicenseManager $licenseManager,
-        protected UpdateManager $updateManager
+        protected UpdateManager $updateManager,
+        protected TenantManager $tenantManager
     ) {}
+
+    /**
+     * Get the current tenant ID.
+     */
+    protected function getCurrentTenantId(): ?int
+    {
+        return $this->tenantManager->getCurrentTenantId();
+    }
 
     // =========================================================================
     // Marketplace Browsing
@@ -99,7 +109,8 @@ class MarketplaceApiController extends Controller
         }
 
         $data = $plugin->toArray();
-        $data['is_installed'] = $plugin->isInstalled();
+        // Check if installed for current tenant
+        $data['is_installed'] = $plugin->isInstalled($this->getCurrentTenantId());
 
         return response()->json(['success' => true, 'data' => $data]);
     }
@@ -120,7 +131,9 @@ class MarketplaceApiController extends Controller
 
     public function installed(Request $request): JsonResponse
     {
-        $query = InstalledPlugin::with(['license', 'pendingUpdate']);
+        // Filter by current tenant
+        $query = InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->with(['license', 'pendingUpdate']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -136,7 +149,9 @@ class MarketplaceApiController extends Controller
 
     public function showInstalled(string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::with(['license', 'pendingUpdate', 'updateHistory' => fn($q) => $q->latest()->limit(5)])
+        // Filter by current tenant
+        $plugin = InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->with(['license', 'pendingUpdate', 'updateHistory' => fn($q) => $q->latest()->limit(5)])
             ->where('slug', $slug)
             ->first();
 
@@ -171,7 +186,8 @@ class MarketplaceApiController extends Controller
 
     public function activate(string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -182,7 +198,8 @@ class MarketplaceApiController extends Controller
 
     public function deactivate(string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -193,7 +210,8 @@ class MarketplaceApiController extends Controller
 
     public function uninstall(Request $request, string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -208,12 +226,16 @@ class MarketplaceApiController extends Controller
 
     public function licenses(): JsonResponse
     {
-        $licenses = PluginLicense::with('plugin:id,slug,name')->get()->map(function ($license) {
-            $data = $license->toArray();
-            $data['masked_key'] = $license->getMaskedKey();
-            $data['days_until_expiry'] = $license->getDaysUntilExpiry();
-            return $data;
-        });
+        // Filter licenses by current tenant
+        $licenses = PluginLicense::forTenant($this->getCurrentTenantId())
+            ->with('plugin:id,slug,name')
+            ->get()
+            ->map(function ($license) {
+                $data = $license->toArray();
+                $data['masked_key'] = $license->getMaskedKey();
+                $data['days_until_expiry'] = $license->getDaysUntilExpiry();
+                return $data;
+            });
 
         return response()->json(['success' => true, 'data' => $licenses]);
     }
@@ -225,7 +247,8 @@ class MarketplaceApiController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -236,7 +259,8 @@ class MarketplaceApiController extends Controller
 
     public function deactivateLicense(string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -247,7 +271,8 @@ class MarketplaceApiController extends Controller
 
     public function verifyLicense(string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -282,7 +307,8 @@ class MarketplaceApiController extends Controller
 
     public function update(string $slug): JsonResponse
     {
-        $plugin = InstalledPlugin::findBySlug($slug);
+        // Find by slug for current tenant
+        $plugin = InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
         if (!$plugin) {
             return response()->json(['success' => false, 'error' => 'Plugin not found'], 404);
         }
@@ -309,15 +335,17 @@ class MarketplaceApiController extends Controller
 
     public function stats(): JsonResponse
     {
+        $tenantId = $this->getCurrentTenantId();
+        
         return response()->json([
             'success' => true,
             'data' => [
                 'plugins' => [
-                    'total' => InstalledPlugin::count(),
-                    'active' => InstalledPlugin::active()->count(),
-                    'inactive' => InstalledPlugin::inactive()->count(),
-                    'premium' => InstalledPlugin::premium()->count(),
-                    'with_updates' => InstalledPlugin::hasUpdate()->count(),
+                    'total' => InstalledPlugin::forTenant($tenantId)->count(),
+                    'active' => InstalledPlugin::forTenant($tenantId)->active()->count(),
+                    'inactive' => InstalledPlugin::forTenant($tenantId)->inactive()->count(),
+                    'premium' => InstalledPlugin::forTenant($tenantId)->premium()->count(),
+                    'with_updates' => InstalledPlugin::forTenant($tenantId)->hasUpdate()->count(),
                 ],
                 'licenses' => $this->licenseManager->getStatusSummary(),
                 'updates' => $this->updateManager->getUpdateSummary(),

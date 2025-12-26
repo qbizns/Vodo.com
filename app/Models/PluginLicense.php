@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Tenant\TenantManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,14 +51,44 @@ class PluginLicense extends Model
     // Relationships
     // =========================================================================
 
+    /**
+     * Get the installed plugin that owns this license.
+     */
     public function plugin(): BelongsTo
     {
-        return $this->belongsTo(Plugin::class);
+        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
+    }
+
+    /**
+     * Alias for plugin() - more descriptive name.
+     */
+    public function installedPlugin(): BelongsTo
+    {
+        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
     }
 
     // =========================================================================
     // Scopes
     // =========================================================================
+
+    /**
+     * Scope to filter licenses by tenant (through plugin relationship).
+     */
+    public function scopeForTenant(Builder $query, ?int $tenantId): Builder
+    {
+        return $query->whereHas('plugin', function ($q) use ($tenantId) {
+            $q->forTenant($tenantId);
+        });
+    }
+
+    /**
+     * Scope for current tenant context.
+     */
+    public function scopeCurrentTenant(Builder $query): Builder
+    {
+        $tenantId = static::getCurrentTenantId();
+        return $query->forTenant($tenantId);
+    }
 
     public function scopeActive(Builder $query): Builder
     {
@@ -272,9 +303,30 @@ class PluginLicense extends Model
     // Static Methods
     // =========================================================================
 
-    public static function findByKey(string $key): ?self
+    /**
+     * Get the current tenant ID from TenantManager.
+     */
+    public static function getCurrentTenantId(): ?int
     {
-        return static::where('license_key', $key)->first();
+        try {
+            return app(TenantManager::class)->getCurrentTenantId();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Find a license by key for the current tenant.
+     */
+    public static function findByKey(string $key, ?int $tenantId = null): ?self
+    {
+        $query = static::where('license_key', $key);
+        
+        if ($tenantId !== null || ($tenantId = static::getCurrentTenantId()) !== null) {
+            $query->forTenant($tenantId);
+        }
+        
+        return $query->first();
     }
 
     public static function getStatuses(): array

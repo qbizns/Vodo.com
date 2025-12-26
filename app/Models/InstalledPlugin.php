@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Services\Tenant\TenantManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InstalledPlugin extends Model
 {
     protected $fillable = [
-        'slug', 'name', 'description', 'version', 'author', 'author_url',
+        'tenant_id', 'slug', 'name', 'description', 'version', 'author', 'author_url',
         'homepage', 'marketplace_id', 'marketplace_url', 'price', 'currency',
         'install_path', 'entry_class', 'dependencies', 'requirements',
         'status', 'is_premium', 'is_verified', 'installed_at', 'activated_at',
@@ -18,6 +20,7 @@ class InstalledPlugin extends Model
     ];
 
     protected $casts = [
+        'tenant_id' => 'integer',
         'dependencies' => 'array',
         'requirements' => 'array',
         'is_premium' => 'boolean',
@@ -37,6 +40,14 @@ class InstalledPlugin extends Model
     // =========================================================================
     // Relationships
     // =========================================================================
+
+    /**
+     * Get the tenant that owns this installed plugin.
+     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'tenant_id');
+    }
 
     public function license(): HasOne
     {
@@ -92,6 +103,44 @@ class InstalledPlugin extends Model
     public function scopeFromMarketplace(Builder $query): Builder
     {
         return $query->whereNotNull('marketplace_id');
+    }
+
+    /**
+     * Scope to filter by tenant.
+     * If tenant_id is null, returns plugins where tenant_id IS NULL (system-wide).
+     * If tenant_id is provided, returns plugins for that tenant OR system-wide plugins.
+     */
+    public function scopeForTenant(Builder $query, ?int $tenantId): Builder
+    {
+        if ($tenantId === null) {
+            return $query->whereNull('tenant_id');
+        }
+
+        return $query->where(function ($q) use ($tenantId) {
+            $q->where('tenant_id', $tenantId)
+              ->orWhereNull('tenant_id'); // Include system-wide plugins
+        });
+    }
+
+    /**
+     * Scope to filter by exact tenant (no system-wide fallback).
+     */
+    public function scopeForTenantOnly(Builder $query, ?int $tenantId): Builder
+    {
+        if ($tenantId === null) {
+            return $query->whereNull('tenant_id');
+        }
+
+        return $query->where('tenant_id', $tenantId);
+    }
+
+    /**
+     * Scope for current tenant context.
+     */
+    public function scopeCurrentTenant(Builder $query): Builder
+    {
+        $tenantId = static::getCurrentTenantId();
+        return $query->forTenant($tenantId);
     }
 
     // =========================================================================
@@ -196,14 +245,44 @@ class InstalledPlugin extends Model
     // Static Methods
     // =========================================================================
 
-    public static function findBySlug(string $slug): ?self
+    /**
+     * Get the current tenant ID from TenantManager.
+     */
+    public static function getCurrentTenantId(): ?int
     {
-        return static::where('slug', $slug)->first();
+        try {
+            return app(TenantManager::class)->getCurrentTenantId();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
-    public static function findByMarketplaceId(string $marketplaceId): ?self
+    /**
+     * Find a plugin by slug for the current tenant.
+     */
+    public static function findBySlug(string $slug, ?int $tenantId = null): ?self
     {
-        return static::where('marketplace_id', $marketplaceId)->first();
+        $tenantId = $tenantId ?? static::getCurrentTenantId();
+        
+        return static::forTenant($tenantId)->where('slug', $slug)->first();
+    }
+
+    /**
+     * Find a plugin by slug for a specific tenant only (no system-wide fallback).
+     */
+    public static function findBySlugForTenant(string $slug, ?int $tenantId): ?self
+    {
+        return static::forTenantOnly($tenantId)->where('slug', $slug)->first();
+    }
+
+    /**
+     * Find a plugin by marketplace ID for the current tenant.
+     */
+    public static function findByMarketplaceId(string $marketplaceId, ?int $tenantId = null): ?self
+    {
+        $tenantId = $tenantId ?? static::getCurrentTenantId();
+        
+        return static::forTenant($tenantId)->where('marketplace_id', $marketplaceId)->first();
     }
 
     public static function getStatuses(): array

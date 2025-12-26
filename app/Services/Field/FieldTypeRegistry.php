@@ -5,6 +5,7 @@ namespace App\Services\Field;
 use App\Models\FieldType;
 use App\Contracts\FieldTypeContract;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Field Type Registry
@@ -29,6 +30,48 @@ class FieldTypeRegistry
      */
     protected bool $builtInRegistered = false;
 
+    /**
+     * Flag indicating if all types have been preloaded
+     */
+    protected bool $preloaded = false;
+
+    /**
+     * Cache key for field types
+     */
+    protected const CACHE_KEY = 'field_types:all';
+    protected const CACHE_TTL = 3600; // 1 hour
+
+    // =========================================================================
+    // Preloading
+    // =========================================================================
+
+    /**
+     * Preload all field types into memory cache
+     */
+    public function preload(): void
+    {
+        if ($this->preloaded) {
+            return;
+        }
+
+        try {
+            // Try to get from cache first
+            $fieldTypes = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+                return FieldType::where('is_active', true)->get();
+            });
+
+            foreach ($fieldTypes as $fieldType) {
+                $this->definitions[$fieldType->name] = $fieldType;
+            }
+
+            $this->preloaded = true;
+            $this->builtInRegistered = $fieldTypes->where('is_system', true)->isNotEmpty();
+        } catch (\Throwable $e) {
+            // Database might not be ready yet, continue without preloading
+            $this->preloaded = true;
+        }
+    }
+
     // =========================================================================
     // Registration
     // =========================================================================
@@ -50,15 +93,20 @@ class FieldTypeRegistry
         $handler = app($handlerClass);
         $definition = $handler->toDefinition();
 
-        // Check if already exists
-        $existing = FieldType::findByName($definition['name']);
+        // Preload all types first to avoid individual queries
+        $this->preload();
+
+        // Check if already exists in cache
+        $existing = $this->definitions[$definition['name']] ?? null;
         if ($existing) {
             // Only owner can update
             if ($existing->plugin_slug !== $pluginSlug && !$existing->is_system) {
                 throw new \RuntimeException("Field type '{$definition['name']}' is owned by another plugin");
             }
             
-            return $this->update($definition['name'], $handlerClass, $pluginSlug);
+            // Cache the handler
+            $this->handlers[$definition['name']] = $handler;
+            return $existing;
         }
 
         $fieldType = FieldType::create([
@@ -85,9 +133,10 @@ class FieldTypeRegistry
             'is_active' => true,
         ]);
 
-        // Cache handler
+        // Cache handler and invalidate persistent cache
         $this->handlers[$definition['name']] = $handler;
         $this->definitions[$definition['name']] = $fieldType;
+        Cache::forget(self::CACHE_KEY);
 
         if (function_exists('do_action')) {
             do_action('field_type_registered', $fieldType);
@@ -202,19 +251,11 @@ class FieldTypeRegistry
      */
     public function get(string $name): ?FieldType
     {
+        // Preload all types on first access (single query)
+        $this->preload();
         $this->ensureBuiltInTypes();
 
-        if (isset($this->definitions[$name])) {
-            return $this->definitions[$name];
-        }
-
-        $fieldType = FieldType::where('name', $name)->where('is_active', true)->first();
-        
-        if ($fieldType) {
-            $this->definitions[$name] = $fieldType;
-        }
-
-        return $fieldType;
+        return $this->definitions[$name] ?? null;
     }
 
     /**
@@ -252,8 +293,12 @@ class FieldTypeRegistry
      */
     public function all(): Collection
     {
+        $this->preload();
         $this->ensureBuiltInTypes();
-        return FieldType::active()->orderBy('category')->orderBy('name')->get();
+        
+        return collect($this->definitions)
+            ->sortBy(['category', 'name'])
+            ->values();
     }
 
     /**
@@ -261,8 +306,13 @@ class FieldTypeRegistry
      */
     public function getByCategory(string $category): Collection
     {
+        $this->preload();
         $this->ensureBuiltInTypes();
-        return FieldType::active()->inCategory($category)->orderBy('name')->get();
+        
+        return collect($this->definitions)
+            ->filter(fn($type) => $type->category === $category)
+            ->sortBy('name')
+            ->values();
     }
 
     /**
@@ -278,8 +328,12 @@ class FieldTypeRegistry
      */
     public function getSystemTypes(): Collection
     {
+        $this->preload();
         $this->ensureBuiltInTypes();
-        return FieldType::active()->system()->get();
+        
+        return collect($this->definitions)
+            ->filter(fn($type) => $type->is_system)
+            ->values();
     }
 
     /**
@@ -287,7 +341,11 @@ class FieldTypeRegistry
      */
     public function getCustomTypes(): Collection
     {
-        return FieldType::active()->custom()->get();
+        $this->preload();
+        
+        return collect($this->definitions)
+            ->filter(fn($type) => !$type->is_system)
+            ->values();
     }
 
     /**
@@ -295,8 +353,12 @@ class FieldTypeRegistry
      */
     public function getSearchableTypes(): Collection
     {
+        $this->preload();
         $this->ensureBuiltInTypes();
-        return FieldType::active()->searchable()->get();
+        
+        return collect($this->definitions)
+            ->filter(fn($type) => $type->is_searchable)
+            ->values();
     }
 
     /**
@@ -304,8 +366,12 @@ class FieldTypeRegistry
      */
     public function getFilterableTypes(): Collection
     {
+        $this->preload();
         $this->ensureBuiltInTypes();
-        return FieldType::active()->filterable()->get();
+        
+        return collect($this->definitions)
+            ->filter(fn($type) => $type->is_filterable)
+            ->values();
     }
 
     // =========================================================================
@@ -370,9 +436,10 @@ class FieldTypeRegistry
             return;
         }
 
-        // Check if any built-in type exists
-        if (FieldType::where('is_system', true)->exists()) {
-            $this->builtInRegistered = true;
+        // Preload will set builtInRegistered if system types exist
+        $this->preload();
+        
+        if ($this->builtInRegistered) {
             return;
         }
 
@@ -447,6 +514,9 @@ class FieldTypeRegistry
     {
         $this->handlers = [];
         $this->definitions = [];
+        $this->preloaded = false;
+        $this->builtInRegistered = false;
+        Cache::forget(self::CACHE_KEY);
     }
 
     /**

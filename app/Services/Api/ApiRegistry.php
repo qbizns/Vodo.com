@@ -6,6 +6,7 @@ use App\Models\ApiEndpoint;
 use App\Models\ApiKey;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Routing\Router;
 
 /**
@@ -259,11 +260,32 @@ class ApiRegistry
     }
 
     /**
+     * Cache key for active endpoints
+     */
+    protected const CACHE_KEY = 'api_endpoints:active';
+    protected const CACHE_TTL = 3600;
+
+    /**
      * Get all active endpoints
      */
     public function all(): Collection
     {
-        return ApiEndpoint::active()->ordered()->get();
+        try {
+            return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+                return ApiEndpoint::active()->ordered()->get();
+            });
+        } catch (\Throwable $e) {
+            // Fallback to direct query if cache fails
+            return ApiEndpoint::active()->ordered()->get();
+        }
+    }
+
+    /**
+     * Clear the endpoints cache
+     */
+    public function clearCache(): void
+    {
+        Cache::forget(self::CACHE_KEY);
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Services\Marketplace\MarketplaceClient;
 use App\Services\Marketplace\PluginManager;
 use App\Services\Marketplace\LicenseManager;
 use App\Services\Marketplace\UpdateManager;
+use App\Services\Tenant\TenantManager;
 use App\Console\Commands\PluginListCommand;
 use App\Console\Commands\PluginActivateCommand;
 use App\Console\Commands\PluginDeactivateCommand;
@@ -28,13 +29,17 @@ class MarketplaceServiceProvider extends ServiceProvider
         $this->app->singleton(MarketplaceClient::class);
         
         $this->app->singleton(LicenseManager::class, function ($app) {
-            return new LicenseManager($app->make(MarketplaceClient::class));
+            return new LicenseManager(
+                $app->make(MarketplaceClient::class),
+                $app->make(TenantManager::class)
+            );
         });
 
         $this->app->singleton(UpdateManager::class, function ($app) {
             return new UpdateManager(
                 $app->make(MarketplaceClient::class),
-                $app->make(LicenseManager::class)
+                $app->make(LicenseManager::class),
+                $app->make(TenantManager::class)
             );
         });
 
@@ -42,7 +47,8 @@ class MarketplaceServiceProvider extends ServiceProvider
             return new PluginManager(
                 $app->make(MarketplaceClient::class),
                 $app->make(LicenseManager::class),
-                $app->make(UpdateManager::class)
+                $app->make(UpdateManager::class),
+                $app->make(TenantManager::class)
             );
         });
 
@@ -133,7 +139,16 @@ class MarketplaceServiceProvider extends ServiceProvider
     protected function bootInstalledPlugins(): void
     {
         try {
-            $plugins = \App\Models\InstalledPlugin::active()->get();
+            // Get current tenant ID from TenantManager
+            $tenantId = null;
+            try {
+                $tenantId = app(TenantManager::class)->getCurrentTenantId();
+            } catch (\Throwable $e) {
+                // Tenant context not available yet (e.g., during boot)
+            }
+
+            // Load only active plugins for the current tenant
+            $plugins = \App\Models\InstalledPlugin::forTenant($tenantId)->active()->get();
 
             foreach ($plugins as $plugin) {
                 $this->bootPlugin($plugin);

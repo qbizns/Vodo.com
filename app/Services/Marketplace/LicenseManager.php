@@ -4,15 +4,26 @@ namespace App\Services\Marketplace;
 
 use App\Models\InstalledPlugin;
 use App\Models\PluginLicense;
+use App\Services\Tenant\TenantManager;
 use Illuminate\Support\Facades\Log;
 
 class LicenseManager
 {
     protected MarketplaceClient $client;
+    protected TenantManager $tenantManager;
 
-    public function __construct(MarketplaceClient $client)
+    public function __construct(MarketplaceClient $client, TenantManager $tenantManager)
     {
         $this->client = $client;
+        $this->tenantManager = $tenantManager;
+    }
+
+    /**
+     * Get the current tenant ID.
+     */
+    protected function getCurrentTenantId(): ?int
+    {
+        return $this->tenantManager->getCurrentTenantId();
     }
 
     // =========================================================================
@@ -210,12 +221,15 @@ class LicenseManager
     }
 
     /**
-     * Verify all plugin licenses
+     * Verify all plugin licenses for the current tenant.
      */
     public function verifyAll(): array
     {
         $results = [];
-        $plugins = InstalledPlugin::premium()->with('license')->get();
+        $plugins = InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->premium()
+            ->with('license')
+            ->get();
 
         foreach ($plugins as $plugin) {
             $results[$plugin->slug] = $this->verify($plugin);
@@ -229,19 +243,25 @@ class LicenseManager
     // =========================================================================
 
     /**
-     * Get expiring licenses
+     * Get expiring licenses for the current tenant.
      */
     public function getExpiring(int $days = 30): \Illuminate\Support\Collection
     {
-        return PluginLicense::expiringSoon($days)->with('plugin')->get();
+        return PluginLicense::forTenant($this->getCurrentTenantId())
+            ->expiringSoon($days)
+            ->with('plugin')
+            ->get();
     }
 
     /**
-     * Get expired licenses
+     * Get expired licenses for the current tenant.
      */
     public function getExpired(): \Illuminate\Support\Collection
     {
-        return PluginLicense::expired()->with('plugin')->get();
+        return PluginLicense::forTenant($this->getCurrentTenantId())
+            ->expired()
+            ->with('plugin')
+            ->get();
     }
 
     /**
@@ -300,19 +320,23 @@ class LicenseManager
     }
 
     /**
-     * Generate license status summary
+     * Generate license status summary for the current tenant.
      */
     public function getStatusSummary(): array
     {
+        $tenantId = $this->getCurrentTenantId();
+        
         return [
-            'total' => PluginLicense::count(),
-            'active' => PluginLicense::active()->count(),
-            'expired' => PluginLicense::expired()->count(),
-            'expiring_soon' => PluginLicense::expiringSoon(30)->count(),
-            'with_support' => PluginLicense::where('support_active', true)
+            'total' => PluginLicense::forTenant($tenantId)->count(),
+            'active' => PluginLicense::forTenant($tenantId)->active()->count(),
+            'expired' => PluginLicense::forTenant($tenantId)->expired()->count(),
+            'expiring_soon' => PluginLicense::forTenant($tenantId)->expiringSoon(30)->count(),
+            'with_support' => PluginLicense::forTenant($tenantId)
+                ->where('support_active', true)
                 ->where(fn($q) => $q->whereNull('support_expires_at')->orWhere('support_expires_at', '>', now()))
                 ->count(),
-            'with_updates' => PluginLicense::where('updates_active', true)
+            'with_updates' => PluginLicense::forTenant($tenantId)
+                ->where('updates_active', true)
                 ->where(fn($q) => $q->whereNull('updates_expire_at')->orWhere('updates_expire_at', '>', now()))
                 ->count(),
         ];

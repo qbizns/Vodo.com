@@ -86,6 +86,41 @@ services:
         limits:
           memory: 1G
 
+  # Scheduler - Runs Laravel's scheduler every minute
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: vodo-scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${MYSQL_DATABASE:-vodo}
+      - DB_USERNAME=${MYSQL_USER:-vodo}
+      - DB_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - vodo-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    # Override the default CMD to run the scheduler loop
+    command: >
+      bash -c "
+        echo 'Starting Laravel Scheduler...'
+        while true; do
+          php /var/www/artisan schedule:run --verbose --no-interaction
+          sleep 60
+        done
+      "
+
   # phpMyAdmin - DEVELOPMENT ONLY
   # SECURITY WARNING: Do NOT expose this in production!
   # To enable, uncomment and set ENABLE_PHPMYADMIN=true in .env.docker

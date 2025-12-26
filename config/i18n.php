@@ -126,6 +126,8 @@ return [
         'enabled' => env('I18N_CACHE_ENABLED', true),
         'ttl' => env('I18N_CACHE_TTL', 3600), // 1 hour
         'prefix' => 'i18n:',
+        // Preload all translations at request start to avoid N+1 queries
+        'preload_on_boot' => env('I18N_PRELOAD_ON_BOOT', true),
     ],
 
     /*

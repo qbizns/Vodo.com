@@ -5,6 +5,7 @@ namespace App\Services\Marketplace;
 use App\Models\InstalledPlugin;
 use App\Models\PluginUpdate;
 use App\Models\PluginUpdateHistory;
+use App\Services\Tenant\TenantManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -14,15 +15,28 @@ class UpdateManager
 {
     protected MarketplaceClient $client;
     protected LicenseManager $licenseManager;
+    protected TenantManager $tenantManager;
     protected string $backupPath;
     protected string $tempPath;
 
-    public function __construct(MarketplaceClient $client, LicenseManager $licenseManager)
-    {
+    public function __construct(
+        MarketplaceClient $client,
+        LicenseManager $licenseManager,
+        TenantManager $tenantManager
+    ) {
         $this->client = $client;
         $this->licenseManager = $licenseManager;
+        $this->tenantManager = $tenantManager;
         $this->backupPath = storage_path('plugin-backups');
         $this->tempPath = storage_path('plugin-temp');
+    }
+
+    /**
+     * Get the current tenant ID.
+     */
+    protected function getCurrentTenantId(): ?int
+    {
+        return $this->tenantManager->getCurrentTenantId();
     }
 
     // =========================================================================
@@ -30,11 +44,13 @@ class UpdateManager
     // =========================================================================
 
     /**
-     * Check for updates for all plugins
+     * Check for updates for all plugins for the current tenant.
      */
     public function checkAll(): array
     {
-        $plugins = InstalledPlugin::fromMarketplace()->get();
+        $plugins = InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->fromMarketplace()
+            ->get();
         
         if ($plugins->isEmpty()) {
             return [];
@@ -54,8 +70,9 @@ class UpdateManager
                 $this->recordUpdate($update);
             }
 
-            // Update last check time
-            InstalledPlugin::whereIn('marketplace_id', array_column($pluginData, 'marketplace_id'))
+            // Update last check time - only for current tenant's plugins
+            InstalledPlugin::forTenant($this->getCurrentTenantId())
+                ->whereIn('marketplace_id', array_column($pluginData, 'marketplace_id'))
                 ->update(['last_update_check' => now()]);
 
             return $updates;
@@ -105,7 +122,7 @@ class UpdateManager
      */
     protected function recordUpdate(array $data): PluginUpdate
     {
-        $plugin = InstalledPlugin::findByMarketplaceId($data['marketplace_id']);
+        $plugin = InstalledPlugin::findByMarketplaceId($data['marketplace_id'], $this->getCurrentTenantId());
 
         if (!$plugin) {
             throw new \RuntimeException("Plugin not found: {$data['marketplace_id']}");
@@ -273,12 +290,14 @@ class UpdateManager
     // =========================================================================
 
     /**
-     * Update all plugins with available updates
+     * Update all plugins with available updates for the current tenant.
      */
     public function updateAll(): array
     {
         $results = [];
-        $plugins = InstalledPlugin::hasUpdate()->get();
+        $plugins = InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->hasUpdate()
+            ->get();
 
         foreach ($plugins as $plugin) {
             $results[$plugin->slug] = $this->install($plugin);
@@ -288,12 +307,16 @@ class UpdateManager
     }
 
     /**
-     * Update security-critical plugins only
+     * Update security-critical plugins only for the current tenant.
      */
     public function updateSecurity(): array
     {
         $results = [];
-        $updates = PluginUpdate::pending()->security()->with('plugin')->get();
+        $updates = PluginUpdate::forTenant($this->getCurrentTenantId())
+            ->pending()
+            ->security()
+            ->with('plugin')
+            ->get();
 
         foreach ($updates as $update) {
             $results[$update->plugin->slug] = $this->install($update->plugin, $update);
@@ -441,25 +464,42 @@ class UpdateManager
     // Statistics
     // =========================================================================
 
+    /**
+     * Get update summary for the current tenant.
+     */
     public function getUpdateSummary(): array
     {
+        $tenantId = $this->getCurrentTenantId();
+        
         return [
-            'pending' => PluginUpdate::pending()->count(),
-            'security' => PluginUpdate::pending()->security()->count(),
-            'critical' => PluginUpdate::pending()->critical()->count(),
-            'installed_today' => PluginUpdateHistory::whereDate('created_at', today())
-                ->where('status', PluginUpdateHistory::STATUS_SUCCESS)->count(),
+            'pending' => PluginUpdate::forTenant($tenantId)->pending()->count(),
+            'security' => PluginUpdate::forTenant($tenantId)->pending()->security()->count(),
+            'critical' => PluginUpdate::forTenant($tenantId)->pending()->critical()->count(),
+            'installed_today' => PluginUpdateHistory::forTenant($tenantId)
+                ->whereDate('created_at', today())
+                ->where('status', PluginUpdateHistory::STATUS_SUCCESS)
+                ->count(),
         ];
     }
 
+    /**
+     * Get pending updates for the current tenant.
+     */
     public function getPendingUpdates(): Collection
     {
-        return PluginUpdate::pending()->with('plugin')->get();
+        return PluginUpdate::forTenant($this->getCurrentTenantId())
+            ->pending()
+            ->with('plugin')
+            ->get();
     }
 
+    /**
+     * Get update history for the current tenant.
+     */
     public function getUpdateHistory(int $limit = 20): Collection
     {
-        return PluginUpdateHistory::with('plugin')
+        return PluginUpdateHistory::forTenant($this->getCurrentTenantId())
+            ->with('plugin')
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();

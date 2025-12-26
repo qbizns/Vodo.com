@@ -61,6 +61,16 @@ class TranslationService
     protected array $pluginNamespaces = [];
 
     /**
+     * Whether translations have been preloaded for the current request.
+     */
+    protected bool $preloaded = false;
+
+    /**
+     * Preloaded database overrides keyed by "lang:name".
+     */
+    protected array $preloadedOverrides = [];
+
+    /**
      * Get i18n configuration.
      */
     protected function getConfig(): array
@@ -170,6 +180,124 @@ class TranslationService
     public function getPluginNamespaces(): array
     {
         return $this->pluginNamespaces;
+    }
+
+    /**
+     * Preload all translations for the current language and tenant.
+     * This should be called early in the request lifecycle to avoid N+1 queries.
+     */
+    public function preloadTranslations(?string $lang = null): void
+    {
+        $lang = $lang ?? $this->getCurrentLang();
+        
+        // Skip if already preloaded for this language
+        if ($this->preloaded) {
+            return;
+        }
+
+        $cacheConfig = $this->getConfig()['cache'] ?? [];
+        $cacheEnabled = $cacheConfig['enabled'] ?? true;
+        $cacheTtl = $cacheConfig['ttl'] ?? $this->cacheTtl;
+        $cachePrefix = $cacheConfig['prefix'] ?? 'i18n:';
+        
+        $bulkCacheKey = "{$cachePrefix}bulk:{$lang}:{$this->tenantId}";
+
+        if ($cacheEnabled) {
+            // Try to load from persistent cache first
+            $cached = Cache::get($bulkCacheKey);
+            if ($cached !== null) {
+                $this->preloadedOverrides = $cached;
+                $this->preloaded = true;
+                return;
+            }
+        }
+
+        // Load from database
+        $this->preloadDatabaseOverrides($lang);
+
+        // Store in persistent cache
+        if ($cacheEnabled && !empty($this->preloadedOverrides)) {
+            Cache::put($bulkCacheKey, $this->preloadedOverrides, $cacheTtl);
+        }
+
+        $this->preloaded = true;
+    }
+
+    /**
+     * Preload all database overrides for a specific language.
+     * Loads TYPE_CODE translations which are used for view/code string overrides.
+     */
+    protected function preloadDatabaseOverrides(string $lang): void
+    {
+        // Only load overrides for non-English (English is typically the source)
+        if ($lang === 'en') {
+            return;
+        }
+
+        try {
+            $translations = Translation::forLang($lang)
+                ->ofType(Translation::TYPE_CODE)
+                ->forTenant($this->tenantId)
+                ->whereNotNull('value')
+                ->where('value', '!=', '')
+                ->get(['name', 'value', 'module']);
+
+            foreach ($translations as $translation) {
+                // Key format: "lang:name" or "lang:name:module" if module exists
+                $key = $this->getPreloadedKey($lang, $translation->name, $translation->module);
+                $this->preloadedOverrides[$key] = $translation->value;
+            }
+        } catch (\Throwable $e) {
+            // Database may not be ready during migrations
+            Log::warning('Failed to preload translations', [
+                'lang' => $lang,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get the key for preloaded overrides lookup.
+     */
+    protected function getPreloadedKey(string $lang, string $name, ?string $module = null): string
+    {
+        return $module ? "{$lang}:{$name}:{$module}" : "{$lang}:{$name}";
+    }
+
+    /**
+     * Check if translations have been preloaded.
+     */
+    public function isPreloaded(): bool
+    {
+        return $this->preloaded;
+    }
+
+    /**
+     * Clear the preloaded state (useful for testing or language changes).
+     */
+    public function clearPreloaded(): void
+    {
+        $this->preloaded = false;
+        $this->preloadedOverrides = [];
+    }
+
+    /**
+     * Clear the bulk translation cache for a specific language.
+     */
+    public function clearBulkCache(?string $lang = null): void
+    {
+        $cachePrefix = $this->getConfig()['cache']['prefix'] ?? 'i18n:';
+        
+        if ($lang) {
+            Cache::forget("{$cachePrefix}bulk:{$lang}:{$this->tenantId}");
+        } else {
+            // Clear all supported languages
+            foreach ($this->getSupportedLanguages() as $langCode => $info) {
+                Cache::forget("{$cachePrefix}bulk:{$langCode}:{$this->tenantId}");
+            }
+        }
+
+        $this->clearPreloaded();
     }
 
     /**
@@ -374,9 +502,32 @@ class TranslationService
 
     /**
      * Get database override for a file translation.
+     * First checks the preloaded cache, then falls back to database query.
      */
     protected function getDatabaseOverride(string $key, string $lang, ?string $module = null): ?string
     {
+        // Check preloaded cache first (if translations have been preloaded)
+        if ($this->preloaded) {
+            $preloadedKey = $this->getPreloadedKey($lang, $key, $module);
+            
+            // Also try without module if module-specific key not found
+            if (isset($this->preloadedOverrides[$preloadedKey])) {
+                return $this->preloadedOverrides[$preloadedKey];
+            }
+            
+            // Try without module fallback
+            if ($module !== null) {
+                $fallbackKey = $this->getPreloadedKey($lang, $key, null);
+                if (isset($this->preloadedOverrides[$fallbackKey])) {
+                    return $this->preloadedOverrides[$fallbackKey];
+                }
+            }
+            
+            // Not found in preloaded cache - return null (no DB query needed)
+            return null;
+        }
+
+        // Fallback to direct database query (when not preloaded)
         return Translation::forLang($lang)
             ->ofType(Translation::TYPE_CODE)
             ->where('name', $key)
@@ -763,8 +914,11 @@ class TranslationService
             ]
         );
 
-        // Clear cache
+        // Clear individual cache entry
         $this->clearCache($type, $source, $lang, $module);
+        
+        // Clear bulk cache for the language to ensure fresh data on next request
+        $this->clearBulkCache($lang);
 
         return $translation;
     }

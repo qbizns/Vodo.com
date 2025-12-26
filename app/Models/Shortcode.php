@@ -93,7 +93,7 @@ class Shortcode extends Model
      */
     public function getAttributeDefinitions(): array
     {
-        return $this->attributes['attributes'] ?? [];
+        return $this->getAttribute('attributes') ?? [];
     }
 
     /**

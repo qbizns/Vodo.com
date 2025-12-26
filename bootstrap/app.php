@@ -32,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Security headers MUST be first to ensure all responses are protected
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
         $middleware->append(\App\Http\Middleware\SetLocaleMiddleware::class);
+        // Preload translations after locale is set to eliminate N+1 queries
+        $middleware->append(\App\Http\Middleware\PreloadTranslations::class);
         $middleware->append(\App\Http\Middleware\InputSanitizationMiddleware::class);
         // Compress AJAX/PJAX responses for better performance
         $middleware->append(\App\Http\Middleware\CompressResponse::class);

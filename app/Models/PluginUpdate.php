@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Tenant\TenantManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,14 +28,56 @@ class PluginUpdate extends Model
     // Relationships
     // =========================================================================
 
+    /**
+     * Get the installed plugin that owns this update.
+     */
     public function plugin(): BelongsTo
     {
-        return $this->belongsTo(Plugin::class, 'plugin_id');
+        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
+    }
+
+    /**
+     * Alias for plugin() - more descriptive name.
+     */
+    public function installedPlugin(): BelongsTo
+    {
+        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
     }
 
     // =========================================================================
     // Scopes
     // =========================================================================
+
+    /**
+     * Scope to filter updates by tenant (through plugin relationship).
+     */
+    public function scopeForTenant(Builder $query, ?int $tenantId): Builder
+    {
+        return $query->whereHas('plugin', function ($q) use ($tenantId) {
+            $q->forTenant($tenantId);
+        });
+    }
+
+    /**
+     * Scope for current tenant context.
+     */
+    public function scopeCurrentTenant(Builder $query): Builder
+    {
+        $tenantId = static::getCurrentTenantId();
+        return $query->forTenant($tenantId);
+    }
+
+    /**
+     * Get the current tenant ID from TenantManager.
+     */
+    public static function getCurrentTenantId(): ?int
+    {
+        try {
+            return app(TenantManager::class)->getCurrentTenantId();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
 
     public function scopeSecurity(Builder $query): Builder
     {
@@ -121,9 +164,22 @@ class PluginUpdateHistory extends Model
     public const STATUS_FAILED = 'failed';
     public const STATUS_ROLLED_BACK = 'rolled_back';
 
+    /**
+     * Get the installed plugin that owns this update history.
+     */
     public function plugin(): BelongsTo
     {
-        return $this->belongsTo(Plugin::class, 'plugin_id');
+        return $this->belongsTo(InstalledPlugin::class, 'plugin_id');
+    }
+
+    /**
+     * Scope to filter by tenant (through plugin relationship).
+     */
+    public function scopeForTenant(Builder $query, ?int $tenantId): Builder
+    {
+        return $query->whereHas('plugin', function ($q) use ($tenantId) {
+            $q->forTenant($tenantId);
+        });
     }
 
     public function isSuccess(): bool
@@ -141,7 +197,12 @@ class PluginUpdateHistory extends Model
         return $this->status === self::STATUS_ROLLED_BACK;
     }
 
-    public static function recordStart(Plugin $plugin, string $fromVersion, string $toVersion): self
+    /**
+     * Record the start of an update.
+     * 
+     * @param InstalledPlugin|Plugin $plugin
+     */
+    public static function recordStart($plugin, string $fromVersion, string $toVersion): self
     {
         return static::create([
             'plugin_id' => $plugin->id,
@@ -275,14 +336,28 @@ class MarketplacePlugin extends Model
     // Methods
     // =========================================================================
 
-    public function isInstalled(): bool
+    /**
+     * Check if this marketplace plugin is installed for the current tenant.
+     */
+    public function isInstalled(?int $tenantId = null): bool
     {
-        return Plugin::where('marketplace_id', $this->marketplace_id)->exists();
+        return InstalledPlugin::findByMarketplaceId($this->marketplace_id, $tenantId) !== null;
     }
 
-    public function getPlugin(): ?Plugin
+    /**
+     * Get the installed plugin for the current tenant.
+     */
+    public function getInstalledPlugin(?int $tenantId = null): ?InstalledPlugin
     {
-        return Plugin::where('marketplace_id', $this->marketplace_id)->first();
+        return InstalledPlugin::findByMarketplaceId($this->marketplace_id, $tenantId);
+    }
+
+    /**
+     * @deprecated Use getInstalledPlugin() instead
+     */
+    public function getPlugin(?int $tenantId = null): ?InstalledPlugin
+    {
+        return $this->getInstalledPlugin($tenantId);
     }
 
     public function getPriceFormatted(): string

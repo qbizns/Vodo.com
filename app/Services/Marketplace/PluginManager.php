@@ -4,6 +4,7 @@ namespace App\Services\Marketplace;
 
 use App\Models\InstalledPlugin;
 use App\Models\MarketplacePlugin;
+use App\Services\Tenant\TenantManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -14,19 +15,30 @@ class PluginManager
     protected MarketplaceClient $client;
     protected LicenseManager $licenseManager;
     protected UpdateManager $updateManager;
+    protected TenantManager $tenantManager;
     protected string $pluginsPath;
     protected string $tempPath;
 
     public function __construct(
         MarketplaceClient $client,
         LicenseManager $licenseManager,
-        UpdateManager $updateManager
+        UpdateManager $updateManager,
+        TenantManager $tenantManager
     ) {
         $this->client = $client;
         $this->licenseManager = $licenseManager;
         $this->updateManager = $updateManager;
+        $this->tenantManager = $tenantManager;
         $this->pluginsPath = config('marketplace.plugins_path', base_path('plugins'));
         $this->tempPath = storage_path('plugin-temp');
+    }
+
+    /**
+     * Get the current tenant ID.
+     */
+    protected function getCurrentTenantId(): ?int
+    {
+        return $this->tenantManager->getCurrentTenantId();
     }
 
     // =========================================================================
@@ -130,8 +142,9 @@ class PluginManager
             $installPath = $this->pluginsPath . '/' . $manifest['slug'];
             File::moveDirectory($tempDir, $installPath);
 
-            // Register plugin
+            // Register plugin with tenant context
             $plugin = InstalledPlugin::create([
+                'tenant_id' => $this->getCurrentTenantId(),
                 'slug' => $manifest['slug'],
                 'name' => $manifest['name'] ?? $manifest['slug'],
                 'description' => $manifest['description'] ?? null,
@@ -305,24 +318,60 @@ class PluginManager
     // Queries
     // =========================================================================
 
+    /**
+     * Get all installed plugins for the current tenant.
+     */
     public function getAll(): Collection
     {
-        return InstalledPlugin::with('license')->get();
+        return InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->with('license')
+            ->get();
     }
 
+    /**
+     * Get active plugins for the current tenant.
+     */
     public function getActive(): Collection
     {
-        return InstalledPlugin::active()->get();
+        return InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->active()
+            ->get();
     }
 
+    /**
+     * Get inactive plugins for the current tenant.
+     */
     public function getInactive(): Collection
     {
-        return InstalledPlugin::inactive()->get();
+        return InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->inactive()
+            ->get();
     }
 
+    /**
+     * Get plugins with available updates for the current tenant.
+     */
     public function getWithUpdates(): Collection
     {
-        return InstalledPlugin::hasUpdate()->get();
+        return InstalledPlugin::forTenant($this->getCurrentTenantId())
+            ->hasUpdate()
+            ->get();
+    }
+
+    /**
+     * Find a plugin by slug for the current tenant.
+     */
+    public function findBySlug(string $slug): ?InstalledPlugin
+    {
+        return InstalledPlugin::findBySlug($slug, $this->getCurrentTenantId());
+    }
+
+    /**
+     * Find a plugin by marketplace ID for the current tenant.
+     */
+    public function findByMarketplaceId(string $marketplaceId): ?InstalledPlugin
+    {
+        return InstalledPlugin::findByMarketplaceId($marketplaceId, $this->getCurrentTenantId());
     }
 
     // =========================================================================
@@ -384,9 +433,10 @@ class PluginManager
     protected function checkDependencies(InstalledPlugin $plugin): array
     {
         $missing = [];
+        $tenantId = $plugin->tenant_id ?? $this->getCurrentTenantId();
 
         foreach ($plugin->dependencies ?? [] as $dep => $version) {
-            $depPlugin = InstalledPlugin::findBySlug($dep);
+            $depPlugin = InstalledPlugin::findBySlug($dep, $tenantId);
             if (!$depPlugin || !$depPlugin->isActive()) {
                 $missing[] = $dep;
             }
@@ -398,8 +448,9 @@ class PluginManager
     protected function findDependents(InstalledPlugin $plugin): array
     {
         $dependents = [];
+        $tenantId = $plugin->tenant_id ?? $this->getCurrentTenantId();
 
-        $activePlugins = InstalledPlugin::active()->get();
+        $activePlugins = InstalledPlugin::forTenant($tenantId)->active()->get();
         foreach ($activePlugins as $activePlugin) {
             $deps = $activePlugin->dependencies ?? [];
             if (isset($deps[$plugin->slug])) {
