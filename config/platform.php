@@ -3,6 +3,78 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Query Performance & Safety Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Phase 1, Task 1.2: Query Pagination Enforcement
+    |
+    | These settings prevent unbounded queries that could exhaust server
+    | memory when dealing with large datasets (millions of records).
+    |
+    */
+    'query' => [
+        // Enforce automatic limit on queries without explicit limit
+        'enforce_limit' => env('QUERY_ENFORCE_LIMIT', true),
+
+        // Maximum records returned when no limit is specified
+        'max_limit' => env('QUERY_MAX_LIMIT', 1000),
+
+        // Default records per page for pagination
+        'default_per_page' => env('QUERY_DEFAULT_PER_PAGE', 15),
+
+        // Maximum records per page (prevents abuse via ?per_page=999999)
+        'max_per_page' => env('QUERY_MAX_PER_PAGE', 100),
+
+        // Maximum chunk size for batch processing
+        'max_chunk_size' => env('QUERY_MAX_CHUNK_SIZE', 1000),
+
+        // Log queries that would have returned more than this many records
+        'log_large_queries' => env('QUERY_LOG_LARGE', true),
+        'large_query_threshold' => env('QUERY_LARGE_THRESHOLD', 5000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Phase 1, Task 1.4: Cache Key Tenant Isolation
+    |
+    | These settings control registry caching behavior with proper
+    | tenant isolation to prevent cache data leaking between tenants.
+    |
+    */
+    'cache' => [
+        // Enable/disable registry caching globally
+        'enabled' => env('PLATFORM_CACHE_ENABLED', true),
+
+        // Default TTL for registry caches (in seconds)
+        'default_ttl' => env('PLATFORM_CACHE_TTL', 3600),
+
+        // TTL overrides per registry
+        'ttl' => [
+            'entity_registry' => env('ENTITY_CACHE_TTL', 3600),
+            'view_registry' => env('VIEW_CACHE_TTL', 3600),
+            'permission_registry' => env('PERMISSION_CACHE_TTL', 1800),
+            'field_type_registry' => env('FIELD_TYPE_CACHE_TTL', 7200),
+            'menu_registry' => env('MENU_CACHE_TTL', 3600),
+        ],
+
+        // Enable tenant isolation in cache keys
+        'tenant_isolation' => env('CACHE_TENANT_ISOLATION', true),
+
+        // Cache key prefix for all platform caches
+        'prefix' => env('PLATFORM_CACHE_PREFIX', 'vodo:'),
+
+        // Use cache tags if supported by driver (Redis, Memcached)
+        'use_tags' => env('CACHE_USE_TAGS', true),
+
+        // Log cache hits/misses for debugging
+        'log_operations' => env('CACHE_LOG_OPERATIONS', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Plugin Bus Configuration
     |--------------------------------------------------------------------------
     |
