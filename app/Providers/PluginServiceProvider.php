@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Models\Plugin;
 use App\Models\Setting;
 use App\Services\Tenant\TenantManager;
+use App\Services\Plugins\CircuitBreaker;
 use App\Services\Plugins\HookManager;
+use App\Services\Plugins\PluginAutoloader;
 use App\Services\Plugins\PluginCacheManager;
+use App\Services\Plugins\PluginHealthMonitor;
 use App\Services\Plugins\PluginInstaller;
 use App\Services\Plugins\PluginLoader;
 use App\Services\Plugins\PluginManager;
@@ -67,11 +70,34 @@ class PluginServiceProvider extends ServiceProvider
             );
         });
 
+        // Register CircuitBreaker for hook failure protection
+        $this->app->singleton(CircuitBreaker::class, function ($app) {
+            return new CircuitBreaker();
+        });
+
+        // Register PluginAutoloader for centralized class loading
+        $this->app->singleton(PluginAutoloader::class, function ($app) {
+            $autoloader = new PluginAutoloader();
+            $autoloader->register();
+            return $autoloader;
+        });
+
+        // Register PluginHealthMonitor for health tracking
+        $this->app->singleton(PluginHealthMonitor::class, function ($app) {
+            return new PluginHealthMonitor(
+                $app->make(PluginManager::class),
+                $app->make(CircuitBreaker::class),
+                $app->make(PluginAutoloader::class)
+            );
+        });
+
         // Register aliases for convenience
         $this->app->alias(HookManager::class, 'plugins.hooks');
         $this->app->alias(PluginManager::class, 'plugins.manager');
         $this->app->alias(PluginLoader::class, 'plugins.loader');
         $this->app->alias(PluginCacheManager::class, 'plugins.cache');
+        $this->app->alias(CircuitBreaker::class, 'plugins.circuit_breaker');
+        $this->app->alias(PluginHealthMonitor::class, 'plugins.health');
     }
 
     /**
@@ -84,6 +110,9 @@ class PluginServiceProvider extends ServiceProvider
             config_path('plugins.php'),
             'plugins'
         );
+
+        // Load plugin health API routes
+        $this->loadRoutesFrom(__DIR__ . '/../../routes/plugin-health-api.php');
 
         // Check safe mode - skip all plugin loading
         if (config('plugins.safe_mode', false)) {
