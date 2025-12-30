@@ -75,6 +75,70 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Circuit Breaker Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Phase 2, Task 2.2: Hook Circuit Breaker
+    |
+    | The circuit breaker pattern prevents cascading failures by automatically
+    | disabling hooks that fail repeatedly, protecting the application from
+    | misbehaving plugins.
+    |
+    */
+    'circuit_breaker' => [
+        // Enable circuit breaker for hooks
+        'enabled' => env('CIRCUIT_BREAKER_ENABLED', true),
+
+        // Number of failures before opening the circuit
+        'failure_threshold' => env('CIRCUIT_BREAKER_THRESHOLD', 5),
+
+        // Seconds to wait before attempting recovery
+        'recovery_timeout' => env('CIRCUIT_BREAKER_RECOVERY', 300),
+
+        // Number of successes in half-open state to close circuit
+        'success_threshold' => env('CIRCUIT_BREAKER_SUCCESS_THRESHOLD', 2),
+
+        // Window in seconds for counting failures
+        'failure_window' => env('CIRCUIT_BREAKER_WINDOW', 60),
+
+        // Log circuit state changes
+        'log_state_changes' => env('CIRCUIT_BREAKER_LOG', true),
+
+        // Hooks that should never be circuit-broken (critical)
+        'excluded_hooks' => [
+            'plugin_activated',
+            'plugin_deactivated',
+            'plugins_loaded',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Plugin Autoloader Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Phase 2, Task 2.3: Central Plugin Autoloader
+    |
+    | Settings for the centralized plugin class autoloader that replaces
+    | per-plugin SPL autoload callbacks for better performance.
+    |
+    */
+    'autoloader' => [
+        // Enable central autoloader (vs per-plugin SPL)
+        'centralized' => env('PLUGIN_AUTOLOADER_CENTRALIZED', true),
+
+        // Cache autoloader mappings
+        'cache_mappings' => env('PLUGIN_AUTOLOADER_CACHE', true),
+
+        // Mapping cache TTL in seconds
+        'cache_ttl' => env('PLUGIN_AUTOLOADER_CACHE_TTL', 3600),
+
+        // Log class loading for debugging
+        'log_loading' => env('PLUGIN_AUTOLOADER_LOG', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Plugin Bus Configuration
     |--------------------------------------------------------------------------
     |
