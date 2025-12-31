@@ -1,0 +1,152 @@
+{
+    "name": "Vodo Commerce",
+    "slug": "vodo-commerce",
+    "version": "1.0.0",
+    "description": "Complete e-commerce solution for the Vodo platform. Provides stores, products, orders, customers, checkout, and payment processing.",
+    "author": "Vodo Platform",
+    "author_url": "https://vodo.com",
+    "icon": "shopping-cart",
+    "category": "commerce",
+    "keywords": ["ecommerce", "store", "products", "orders", "payments", "checkout"],
+    "requires": {
+        "system": ">=1.0.0",
+        "php": ">=8.2"
+    },
+    "main": "VodoCommercePlugin.php",
+    "namespace": "App\\Plugins\\vodo_commerce",
+    "autoload": {
+        "psr-4": {
+            "VodoCommerce\\": "src/"
+        }
+    },
+    "settings": true,
+    "dashboard": {
+        "enabled": true,
+        "title": "Commerce Dashboard",
+        "icon": "shoppingCart"
+    },
+    "navigation": {
+        "categories": [
+            {
+                "name": "Commerce",
+                "icon": "shoppingCart",
+                "order": 10
+            }
+        ],
+        "items": [
+            {
+                "id": "commerce",
+                "label": "Commerce",
+                "icon": "shoppingCart",
+                "category": "Commerce",
+                "order": 10,
+                "children": [
+                    {
+                        "id": "commerce.dashboard",
+                        "label": "Dashboard",
+                        "icon": "layoutDashboard",
+                        "route": "index",
+                        "permission": "commerce.dashboard.view"
+                    },
+                    {
+                        "id": "commerce.orders",
+                        "label": "Orders",
+                        "icon": "clipboardList",
+                        "route": "orders",
+                        "permission": "commerce.orders.view"
+                    },
+                    {
+                        "id": "commerce.products",
+                        "label": "Products",
+                        "icon": "package",
+                        "route": "products",
+                        "permission": "commerce.products.view"
+                    },
+                    {
+                        "id": "commerce.categories",
+                        "label": "Categories",
+                        "icon": "folder",
+                        "route": "categories",
+                        "permission": "commerce.categories.view"
+                    },
+                    {
+                        "id": "commerce.customers",
+                        "label": "Customers",
+                        "icon": "users",
+                        "route": "customers",
+                        "permission": "commerce.customers.view"
+                    },
+                    {
+                        "id": "commerce.settings",
+                        "label": "Settings",
+                        "icon": "settings",
+                        "route": "settings",
+                        "permission": "commerce.settings.manage"
+                    }
+                ]
+            }
+        ]
+    },
+    "permissions": {
+        "commerce.dashboard.view": {
+            "label": "View Commerce Dashboard",
+            "group": "Commerce"
+        },
+        "commerce.orders.view": {
+            "label": "View Orders",
+            "group": "Commerce - Orders"
+        },
+        "commerce.orders.create": {
+            "label": "Create Orders",
+            "group": "Commerce - Orders"
+        },
+        "commerce.orders.update": {
+            "label": "Update Orders",
+            "group": "Commerce - Orders"
+        },
+        "commerce.orders.delete": {
+            "label": "Delete Orders",
+            "group": "Commerce - Orders"
+        },
+        "commerce.orders.refund": {
+            "label": "Process Refunds",
+            "group": "Commerce - Orders"
+        },
+        "commerce.products.view": {
+            "label": "View Products",
+            "group": "Commerce - Products"
+        },
+        "commerce.products.create": {
+            "label": "Create Products",
+            "group": "Commerce - Products"
+        },
+        "commerce.products.update": {
+            "label": "Update Products",
+            "group": "Commerce - Products"
+        },
+        "commerce.products.delete": {
+            "label": "Delete Products",
+            "group": "Commerce - Products"
+        },
+        "commerce.categories.view": {
+            "label": "View Categories",
+            "group": "Commerce - Categories"
+        },
+        "commerce.categories.manage": {
+            "label": "Manage Categories",
+            "group": "Commerce - Categories"
+        },
+        "commerce.customers.view": {
+            "label": "View Customers",
+            "group": "Commerce - Customers"
+        },
+        "commerce.customers.manage": {
+            "label": "Manage Customers",
+            "group": "Commerce - Customers"
+        },
+        "commerce.settings.manage": {
+            "label": "Manage Commerce Settings",
+            "group": "Commerce"
+        }
+    }
+}

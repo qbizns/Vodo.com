@@ -197,17 +197,77 @@ abstract class BasePlugin implements PluginInterface
      */
     protected function loadRoutes(): void
     {
-        // Load web routes
+        // Load web routes (authenticated)
         $routesPath = $this->getRoutesPath();
         if ($routesPath) {
             $this->loadRoutesFrom($routesPath);
         }
-        
+
         // Load API routes if they exist
         $apiRoutesPath = $this->getApiRoutesPath();
         if ($apiRoutesPath) {
             $this->loadApiRoutesFrom($apiRoutesPath);
         }
+
+        // Load public routes (no authentication required)
+        $publicRoutesPath = $this->getPublicRoutesPath();
+        if ($publicRoutesPath) {
+            $this->loadPublicRoutesFrom($publicRoutesPath);
+        }
+
+        // Load storefront routes (public, store-scoped)
+        $storefrontRoutesPath = $this->getStorefrontRoutesPath();
+        if ($storefrontRoutesPath) {
+            $this->loadStorefrontRoutesFrom($storefrontRoutesPath);
+        }
+    }
+
+    /**
+     * Get the public routes path if exists.
+     * Public routes are accessible without authentication.
+     */
+    public function getPublicRoutesPath(): ?string
+    {
+        $path = $this->basePath . '/routes/public.php';
+        return file_exists($path) ? $path : null;
+    }
+
+    /**
+     * Get the storefront routes path if exists.
+     * Storefront routes are public and scoped to a store.
+     */
+    public function getStorefrontRoutesPath(): ?string
+    {
+        $path = $this->basePath . '/routes/storefront.php';
+        return file_exists($path) ? $path : null;
+    }
+
+    /**
+     * Load public routes from a file.
+     * These routes are accessible without authentication.
+     */
+    protected function loadPublicRoutesFrom(string $path): void
+    {
+        Route::middleware('web')
+            ->prefix("p/{$this->plugin->slug}")
+            ->name("public.{$this->plugin->slug}.")
+            ->group(function () use ($path) {
+                require $path;
+            });
+    }
+
+    /**
+     * Load storefront routes from a file.
+     * These routes are public and scoped to a store slug.
+     */
+    protected function loadStorefrontRoutesFrom(string $path): void
+    {
+        Route::middleware('web')
+            ->prefix("store/{store}")
+            ->name("storefront.{$this->plugin->slug}.")
+            ->group(function () use ($path) {
+                require $path;
+            });
     }
 
     /**
