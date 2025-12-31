@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Registries;
 
+use App\Services\Plugin\ContractRegistry;
 use Illuminate\Support\Collection;
 use VodoCommerce\Contracts\PaymentGatewayContract;
 
@@ -13,6 +14,8 @@ use VodoCommerce\Contracts\PaymentGatewayContract;
  * Manages payment gateway implementations registered by plugins.
  * This is a commerce-specific registry that allows other plugins
  * to add payment processing capabilities.
+ *
+ * Integrates with platform's ContractRegistry for discoverability.
  */
 class PaymentGatewayRegistry
 {
@@ -36,6 +39,19 @@ class PaymentGatewayRegistry
      * @var array<string, PaymentGatewayContract>
      */
     protected array $resolved = [];
+
+    /**
+     * Reference to platform's ContractRegistry.
+     */
+    protected ?ContractRegistry $contractRegistry = null;
+
+    public function __construct()
+    {
+        // Get ContractRegistry if available
+        if (app()->bound(ContractRegistry::class)) {
+            $this->contractRegistry = app(ContractRegistry::class);
+        }
+    }
 
     /**
      * Register a payment gateway.
@@ -63,6 +79,17 @@ class PaymentGatewayRegistry
         // Clear resolved cache
         unset($this->resolved[$slug]);
 
+        // Also register with ContractRegistry for discoverability
+        if ($this->contractRegistry && $this->contractRegistry->hasContract(PaymentGatewayContract::class)) {
+            $implementation = is_string($gateway) ? $gateway : fn() => $this->get($slug);
+            $this->contractRegistry->implement(
+                PaymentGatewayContract::class,
+                $slug,
+                $implementation,
+                $pluginSlug
+            );
+        }
+
         return $this;
     }
 
@@ -78,6 +105,11 @@ class PaymentGatewayRegistry
         unset($this->gateways[$slug]);
         unset($this->pluginOwnership[$slug]);
         unset($this->resolved[$slug]);
+
+        // Also remove from ContractRegistry
+        if ($this->contractRegistry) {
+            $this->contractRegistry->removeImplementation(PaymentGatewayContract::class, $slug);
+        }
 
         return true;
     }
@@ -144,6 +176,18 @@ class PaymentGatewayRegistry
             $gateway = $this->get($entry['slug']);
             return $gateway && $gateway->isAvailable();
         });
+    }
+
+    /**
+     * Get all enabled gateway instances.
+     *
+     * @return array<PaymentGatewayContract>
+     */
+    public function allEnabled(): array
+    {
+        return $this->available()->map(function ($entry) {
+            return $this->get($entry['slug']);
+        })->filter()->values()->all();
     }
 
     /**
