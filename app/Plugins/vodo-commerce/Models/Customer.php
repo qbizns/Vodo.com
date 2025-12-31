@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use VodoCommerce\Traits\BelongsToStore;
 
 class Customer extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_customers';
 
@@ -43,11 +44,6 @@ class Customer extends Model
             'tags' => 'array',
             'meta' => 'array',
         ];
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
     }
 
     public function user(): BelongsTo

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use VodoCommerce\Http\Controllers\Webhook\PaymentWebhookController;
+use VodoCommerce\Http\Middleware\VerifyWebhookSignature;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,7 +14,8 @@ use VodoCommerce\Http\Controllers\Webhook\PaymentWebhookController;
 |
 */
 
-// Payment Webhooks
-Route::post('/webhooks/payment/{gateway}', [PaymentWebhookController::class, 'handle'])
+// Payment Webhooks - Signature verification required
+Route::post('/webhooks/payment/{gatewayId}', [PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
+    ->middleware([VerifyWebhookSignature::class . ':gateway'])
     ->withoutMiddleware(['web', 'csrf']);

@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use VodoCommerce\Traits\BelongsToStore;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_orders';
 
@@ -97,11 +98,6 @@ class Order extends Model
         $random = strtoupper(Str::random(4));
 
         return "{$prefix}-{$timestamp}-{$random}";
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
     }
 
     public function customer(): BelongsTo

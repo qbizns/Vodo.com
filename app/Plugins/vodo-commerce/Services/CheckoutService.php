@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace VodoCommerce\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use VodoCommerce\Contracts\PaymentGatewayContract;
 use VodoCommerce\Contracts\ShippingCarrierContract;
 use VodoCommerce\Contracts\TaxProviderContract;
+use VodoCommerce\Events\CommerceEvents;
 use VodoCommerce\Models\Cart;
 use VodoCommerce\Models\Customer;
 use VodoCommerce\Models\Discount;
@@ -257,8 +259,16 @@ class CheckoutService
             // Clear cart
             $cart->clear();
 
-            // Fire event
-            do_action('commerce.order.created', $order);
+            // Fire events through HookManager
+            do_action(CommerceEvents::ORDER_CREATED, $order, $this->store);
+            do_action(CommerceEvents::PAYMENT_INITIATED, $order, $paymentMethod);
+
+            Log::info('Order created', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'store_id' => $this->store->id,
+                'total' => $order->total,
+            ]);
 
             return $order;
         });
@@ -337,13 +347,39 @@ class CheckoutService
         }
 
         if ($result->orderId) {
-            $order = Order::find($result->orderId);
+            $order = Order::withoutStoreScope()->find($result->orderId);
 
-            if ($order && $result->paymentStatus === 'paid') {
-                $order->markAsPaid($result->transactionId);
-                do_action('commerce.order.paid', $order);
+            if ($order) {
+                $previousStatus = $order->payment_status;
+
+                if ($result->paymentStatus === 'paid') {
+                    $order->markAsPaid($result->transactionId);
+
+                    // Fire payment events
+                    do_action(CommerceEvents::PAYMENT_PAID, $order, $result->transactionId);
+                    do_action(CommerceEvents::ORDER_STATUS_CHANGED, $order, $previousStatus, $order->status);
+
+                    Log::info('Order payment completed', [
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'gateway' => $gatewayId,
+                        'transaction_id' => $result->transactionId,
+                    ]);
+                } elseif ($result->paymentStatus === 'failed') {
+                    do_action(CommerceEvents::PAYMENT_FAILED, $order, $result->message);
+
+                    Log::warning('Order payment failed', [
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'gateway' => $gatewayId,
+                        'reason' => $result->message,
+                    ]);
+                }
             }
         }
+
+        // Fire webhook received event for other plugins to react
+        do_action(CommerceEvents::WEBHOOK_PAYMENT_RECEIVED, $gatewayId, $payload, $result);
 
         return ['success' => true, 'message' => $result->message];
     }

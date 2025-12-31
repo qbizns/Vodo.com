@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use VodoCommerce\Traits\BelongsToStore;
 
 class Discount extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_discounts';
 
@@ -51,11 +52,6 @@ class Discount extends Model
             'is_active' => 'boolean',
             'conditions' => 'array',
         ];
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
     }
 
     public function isValid(): bool

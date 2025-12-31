@@ -6,6 +6,7 @@ use VodoCommerce\Http\Controllers\Storefront\CartController;
 use VodoCommerce\Http\Controllers\Storefront\CheckoutController;
 use VodoCommerce\Http\Controllers\Storefront\HomeController;
 use VodoCommerce\Http\Controllers\Storefront\ProductController;
+use VodoCommerce\Http\Middleware\EnsureIdempotency;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,7 +42,10 @@ Route::post('/checkout/shipping-rates', [CheckoutController::class, 'getShipping
 Route::post('/checkout/shipping-method', [CheckoutController::class, 'setShippingMethod'])->name('checkout.shipping-method');
 Route::post('/checkout/calculate-tax', [CheckoutController::class, 'calculateTax'])->name('checkout.calculate-tax');
 Route::post('/checkout/addresses', [CheckoutController::class, 'updateAddresses'])->name('checkout.addresses');
-Route::post('/checkout/place-order', [CheckoutController::class, 'placeOrder'])->name('checkout.place-order');
+// Order placement with idempotency protection to prevent duplicate orders
+Route::post('/checkout/place-order', [CheckoutController::class, 'placeOrder'])
+    ->middleware([EnsureIdempotency::class])
+    ->name('checkout.place-order');
 Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 // Customer Account (requires authentication)
