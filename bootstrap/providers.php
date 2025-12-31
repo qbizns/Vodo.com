@@ -11,6 +11,7 @@ return [
     App\Providers\MenuServiceProvider::class,
     App\Providers\ModuleServiceProvider::class,
     App\Providers\PermissionServiceProvider::class,
+    App\Providers\PlatformExtensionsServiceProvider::class,
     App\Providers\PlatformServicesProvider::class,
     App\Providers\PluginSDKServiceProvider::class,
     App\Providers\PluginSecurityServiceProvider::class,
