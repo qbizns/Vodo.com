@@ -150,7 +150,7 @@ class DataTransformer implements DataTransformerContract
         // Utility functions
         $this->functions['uuid'] = fn() => Str::uuid()->toString();
         $this->functions['random'] = fn($length = 16) => Str::random($length);
-        $this->functions['env'] = fn($key, $default = null) => env($key, $default);
+        $this->functions['config'] = fn($key, $default = null) => config($key, $default);
     }
 
     /**

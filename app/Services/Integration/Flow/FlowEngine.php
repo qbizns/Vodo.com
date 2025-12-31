@@ -827,8 +827,8 @@ class FlowEngine implements FlowContract
                 return data_get($context['node_outputs'][$nodeId] ?? [], $field, '');
             }
 
-            if (str_starts_with($path, 'env.')) {
-                return env(substr($path, 4), '');
+            if (str_starts_with($path, 'config.')) {
+                return config(substr($path, 7), '');
             }
 
             return data_get($context['data'] ?? [], $path, '');
