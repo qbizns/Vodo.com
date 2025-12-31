@@ -6,17 +6,17 @@ namespace App\Services\PluginSDK;
 
 use Illuminate\Support\Str;
 use Illuminate\Filesystem\Filesystem;
+use App\Services\PluginSDK\Templates\TemplateFactory;
+use App\Services\PluginSDK\Templates\PluginTemplate;
 
 /**
  * PluginGenerator - Generates plugin scaffolding.
- * 
- * Creates complete plugin structure with:
- * - Main plugin class
- * - Config file
- * - Routes
- * - Migrations directory
- * - Tests directory
- * - README.md
+ *
+ * Creates complete plugin structure using templates:
+ * - basic: Minimal plugin structure
+ * - entity: Plugin with entity management and CRUD
+ * - api: API-focused plugin with endpoints and webhooks
+ * - marketplace: Full-featured marketplace plugin
  */
 class PluginGenerator
 {
@@ -30,9 +30,81 @@ class PluginGenerator
     }
 
     /**
-     * Generate a new plugin.
+     * Generate a new plugin using a template.
      */
     public function generate(string $name, array $options = []): array
+    {
+        $templateType = $options['template'] ?? 'basic';
+        $template = TemplateFactory::create($templateType, $name, $options);
+
+        return $this->generateFromTemplate($template);
+    }
+
+    /**
+     * Generate plugin from a template instance.
+     */
+    public function generateFromTemplate(PluginTemplate $template): array
+    {
+        $pluginName = $template->getName();
+        $pluginPath = $this->pluginsPath . '/' . $pluginName;
+
+        if ($this->files->exists($pluginPath)) {
+            throw new \RuntimeException("Plugin '{$pluginName}' already exists");
+        }
+
+        // Create directory structure
+        $directories = $template->getDirectoryStructure();
+        foreach ($directories as $dir) {
+            $this->files->makeDirectory($pluginPath . '/' . $dir, 0755, true, true);
+        }
+
+        // Generate files from template
+        $files = $template->getFiles();
+        $createdFiles = [];
+
+        foreach ($files as $relativePath => $content) {
+            $fullPath = $pluginPath . '/' . $relativePath;
+
+            // Ensure directory exists
+            $dir = dirname($fullPath);
+            if (!$this->files->exists($dir)) {
+                $this->files->makeDirectory($dir, 0755, true, true);
+            }
+
+            $this->files->put($fullPath, $content);
+            $createdFiles[] = $relativePath;
+        }
+
+        return [
+            'name' => $pluginName,
+            'slug' => $template->getSlug(),
+            'path' => $pluginPath,
+            'template' => $template->getType(),
+            'files' => $createdFiles,
+            'manifest' => $template->getManifest()->toArray(),
+        ];
+    }
+
+    /**
+     * Get available template types.
+     */
+    public function getTemplateTypes(): array
+    {
+        return TemplateFactory::getTypes();
+    }
+
+    /**
+     * Get template descriptions.
+     */
+    public function getTemplateDescriptions(): array
+    {
+        return TemplateFactory::getDescriptions();
+    }
+
+    /**
+     * Generate a new plugin (legacy method for backward compatibility).
+     */
+    public function generateLegacy(string $name, array $options = []): array
     {
         $pluginName = Str::studly($name);
         $pluginSlug = Str::kebab($name);
