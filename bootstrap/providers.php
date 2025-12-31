@@ -13,6 +13,7 @@ return [
     App\Providers\PermissionServiceProvider::class,
     App\Providers\PlatformServicesProvider::class,
     App\Providers\PluginSDKServiceProvider::class,
+    App\Providers\PluginSecurityServiceProvider::class,
     App\Providers\PluginServiceProvider::class,
     App\Providers\RepositoryServiceProvider::class,
     App\Providers\SchedulerServiceProvider::class,
