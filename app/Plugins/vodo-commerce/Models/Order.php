@@ -91,13 +91,47 @@ class Order extends Model
         });
     }
 
-    public static function generateOrderNumber(int $storeId): string
+    /**
+     * Generate a unique order number with collision protection.
+     *
+     * Format: ORD-YYMMDD-XXXXXXXX (8 random chars = 2.8 trillion combinations)
+     * Uses retry logic to handle the rare case of collision.
+     *
+     * @param int $storeId Store ID for scoping
+     * @param int $maxRetries Maximum retry attempts
+     * @return string Unique order number
+     * @throws \RuntimeException If unable to generate unique number after retries
+     */
+    public static function generateOrderNumber(int $storeId, int $maxRetries = 5): string
     {
         $prefix = 'ORD';
         $timestamp = now()->format('ymd');
-        $random = strtoupper(Str::random(4));
 
-        return "{$prefix}-{$timestamp}-{$random}";
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            // 8 random chars = 36^8 = 2,821,109,907,456 combinations
+            $random = strtoupper(Str::random(8));
+            $orderNumber = "{$prefix}-{$timestamp}-{$random}";
+
+            // Check for collision within same store
+            $exists = static::where('store_id', $storeId)
+                ->where('order_number', $orderNumber)
+                ->exists();
+
+            if (!$exists) {
+                return $orderNumber;
+            }
+
+            // Log collision for monitoring (should be extremely rare)
+            \Illuminate\Support\Facades\Log::warning('Order number collision detected', [
+                'order_number' => $orderNumber,
+                'store_id' => $storeId,
+                'attempt' => $attempt,
+            ]);
+        }
+
+        throw new \RuntimeException(
+            "Unable to generate unique order number after {$maxRetries} attempts"
+        );
     }
 
     public function customer(): BelongsTo
