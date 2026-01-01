@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Plugins\vodo_commerce;
 
+use App\Services\Api\ApiRegistry;
 use App\Services\Entity\EntityRegistry;
 use App\Services\Plugins\BasePlugin;
 use App\Services\Plugins\CircuitBreaker;
@@ -13,6 +14,7 @@ use App\Services\Theme\ThemeRegistry;
 use App\Services\View\ViewRegistry;
 use App\Traits\HasTenantCache;
 use Illuminate\Support\Facades\Log;
+use VodoCommerce\Api\CommerceOpenApiGenerator;
 use VodoCommerce\Contracts\PaymentGatewayContract;
 use VodoCommerce\Contracts\ShippingCarrierContract;
 use VodoCommerce\Contracts\TaxProviderContract;
@@ -39,6 +41,7 @@ class VodoCommercePlugin extends BasePlugin
     protected ?ThemeRegistry $themeRegistry = null;
     protected ?ContractRegistry $contractRegistry = null;
     protected ?CircuitBreaker $circuitBreaker = null;
+    protected ?ApiRegistry $apiRegistry = null;
 
     // Commerce-specific registries
     protected ?PaymentGatewayRegistry $paymentGateways = null;
@@ -52,8 +55,21 @@ class VodoCommercePlugin extends BasePlugin
     {
         $this->mergeConfig();
         $this->registerCommerceRegistries();
+        $this->registerOpenApiGenerator();
 
         Log::info('Vodo Commerce Plugin: Registered');
+    }
+
+    /**
+     * Register the OpenAPI generator as a singleton.
+     */
+    protected function registerOpenApiGenerator(): void
+    {
+        app()->singleton(CommerceOpenApiGenerator::class, function ($app) {
+            return new CommerceOpenApiGenerator(
+                $app->bound(ApiRegistry::class) ? $app->make(ApiRegistry::class) : new ApiRegistry()
+            );
+        });
     }
 
     /**
@@ -70,8 +86,31 @@ class VodoCommercePlugin extends BasePlugin
         $this->registerHooks();
         $this->registerTheme();
         $this->registerWorkflowTriggers();
+        $this->registerApiRoutes();
 
         Log::info('Vodo Commerce Plugin: Booted');
+    }
+
+    /**
+     * Register API routes for documentation and commerce endpoints.
+     */
+    protected function registerApiRoutes(): void
+    {
+        // Load API documentation routes
+        $this->loadRoutesFrom($this->basePath . '/routes/api.php');
+
+        // Register commerce API endpoints with the platform's ApiRegistry
+        if ($this->apiRegistry) {
+            try {
+                $generator = app(CommerceOpenApiGenerator::class);
+                $generator->registerEndpoints();
+                Log::debug('Commerce API endpoints registered with ApiRegistry');
+            } catch (\Throwable $e) {
+                Log::warning('Failed to register commerce API endpoints', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
@@ -125,6 +164,10 @@ class VodoCommercePlugin extends BasePlugin
 
         if (app()->bound(CircuitBreaker::class)) {
             $this->circuitBreaker = app(CircuitBreaker::class);
+        }
+
+        if (app()->bound(ApiRegistry::class)) {
+            $this->apiRegistry = app(ApiRegistry::class);
         }
     }
 
