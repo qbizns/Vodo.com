@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use VodoCommerce\Http\Controllers\Api\OpenApiController;
 use VodoCommerce\Http\Controllers\Api\SandboxController;
+use VodoCommerce\Http\Controllers\Api\WebhookEventController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,32 @@ Route::prefix('v1/commerce/sandbox')->name('v1.commerce.sandbox.')->group(functi
 
     // Delete sandbox store
     Route::delete('/{storeId}', [SandboxController::class, 'destroy'])->name('destroy');
+});
+
+// =========================================================================
+// Webhook Event Catalog API
+// =========================================================================
+
+Route::prefix('v1/commerce/webhooks/events')->name('v1.commerce.webhooks.events.')->group(function () {
+    // Get all events organized by category
+    Route::get('/', [WebhookEventController::class, 'index'])->name('index');
+
+    // Get event names only (for autocomplete/validation)
+    Route::get('/names', [WebhookEventController::class, 'names'])->name('names');
+
+    // Get markdown documentation
+    Route::get('/docs', [WebhookEventController::class, 'markdown'])->name('docs');
+
+    // Validate event names
+    Route::post('/validate', [WebhookEventController::class, 'validate'])->name('validate');
+
+    // Get events for specific category
+    Route::get('/category/{category}', [WebhookEventController::class, 'category'])->name('category');
+
+    // Get details for specific event
+    Route::get('/{event}', [WebhookEventController::class, 'show'])
+        ->where('event', '[a-z]+\.[a-z_]+')
+        ->name('show');
 });
 
 // =========================================================================
