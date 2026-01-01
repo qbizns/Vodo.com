@@ -19,9 +19,13 @@ use VodoCommerce\Models\Store;
 use VodoCommerce\Registries\PaymentGatewayRegistry;
 use VodoCommerce\Registries\ShippingCarrierRegistry;
 use VodoCommerce\Registries\TaxProviderRegistry;
+use VodoCommerce\Traits\CircuitOpenException;
+use VodoCommerce\Traits\WithCircuitBreaker;
 
 class CheckoutService
 {
+    use WithCircuitBreaker;
+
     public function __construct(
         protected Store $store,
         protected PaymentGatewayRegistry $paymentGateways,
@@ -109,8 +113,16 @@ class CheckoutService
         $rates = [];
 
         foreach ($this->shippingCarriers->allEnabled() as $carrier) {
+            $circuitKey = $this->getCircuitKey('shipping', $carrier->getIdentifier());
+
             try {
-                $carrierRates = $carrier->getRates($address, $items, $cart->currency);
+                // Wrap external carrier call with circuit breaker
+                $carrierRates = $this->withCircuitBreaker(
+                    $circuitKey,
+                    fn() => $carrier->getRates($address, $items, $cart->currency),
+                    [] // Return empty on circuit open
+                );
+
                 foreach ($carrierRates as $rate) {
                     $rates[] = [
                         'carrier' => $carrier->getName(),
@@ -124,7 +136,10 @@ class CheckoutService
                 }
             } catch (\Exception $e) {
                 // Log error but continue with other carriers
-                report($e);
+                Log::warning('Shipping carrier rate fetch failed', [
+                    'carrier' => $carrier->getIdentifier(),
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -161,8 +176,18 @@ class CheckoutService
             return ['tax_total' => 0, 'tax_breakdown' => []];
         }
 
+        $circuitKey = $this->getCircuitKey('tax', $defaultProvider->getIdentifier());
+
         try {
-            $calculation = $defaultProvider->calculateTax($items, $address, $cart->currency);
+            // Wrap external tax provider call with circuit breaker
+            $calculation = $this->withCircuitBreaker(
+                $circuitKey,
+                fn() => $defaultProvider->calculateTax($items, $address, $cart->currency)
+            );
+
+            if (!$calculation) {
+                return ['tax_total' => 0, 'tax_breakdown' => []];
+            }
 
             return [
                 'tax_total' => $calculation->totalTax,
@@ -174,7 +199,10 @@ class CheckoutService
                 ], $calculation->rates),
             ];
         } catch (\Exception $e) {
-            report($e);
+            Log::warning('Tax calculation failed', [
+                'provider' => $defaultProvider->getIdentifier(),
+                'error' => $e->getMessage(),
+            ]);
 
             return ['tax_total' => 0, 'tax_breakdown' => []];
         }
@@ -312,17 +340,32 @@ class CheckoutService
             'total' => $item->total,
         ])->toArray();
 
-        $session = $gateway->createCheckoutSession(
-            orderId: (string) $order->id,
-            amount: (float) $order->total,
-            currency: $order->currency,
-            items: $items,
-            customerEmail: $order->customer_email,
-            metadata: [
-                'order_number' => $order->order_number,
-                'store_id' => $order->store_id,
-            ]
+        $circuitKey = $this->getCircuitKey('payment', $gateway->getIdentifier());
+
+        // Wrap external payment gateway call with circuit breaker
+        // For payments, we throw on circuit open since we can't proceed without payment
+        $session = $this->withCircuitBreaker(
+            $circuitKey,
+            fn() => $gateway->createCheckoutSession(
+                orderId: (string) $order->id,
+                amount: (float) $order->total,
+                currency: $order->currency,
+                items: $items,
+                customerEmail: $order->customer_email,
+                metadata: [
+                    'order_number' => $order->order_number,
+                    'store_id' => $order->store_id,
+                ]
+            ),
+            null,
+            true // Throw on open - payment is critical
         );
+
+        Log::info('Payment session initiated', [
+            'order_id' => $order->id,
+            'gateway' => $gateway->getIdentifier(),
+            'session_id' => $session->sessionId,
+        ]);
 
         return [
             'session_id' => $session->sessionId,
@@ -340,7 +383,16 @@ class CheckoutService
             return ['success' => false, 'message' => 'Unknown gateway'];
         }
 
-        $result = $gateway->handleWebhook($payload, $headers);
+        $circuitKey = $this->getCircuitKey('payment', $gatewayId);
+
+        // Wrap webhook processing with circuit breaker
+        // Webhooks need to process, so throw on circuit open (provider will retry)
+        $result = $this->withCircuitBreaker(
+            $circuitKey,
+            fn() => $gateway->handleWebhook($payload, $headers),
+            null,
+            true // Throw on open - let payment provider retry
+        );
 
         if (!$result->processed) {
             return ['success' => false, 'message' => $result->message];
