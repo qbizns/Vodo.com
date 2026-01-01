@@ -111,13 +111,37 @@ class Product extends Model
         return $this->images[0] ?? null;
     }
 
-    public function decrementStock(int $quantity = 1): void
+    /**
+     * Safely decrement stock with atomic check to prevent overselling.
+     *
+     * Uses WHERE clause to ensure stock doesn't go negative.
+     * Returns false if insufficient stock.
+     *
+     * @param int $quantity Amount to decrement
+     * @return bool True if decrement succeeded, false if insufficient stock
+     */
+    public function decrementStock(int $quantity = 1): bool
     {
-        $this->decrement('stock_quantity', $quantity);
+        // Atomic update with stock check - prevents race conditions
+        $affected = static::where('id', $this->id)
+            ->where('stock_quantity', '>=', $quantity)
+            ->update([
+                'stock_quantity' => \Illuminate\Support\Facades\DB::raw("stock_quantity - {$quantity}"),
+            ]);
 
+        if ($affected === 0) {
+            return false; // Insufficient stock
+        }
+
+        // Refresh to get new stock value
+        $this->refresh();
+
+        // Update stock status if needed
         if ($this->stock_quantity <= 0) {
             $this->update(['stock_status' => 'out_of_stock']);
         }
+
+        return true;
     }
 
     public function incrementStock(int $quantity = 1): void
