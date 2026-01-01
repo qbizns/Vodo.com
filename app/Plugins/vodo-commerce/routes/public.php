@@ -12,10 +12,14 @@ use VodoCommerce\Http\Middleware\VerifyWebhookSignature;
 | These routes are prefixed with /p/vodo-commerce and are accessible
 | without authentication. Used for webhooks and public API endpoints.
 |
+| Security layers:
+| - rate:webhook - 100/min per source IP (generous for payment provider retries)
+| - VerifyWebhookSignature - HMAC SHA256 signature verification
+|
 */
 
-// Payment Webhooks - Signature verification required
+// Payment Webhooks - Signature verification and rate limiting
 Route::post('/webhooks/payment/{gatewayId}', [PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
-    ->middleware([VerifyWebhookSignature::class . ':gateway'])
+    ->middleware(['rate:webhook', VerifyWebhookSignature::class . ':gateway'])
     ->withoutMiddleware(['web', 'csrf']);
