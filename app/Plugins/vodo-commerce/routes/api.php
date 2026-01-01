@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use VodoCommerce\Http\Controllers\Api\OpenApiController;
+use VodoCommerce\Http\Controllers\Api\SandboxController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,8 +40,35 @@ Route::prefix('v1/commerce')->name('v1.commerce.')->group(function () {
 });
 
 // =========================================================================
+// Sandbox Store Provisioning API
+// =========================================================================
+
+Route::prefix('v1/commerce/sandbox')->name('v1.commerce.sandbox.')->group(function () {
+    // Provision new sandbox store
+    Route::post('/', [SandboxController::class, 'provision'])->name('provision');
+
+    // List developer's sandbox stores
+    Route::get('/', [SandboxController::class, 'index'])->name('index');
+
+    // Get sandbox store details
+    Route::get('/{storeId}', [SandboxController::class, 'show'])->name('show');
+
+    // Extend sandbox expiry
+    Route::post('/{storeId}/extend', [SandboxController::class, 'extend'])->name('extend');
+
+    // Reset sandbox data
+    Route::post('/{storeId}/reset', [SandboxController::class, 'reset'])->name('reset');
+
+    // Regenerate credentials
+    Route::post('/{storeId}/credentials', [SandboxController::class, 'regenerateCredentials'])->name('credentials');
+
+    // Delete sandbox store
+    Route::delete('/{storeId}', [SandboxController::class, 'destroy'])->name('destroy');
+});
+
+// =========================================================================
 // Commerce API Endpoints
 // =========================================================================
 // Note: The actual API endpoints are registered dynamically via ApiRegistry.
-// This file only contains the documentation routes.
+// This file only contains the documentation and sandbox routes.
 // See CommerceApiDocumentation for endpoint definitions.
