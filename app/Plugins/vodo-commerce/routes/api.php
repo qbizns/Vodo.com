@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use VodoCommerce\Http\Controllers\Api\OpenApiController;
 use VodoCommerce\Http\Controllers\Api\SandboxController;
 use VodoCommerce\Http\Controllers\Api\WebhookEventController;
+use VodoCommerce\Http\Controllers\Api\PluginReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -91,6 +92,29 @@ Route::prefix('v1/commerce/webhooks/events')->name('v1.commerce.webhooks.events.
     Route::get('/{event}', [WebhookEventController::class, 'show'])
         ->where('event', '[a-z]+\.[a-z_]+')
         ->name('show');
+});
+
+// =========================================================================
+// Plugin Review Workflow API
+// =========================================================================
+
+Route::prefix('v1/commerce/plugins/review')->name('v1.commerce.plugins.review.')->group(function () {
+    // Get workflow configuration
+    Route::get('/workflow', [PluginReviewController::class, 'workflowConfig'])->name('workflow');
+
+    // Submit plugin for review (developer)
+    Route::post('/submit', [PluginReviewController::class, 'submit'])->name('submit');
+
+    // Get submission status (developer)
+    Route::get('/{submissionId}/status', [PluginReviewController::class, 'status'])->name('status');
+
+    // Admin review actions
+    Route::post('/{submissionId}/scan', [PluginReviewController::class, 'runScan'])->name('scan');
+    Route::post('/{submissionId}/assign', [PluginReviewController::class, 'assignReviewer'])->name('assign');
+    Route::post('/{submissionId}/stage/{stage}', [PluginReviewController::class, 'completeStage'])->name('stage');
+    Route::post('/{submissionId}/approve', [PluginReviewController::class, 'approve'])->name('approve');
+    Route::post('/{submissionId}/reject', [PluginReviewController::class, 'reject'])->name('reject');
+    Route::post('/{submissionId}/request-changes', [PluginReviewController::class, 'requestChanges'])->name('request-changes');
 });
 
 // =========================================================================
