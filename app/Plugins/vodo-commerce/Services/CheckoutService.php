@@ -26,12 +26,15 @@ class CheckoutService
 {
     use WithCircuitBreaker;
 
+    protected InventoryReservationService $reservationService;
+
     public function __construct(
         protected Store $store,
         protected PaymentGatewayRegistry $paymentGateways,
         protected ShippingCarrierRegistry $shippingCarriers,
         protected TaxProviderRegistry $taxProviders
     ) {
+        $this->reservationService = new InventoryReservationService($store);
     }
 
     public function validateCheckout(Cart $cart): array
@@ -296,6 +299,9 @@ class CheckoutService
             if ($customer) {
                 $customer->incrementOrderStats((float) $order->total);
             }
+
+            // Convert reservations to order (releases them since stock is now committed)
+            $this->reservationService->convertToOrder($cart);
 
             // Clear cart
             $cart->clear();
