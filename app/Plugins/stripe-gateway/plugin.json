@@ -1,0 +1,60 @@
+{
+  "name": "Stripe Payment Gateway",
+  "slug": "stripe-gateway",
+  "version": "1.0.0",
+  "description": "Accept credit card payments via Stripe",
+  "author": "Vodo Commerce",
+  "author_url": "https://vodo.com",
+  "main_class": "StripeGateway\\StripeGatewayPlugin",
+  "namespace": "StripeGateway",
+  "requires": {
+    "php": ">=8.1",
+    "vodo-commerce": ">=1.0.0"
+  },
+  "permissions": [
+    "payment:process",
+    "webhook:receive"
+  ],
+  "settings": {
+    "publishable_key": {
+      "type": "string",
+      "label": "Publishable Key",
+      "description": "Your Stripe publishable key (pk_...)",
+      "required": true
+    },
+    "secret_key": {
+      "type": "password",
+      "label": "Secret Key",
+      "description": "Your Stripe secret key (sk_...)",
+      "required": true,
+      "encrypted": true
+    },
+    "webhook_secret": {
+      "type": "password",
+      "label": "Webhook Secret",
+      "description": "Your Stripe webhook signing secret (whsec_...)",
+      "required": true,
+      "encrypted": true
+    },
+    "payment_mode": {
+      "type": "select",
+      "label": "Payment Mode",
+      "options": {
+        "payment": "One-time Payment",
+        "subscription": "Subscription"
+      },
+      "default": "payment"
+    },
+    "capture_method": {
+      "type": "select",
+      "label": "Capture Method",
+      "options": {
+        "automatic": "Automatic",
+        "manual": "Manual (authorize only)"
+      },
+      "default": "automatic"
+    }
+  },
+  "keywords": ["payment", "stripe", "credit-card", "gateway"],
+  "license": "MIT"
+}

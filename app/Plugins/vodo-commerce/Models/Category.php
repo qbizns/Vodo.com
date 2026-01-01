@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use VodoCommerce\Traits\BelongsToStore;
 
 class Category extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_categories';
 
@@ -33,11 +34,6 @@ class Category extends Model
             'is_visible' => 'boolean',
             'position' => 'integer',
         ];
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
     }
 
     public function parent(): BelongsTo

@@ -38,6 +38,13 @@ class RateLimitMiddleware
         'auth' => ['limit' => 5, 'window' => 60],
         'search' => ['limit' => 30, 'window' => 60],
         'export' => ['limit' => 5, 'window' => 300],
+        // Commerce rate limit profiles
+        'storefront' => ['limit' => 120, 'window' => 60],     // Generous for browsing
+        'cart' => ['limit' => 60, 'window' => 60],            // Cart operations
+        'checkout' => ['limit' => 30, 'window' => 60],        // Checkout steps
+        'checkout_order' => ['limit' => 5, 'window' => 60],   // Order placement (strict)
+        'product_search' => ['limit' => 40, 'window' => 60],  // Product search
+        'webhook' => ['limit' => 100, 'window' => 60],        // Webhooks (generous for retries)
     ];
 
     /**

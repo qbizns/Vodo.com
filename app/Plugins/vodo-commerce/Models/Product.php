@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use VodoCommerce\Traits\BelongsToStore;
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_products';
 
@@ -56,11 +57,6 @@ class Product extends Model
             'is_downloadable' => 'boolean',
             'featured' => 'boolean',
         ];
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
     }
 
     public function category(): BelongsTo

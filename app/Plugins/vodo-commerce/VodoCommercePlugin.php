@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Plugins\vodo_commerce;
 
+use App\Services\Api\ApiRegistry;
 use App\Services\Entity\EntityRegistry;
 use App\Services\Plugins\BasePlugin;
 use App\Services\Plugins\CircuitBreaker;
@@ -13,9 +14,11 @@ use App\Services\Theme\ThemeRegistry;
 use App\Services\View\ViewRegistry;
 use App\Traits\HasTenantCache;
 use Illuminate\Support\Facades\Log;
+use VodoCommerce\Api\CommerceOpenApiGenerator;
 use VodoCommerce\Contracts\PaymentGatewayContract;
 use VodoCommerce\Contracts\ShippingCarrierContract;
 use VodoCommerce\Contracts\TaxProviderContract;
+use VodoCommerce\Events\CommerceEvents;
 use VodoCommerce\Registries\PaymentGatewayRegistry;
 use VodoCommerce\Registries\ShippingCarrierRegistry;
 use VodoCommerce\Registries\TaxProviderRegistry;
@@ -38,6 +41,7 @@ class VodoCommercePlugin extends BasePlugin
     protected ?ThemeRegistry $themeRegistry = null;
     protected ?ContractRegistry $contractRegistry = null;
     protected ?CircuitBreaker $circuitBreaker = null;
+    protected ?ApiRegistry $apiRegistry = null;
 
     // Commerce-specific registries
     protected ?PaymentGatewayRegistry $paymentGateways = null;
@@ -51,8 +55,21 @@ class VodoCommercePlugin extends BasePlugin
     {
         $this->mergeConfig();
         $this->registerCommerceRegistries();
+        $this->registerOpenApiGenerator();
 
         Log::info('Vodo Commerce Plugin: Registered');
+    }
+
+    /**
+     * Register the OpenAPI generator as a singleton.
+     */
+    protected function registerOpenApiGenerator(): void
+    {
+        app()->singleton(CommerceOpenApiGenerator::class, function ($app) {
+            return new CommerceOpenApiGenerator(
+                $app->bound(ApiRegistry::class) ? $app->make(ApiRegistry::class) : new ApiRegistry()
+            );
+        });
     }
 
     /**
@@ -69,8 +86,31 @@ class VodoCommercePlugin extends BasePlugin
         $this->registerHooks();
         $this->registerTheme();
         $this->registerWorkflowTriggers();
+        $this->registerApiRoutes();
 
         Log::info('Vodo Commerce Plugin: Booted');
+    }
+
+    /**
+     * Register API routes for documentation and commerce endpoints.
+     */
+    protected function registerApiRoutes(): void
+    {
+        // Load API documentation routes
+        $this->loadRoutesFrom($this->basePath . '/routes/api.php');
+
+        // Register commerce API endpoints with the platform's ApiRegistry
+        if ($this->apiRegistry) {
+            try {
+                $generator = app(CommerceOpenApiGenerator::class);
+                $generator->registerEndpoints();
+                Log::debug('Commerce API endpoints registered with ApiRegistry');
+            } catch (\Throwable $e) {
+                Log::warning('Failed to register commerce API endpoints', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
@@ -124,6 +164,10 @@ class VodoCommercePlugin extends BasePlugin
 
         if (app()->bound(CircuitBreaker::class)) {
             $this->circuitBreaker = app(CircuitBreaker::class);
+        }
+
+        if (app()->bound(ApiRegistry::class)) {
+            $this->apiRegistry = app(ApiRegistry::class);
         }
     }
 
@@ -499,55 +543,135 @@ class VodoCommercePlugin extends BasePlugin
 
     /**
      * Register commerce hooks.
+     *
+     * Uses CommerceEvents constants for type-safe hook names.
+     * All commerce events are namespaced with 'commerce.' prefix.
      */
     protected function registerHooks(): void
     {
-        // Hook into order creation
+        // Hook into entity events from platform and relay as commerce events
         $this->addAction(HookManager::HOOK_ENTITY_RECORD_CREATED, function ($record, $entity) {
-            if ($entity->name === 'commerce_order') {
-                do_action('commerce.order.created', $record);
-            }
+            match ($entity->name) {
+                'commerce_order' => do_action(CommerceEvents::ORDER_CREATED, $record),
+                'commerce_product' => do_action(CommerceEvents::PRODUCT_CREATED, $record),
+                'commerce_category' => do_action(CommerceEvents::CATEGORY_CREATED, $record),
+                'commerce_customer' => do_action(CommerceEvents::CUSTOMER_CREATED, $record),
+                'commerce_store' => do_action(CommerceEvents::STORE_CREATED, $record),
+                'commerce_discount' => do_action(CommerceEvents::DISCOUNT_CREATED, $record),
+                default => null,
+            };
         });
 
-        // Hook into order updates
+        // Hook into entity updates
         $this->addAction(HookManager::HOOK_ENTITY_RECORD_UPDATED, function ($record, $entity, $original) {
-            if ($entity->name === 'commerce_order') {
-                do_action('commerce.order.updated', $record, $original);
-
-                // Check for status change
-                $oldStatus = $original['status'] ?? null;
-                $newStatus = $record->getFieldValue('status');
-
-                if ($oldStatus !== $newStatus) {
-                    do_action('commerce.order.status_changed', $record, $oldStatus, $newStatus);
-
-                    if ($newStatus === 'completed') {
-                        do_action('commerce.order.completed', $record);
-                    }
-                }
-            }
+            match ($entity->name) {
+                'commerce_order' => $this->handleOrderUpdate($record, $original),
+                'commerce_product' => $this->handleProductUpdate($record, $original),
+                'commerce_customer' => do_action(CommerceEvents::CUSTOMER_UPDATED, $record, $original),
+                'commerce_category' => do_action(CommerceEvents::CATEGORY_UPDATED, $record, $original),
+                'commerce_store' => do_action(CommerceEvents::STORE_UPDATED, $record, $original),
+                'commerce_discount' => do_action(CommerceEvents::DISCOUNT_UPDATED, $record, $original),
+                default => null,
+            };
         });
 
-        // Hook into product updates for stock tracking
-        $this->addAction(HookManager::HOOK_ENTITY_RECORD_UPDATED, function ($record, $entity, $original) {
-            if ($entity->name === 'commerce_product') {
-                $oldStock = $original['stock_quantity'] ?? 0;
-                $newStock = $record->getFieldValue('stock_quantity') ?? 0;
-
-                if ($newStock < $oldStock) {
-                    do_action('commerce.product.stock_decreased', $record, $oldStock, $newStock);
-                }
-
-                if ($newStock <= 0 && $oldStock > 0) {
-                    do_action('commerce.product.out_of_stock', $record);
-                }
-
-                $lowStockThreshold = config('commerce.low_stock_threshold', 5);
-                if ($newStock <= $lowStockThreshold && $oldStock > $lowStockThreshold) {
-                    do_action('commerce.product.low_stock', $record, $newStock);
-                }
-            }
+        // Hook into entity deletions
+        $this->addAction(HookManager::HOOK_ENTITY_RECORD_DELETED, function ($record, $entity) {
+            match ($entity->name) {
+                'commerce_product' => do_action(CommerceEvents::PRODUCT_DELETED, $record),
+                'commerce_category' => do_action(CommerceEvents::CATEGORY_DELETED, $record),
+                'commerce_customer' => do_action(CommerceEvents::CUSTOMER_DELETED, $record),
+                default => null,
+            };
         });
+
+        Log::debug('Commerce hooks registered');
+    }
+
+    /**
+     * Handle order update events.
+     */
+    protected function handleOrderUpdate($record, array $original): void
+    {
+        $oldStatus = $original['status'] ?? null;
+        $newStatus = $record->getFieldValue('status');
+
+        // Fire status change event if status changed
+        if ($oldStatus !== $newStatus) {
+            do_action(CommerceEvents::ORDER_STATUS_CHANGED, $record, $oldStatus, $newStatus);
+
+            // Fire specific status events
+            match ($newStatus) {
+                'processing' => do_action(CommerceEvents::ORDER_PROCESSING, $record),
+                'on_hold' => do_action(CommerceEvents::ORDER_ON_HOLD, $record),
+                'completed' => do_action(CommerceEvents::ORDER_COMPLETED, $record),
+                'cancelled' => do_action(CommerceEvents::ORDER_CANCELLED, $record),
+                'refunded' => do_action(CommerceEvents::ORDER_REFUNDED, $record),
+                'failed' => do_action(CommerceEvents::ORDER_FAILED, $record),
+                default => null,
+            };
+        }
+
+        // Check payment status changes
+        $oldPaymentStatus = $original['payment_status'] ?? null;
+        $newPaymentStatus = $record->getFieldValue('payment_status');
+
+        if ($oldPaymentStatus !== $newPaymentStatus) {
+            match ($newPaymentStatus) {
+                'paid' => do_action(CommerceEvents::PAYMENT_PAID, $record),
+                'failed' => do_action(CommerceEvents::PAYMENT_FAILED, $record),
+                'refunded' => do_action(CommerceEvents::PAYMENT_REFUNDED, $record),
+                default => null,
+            };
+        }
+
+        // Check fulfillment status changes
+        $oldFulfillmentStatus = $original['fulfillment_status'] ?? null;
+        $newFulfillmentStatus = $record->getFieldValue('fulfillment_status');
+
+        if ($oldFulfillmentStatus !== $newFulfillmentStatus && $newFulfillmentStatus === 'fulfilled') {
+            do_action(CommerceEvents::FULFILLMENT_COMPLETED, $record);
+        }
+    }
+
+    /**
+     * Handle product update events.
+     */
+    protected function handleProductUpdate($record, array $original): void
+    {
+        do_action(CommerceEvents::PRODUCT_UPDATED, $record, $original);
+
+        $oldStock = (int) ($original['stock_quantity'] ?? 0);
+        $newStock = (int) ($record->getFieldValue('stock_quantity') ?? 0);
+
+        // Stock decreased
+        if ($newStock < $oldStock) {
+            do_action(CommerceEvents::PRODUCT_STOCK_DECREASED, $record, $oldStock, $newStock);
+        }
+
+        // Out of stock
+        if ($newStock <= 0 && $oldStock > 0) {
+            do_action(CommerceEvents::PRODUCT_OUT_OF_STOCK, $record);
+        }
+
+        // Back in stock
+        if ($newStock > 0 && $oldStock <= 0) {
+            do_action(CommerceEvents::PRODUCT_BACK_IN_STOCK, $record);
+        }
+
+        // Low stock alert
+        $lowStockThreshold = config('commerce.low_stock_threshold', 5);
+        if ($newStock <= $lowStockThreshold && $oldStock > $lowStockThreshold) {
+            do_action(CommerceEvents::PRODUCT_LOW_STOCK, $record, $newStock);
+        }
+
+        // Check for status change to active (published)
+        $oldStatus = $original['status'] ?? null;
+        $newStatus = $record->getFieldValue('status');
+
+        if ($newStatus === 'active' && $oldStatus !== 'active') {
+            do_action(CommerceEvents::PRODUCT_PUBLISHED, $record);
+        }
     }
 
     /**

@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use VodoCommerce\Traits\BelongsToStore;
 
 class Cart extends Model
 {
-    use HasFactory;
+    use BelongsToStore, HasFactory;
 
     protected $table = 'commerce_carts';
 
@@ -48,11 +49,6 @@ class Cart extends Model
             'meta' => 'array',
             'expires_at' => 'datetime',
         ];
-    }
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
     }
 
     public function customer(): BelongsTo

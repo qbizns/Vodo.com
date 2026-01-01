@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Registries;
 
+use App\Services\Plugin\ContractRegistry;
 use Illuminate\Support\Collection;
 use VodoCommerce\Contracts\ShippingAddress;
 use VodoCommerce\Contracts\ShippingCarrierContract;
@@ -14,6 +15,8 @@ use VodoCommerce\Contracts\ShippingCarrierContract;
  * Manages shipping carrier implementations registered by plugins.
  * This is a commerce-specific registry that allows other plugins
  * to add shipping calculation and fulfillment capabilities.
+ *
+ * Integrates with platform's ContractRegistry for discoverability.
  */
 class ShippingCarrierRegistry
 {
@@ -37,6 +40,18 @@ class ShippingCarrierRegistry
      * @var array<string, ShippingCarrierContract>
      */
     protected array $resolved = [];
+
+    /**
+     * Reference to platform's ContractRegistry.
+     */
+    protected ?ContractRegistry $contractRegistry = null;
+
+    public function __construct()
+    {
+        if (app()->bound(ContractRegistry::class)) {
+            $this->contractRegistry = app(ContractRegistry::class);
+        }
+    }
 
     /**
      * Register a shipping carrier.
@@ -63,6 +78,17 @@ class ShippingCarrierRegistry
 
         unset($this->resolved[$slug]);
 
+        // Also register with ContractRegistry
+        if ($this->contractRegistry && $this->contractRegistry->hasContract(ShippingCarrierContract::class)) {
+            $implementation = is_string($carrier) ? $carrier : fn() => $this->get($slug);
+            $this->contractRegistry->implement(
+                ShippingCarrierContract::class,
+                $slug,
+                $implementation,
+                $pluginSlug
+            );
+        }
+
         return $this;
     }
 
@@ -78,6 +104,11 @@ class ShippingCarrierRegistry
         unset($this->carriers[$slug]);
         unset($this->pluginOwnership[$slug]);
         unset($this->resolved[$slug]);
+
+        // Also remove from ContractRegistry
+        if ($this->contractRegistry) {
+            $this->contractRegistry->removeImplementation(ShippingCarrierContract::class, $slug);
+        }
 
         return true;
     }
@@ -141,6 +172,18 @@ class ShippingCarrierRegistry
             $carrier = $this->get($entry['slug']);
             return $carrier && $carrier->isAvailable();
         });
+    }
+
+    /**
+     * Get all enabled carrier instances.
+     *
+     * @return array<ShippingCarrierContract>
+     */
+    public function allEnabled(): array
+    {
+        return $this->available()->map(function ($entry) {
+            return $this->get($entry['slug']);
+        })->filter()->values()->all();
     }
 
     /**

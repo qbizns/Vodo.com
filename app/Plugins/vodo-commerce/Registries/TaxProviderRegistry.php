@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Registries;
 
+use App\Services\Plugin\ContractRegistry;
 use Illuminate\Support\Collection;
 use VodoCommerce\Contracts\TaxAddress;
 use VodoCommerce\Contracts\TaxCalculation;
@@ -15,6 +16,8 @@ use VodoCommerce\Contracts\TaxProviderContract;
  * Manages tax provider implementations registered by plugins.
  * This is a commerce-specific registry that allows other plugins
  * to add tax calculation capabilities.
+ *
+ * Integrates with platform's ContractRegistry for discoverability.
  */
 class TaxProviderRegistry
 {
@@ -38,6 +41,18 @@ class TaxProviderRegistry
      * @var array<string, TaxProviderContract>
      */
     protected array $resolved = [];
+
+    /**
+     * Reference to platform's ContractRegistry.
+     */
+    protected ?ContractRegistry $contractRegistry = null;
+
+    public function __construct()
+    {
+        if (app()->bound(ContractRegistry::class)) {
+            $this->contractRegistry = app(ContractRegistry::class);
+        }
+    }
 
     /**
      * Register a tax provider.
@@ -64,6 +79,17 @@ class TaxProviderRegistry
 
         unset($this->resolved[$slug]);
 
+        // Also register with ContractRegistry
+        if ($this->contractRegistry && $this->contractRegistry->hasContract(TaxProviderContract::class)) {
+            $implementation = is_string($provider) ? $provider : fn() => $this->get($slug);
+            $this->contractRegistry->implement(
+                TaxProviderContract::class,
+                $slug,
+                $implementation,
+                $pluginSlug
+            );
+        }
+
         return $this;
     }
 
@@ -79,6 +105,11 @@ class TaxProviderRegistry
         unset($this->providers[$slug]);
         unset($this->pluginOwnership[$slug]);
         unset($this->resolved[$slug]);
+
+        // Also remove from ContractRegistry
+        if ($this->contractRegistry) {
+            $this->contractRegistry->removeImplementation(TaxProviderContract::class, $slug);
+        }
 
         return true;
     }
