@@ -4,18 +4,24 @@ declare(strict_types=1);
 
 namespace App\Services\Plugins;
 
+use App\Exceptions\Plugins\SandboxViolationException;
+use App\Services\Plugins\Security\PluginSandbox;
 use Closure;
 use WeakReference;
 
 /**
  * Hook Manager - WordPress-style actions and filters.
- * 
+ *
  * Phase 10 Improvements:
  * - Named hook constants for type safety
  * - Plugin-scoped hook tracking
  * - Cleanup methods for memory management
  * - Debug mode with detailed logging
  * - Hook caching for performance
+ *
+ * Phase 2 Security Improvements:
+ * - Integrated with PluginSandbox for resource limits
+ * - Integrated with CircuitBreaker for failure isolation
  */
 class HookManager
 {
@@ -118,6 +124,16 @@ class HookManager
     protected array $executionCount = [];
 
     /**
+     * Plugin sandbox service (lazy-loaded).
+     */
+    protected ?PluginSandbox $sandbox = null;
+
+    /**
+     * Circuit breaker service (lazy-loaded).
+     */
+    protected ?CircuitBreaker $circuitBreaker = null;
+
+    /**
      * Set the current plugin context for hook tracking.
      */
     public function setPluginContext(?string $pluginSlug): void
@@ -139,6 +155,46 @@ class HookManager
     public function setDebugMode(bool $enabled): void
     {
         $this->debugMode = $enabled;
+    }
+
+    /**
+     * Get the sandbox service (lazy-loaded).
+     */
+    protected function getSandbox(): PluginSandbox
+    {
+        if ($this->sandbox === null) {
+            $this->sandbox = app(PluginSandbox::class);
+        }
+
+        return $this->sandbox;
+    }
+
+    /**
+     * Get the circuit breaker service (lazy-loaded).
+     */
+    protected function getCircuitBreaker(): CircuitBreaker
+    {
+        if ($this->circuitBreaker === null) {
+            $this->circuitBreaker = app(CircuitBreaker::class);
+        }
+
+        return $this->circuitBreaker;
+    }
+
+    /**
+     * Set the sandbox service (for testing).
+     */
+    public function setSandbox(?PluginSandbox $sandbox): void
+    {
+        $this->sandbox = $sandbox;
+    }
+
+    /**
+     * Set the circuit breaker service (for testing).
+     */
+    public function setCircuitBreaker(?CircuitBreaker $circuitBreaker): void
+    {
+        $this->circuitBreaker = $circuitBreaker;
     }
 
     /**
@@ -184,12 +240,37 @@ class HookManager
         $callbacks = $this->actions[$hook];
         ksort($callbacks);
 
+        $circuitBreaker = $this->getCircuitBreaker();
+        $sandbox = $this->getSandbox();
+
         foreach ($callbacks as $priorityCallbacks) {
             foreach ($priorityCallbacks as $entry) {
+                $plugin = $entry['plugin'];
+                $circuitKey = CircuitBreaker::hookKey($hook, $plugin);
+
+                // Skip if circuit is open (hook is disabled due to failures)
+                if ($circuitBreaker->isOpen($circuitKey)) {
+                    continue;
+                }
+
                 try {
-                    call_user_func_array($entry['callback'], $args);
+                    // Execute within sandbox if plugin is specified
+                    if ($plugin && $sandbox->isEnabled()) {
+                        $sandbox->execute($plugin, fn() => call_user_func_array($entry['callback'], $args));
+                    } else {
+                        call_user_func_array($entry['callback'], $args);
+                    }
+
+                    // Record success for circuit breaker
+                    $circuitBreaker->recordSuccess($circuitKey);
+
+                } catch (SandboxViolationException $e) {
+                    // Sandbox violations are recorded separately
+                    $circuitBreaker->recordFailure($circuitKey, $e);
+                    $this->handleHookException($hook, $plugin, $e);
                 } catch (\Throwable $e) {
-                    $this->handleHookException($hook, $entry['plugin'], $e);
+                    $circuitBreaker->recordFailure($circuitKey, $e);
+                    $this->handleHookException($hook, $plugin, $e);
                 }
             }
         }
@@ -349,12 +430,40 @@ class HookManager
         $callbacks = $this->filters[$hook];
         ksort($callbacks);
 
+        $circuitBreaker = $this->getCircuitBreaker();
+        $sandbox = $this->getSandbox();
+
         foreach ($callbacks as $priorityCallbacks) {
             foreach ($priorityCallbacks as $entry) {
+                $plugin = $entry['plugin'];
+                $circuitKey = CircuitBreaker::hookKey($hook, $plugin);
+
+                // Skip if circuit is open (hook is disabled due to failures)
+                if ($circuitBreaker->isOpen($circuitKey)) {
+                    continue;
+                }
+
                 try {
-                    $value = call_user_func_array($entry['callback'], array_merge([$value], $args));
+                    // Execute within sandbox if plugin is specified
+                    if ($plugin && $sandbox->isEnabled()) {
+                        $value = $sandbox->execute(
+                            $plugin,
+                            fn() => call_user_func_array($entry['callback'], array_merge([$value], $args))
+                        );
+                    } else {
+                        $value = call_user_func_array($entry['callback'], array_merge([$value], $args));
+                    }
+
+                    // Record success for circuit breaker
+                    $circuitBreaker->recordSuccess($circuitKey);
+
+                } catch (SandboxViolationException $e) {
+                    // Sandbox violations are recorded separately
+                    $circuitBreaker->recordFailure($circuitKey, $e);
+                    $this->handleHookException($hook, $plugin, $e);
                 } catch (\Throwable $e) {
-                    $this->handleHookException($hook, $entry['plugin'], $e);
+                    $circuitBreaker->recordFailure($circuitKey, $e);
+                    $this->handleHookException($hook, $plugin, $e);
                 }
             }
         }

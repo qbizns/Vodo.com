@@ -99,6 +99,12 @@ class VodoCommercePlugin extends BasePlugin
         // Load API documentation routes
         $this->loadRoutesFrom($this->basePath . '/routes/api.php');
 
+        // Load OAuth 2.0 routes
+        $this->loadRoutesFrom($this->basePath . '/routes/oauth.php');
+
+        // Load storefront routes
+        $this->loadRoutesFrom($this->basePath . '/routes/storefront.php');
+
         // Register commerce API endpoints with the platform's ApiRegistry
         if ($this->apiRegistry) {
             try {

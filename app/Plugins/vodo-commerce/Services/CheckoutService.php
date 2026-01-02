@@ -26,12 +26,15 @@ class CheckoutService
 {
     use WithCircuitBreaker;
 
+    protected InventoryReservationService $reservationService;
+
     public function __construct(
         protected Store $store,
         protected PaymentGatewayRegistry $paymentGateways,
         protected ShippingCarrierRegistry $shippingCarriers,
         protected TaxProviderRegistry $taxProviders
     ) {
+        $this->reservationService = new InventoryReservationService($store);
     }
 
     public function validateCheckout(Cart $cart): array
@@ -252,7 +255,27 @@ class CheckoutService
                 'placed_at' => now(),
             ]);
 
-            // Create order items
+            // Decrement stock FIRST with atomic check to prevent overselling
+            // This must happen before creating order items to fail fast
+            foreach ($cart->items as $cartItem) {
+                $stockDecremented = false;
+
+                if ($cartItem->variant) {
+                    $stockDecremented = $cartItem->variant->decrementStock($cartItem->quantity);
+                } else {
+                    $stockDecremented = $cartItem->product->decrementStock($cartItem->quantity);
+                }
+
+                if (!$stockDecremented) {
+                    // Rollback will happen automatically due to DB::transaction
+                    throw new \RuntimeException(
+                        "Insufficient stock for '{$cartItem->getName()}'. " .
+                        "Only {$cartItem->getAvailableQuantity()} available."
+                    );
+                }
+            }
+
+            // Create order items (stock already decremented successfully)
             foreach ($cart->items as $cartItem) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -265,13 +288,6 @@ class CheckoutService
                     'total' => $cartItem->getLineTotal(),
                     'options' => $cartItem->options,
                 ]);
-
-                // Decrement stock
-                if ($cartItem->variant) {
-                    $cartItem->variant->decrementStock($cartItem->quantity);
-                } else {
-                    $cartItem->product->decrementStock($cartItem->quantity);
-                }
             }
 
             // Increment discount usage
@@ -283,6 +299,9 @@ class CheckoutService
             if ($customer) {
                 $customer->incrementOrderStats((float) $order->total);
             }
+
+            // Convert reservations to order (releases them since stock is now committed)
+            $this->reservationService->convertToOrder($cart);
 
             // Clear cart
             $cart->clear();

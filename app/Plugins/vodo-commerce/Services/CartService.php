@@ -15,9 +15,19 @@ use VodoCommerce\Models\Store;
 class CartService
 {
     protected ?Cart $cart = null;
+    protected ?InventoryReservationService $reservationService = null;
 
     public function __construct(protected Store $store)
     {
+        $this->reservationService = new InventoryReservationService($store);
+    }
+
+    /**
+     * Get the reservation service instance.
+     */
+    public function getReservationService(): InventoryReservationService
+    {
+        return $this->reservationService;
     }
 
     public function getCart(?string $sessionId = null, ?int $customerId = null): Cart
@@ -80,6 +90,14 @@ class CartService
             return $this->updateItemQuantity($existingItem, $existingItem->quantity + $quantity);
         }
 
+        // Try to reserve inventory before adding to cart
+        $reservation = $this->reservationService->reserve($cart, $product, $quantity, $variant);
+        if (!$reservation) {
+            throw new \RuntimeException(
+                "Unable to add item to cart: insufficient stock for '{$product->name}'"
+            );
+        }
+
         // Determine price
         $unitPrice = $variant ? $variant->getEffectivePrice() : $product->price;
 
@@ -105,23 +123,57 @@ class CartService
             return $item;
         }
 
-        // Check stock availability
-        $availableQuantity = $item->getAvailableQuantity();
-        if ($quantity > $availableQuantity) {
-            $quantity = $availableQuantity;
+        $cart = $this->getCart();
+
+        // Try to update the reservation first
+        $reserved = $this->reservationService->updateQuantity(
+            $cart,
+            $item->product_id,
+            $item->variant_id,
+            $quantity
+        );
+
+        if (!$reserved) {
+            // Could not reserve requested quantity - get maximum available
+            $availableQuantity = $this->reservationService->getAvailableStock(
+                $item->product_id,
+                $item->variant_id,
+                $cart->id
+            );
+
+            // Include what we already have reserved
+            $currentReservation = $item->quantity;
+            $maxQuantity = $availableQuantity + $currentReservation;
+
+            if ($quantity > $maxQuantity) {
+                $quantity = $maxQuantity;
+
+                // Update reservation with the adjusted quantity
+                $this->reservationService->updateQuantity(
+                    $cart,
+                    $item->product_id,
+                    $item->variant_id,
+                    $quantity
+                );
+            }
         }
 
         $item->update(['quantity' => $quantity]);
 
-        $this->getCart()->recalculate();
+        $cart->recalculate();
 
         return $item->fresh();
     }
 
     public function removeItem(CartItem $item): void
     {
+        $cart = $this->getCart();
+
+        // Release the reservation for this item
+        $this->reservationService->release($cart, $item->product_id, $item->variant_id);
+
         $item->delete();
-        $this->getCart()->recalculate();
+        $cart->recalculate();
     }
 
     public function applyDiscountCode(string $code): array
@@ -203,7 +255,12 @@ class CartService
 
     public function clear(): void
     {
-        $this->getCart()->clear();
+        $cart = $this->getCart();
+
+        // Release all reservations for this cart
+        $this->reservationService->releaseAll($cart);
+
+        $cart->clear();
     }
 
     public function validateItems(): array
@@ -273,13 +330,27 @@ class CartService
             return;
         }
 
+        // Create a guest cart reservation service to transfer reservations
+        $guestReservationService = new InventoryReservationService($this->store);
+
         foreach ($guestCart->items as $guestItem) {
             $existingItem = $customerCart->getItem($guestItem->product_id, $guestItem->variant_id);
 
             if ($existingItem) {
+                // Merge quantities and update reservation
                 $this->updateItemQuantity($existingItem, $existingItem->quantity + $guestItem->quantity);
+                // Release guest cart reservation (now covered by customer cart)
+                $guestReservationService->release($guestCart, $guestItem->product_id, $guestItem->variant_id);
             } else {
+                // Move item to customer cart
                 $guestItem->update(['cart_id' => $customerCart->id]);
+                // Transfer the reservation to customer cart
+                $guestReservationService->release($guestCart, $guestItem->product_id, $guestItem->variant_id);
+                $product = Product::find($guestItem->product_id);
+                $variant = $guestItem->variant_id ? ProductVariant::find($guestItem->variant_id) : null;
+                if ($product) {
+                    $this->reservationService->reserve($customerCart, $product, $guestItem->quantity, $variant);
+                }
             }
         }
 

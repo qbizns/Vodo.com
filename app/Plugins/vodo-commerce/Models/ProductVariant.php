@@ -68,9 +68,28 @@ class ProductVariant extends Model
             ->implode(', ');
     }
 
-    public function decrementStock(int $quantity = 1): void
+    /**
+     * Safely decrement stock with atomic check to prevent overselling.
+     *
+     * @param int $quantity Amount to decrement
+     * @return bool True if decrement succeeded, false if insufficient stock
+     */
+    public function decrementStock(int $quantity = 1): bool
     {
-        $this->decrement('stock_quantity', $quantity);
+        // Atomic update with stock check - prevents race conditions
+        $affected = static::where('id', $this->id)
+            ->where('stock_quantity', '>=', $quantity)
+            ->update([
+                'stock_quantity' => \Illuminate\Support\Facades\DB::raw("stock_quantity - {$quantity}"),
+            ]);
+
+        if ($affected === 0) {
+            return false; // Insufficient stock
+        }
+
+        $this->refresh();
+
+        return true;
     }
 
     public function incrementStock(int $quantity = 1): void
