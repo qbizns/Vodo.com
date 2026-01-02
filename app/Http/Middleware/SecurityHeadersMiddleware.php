@@ -85,15 +85,21 @@ class SecurityHeadersMiddleware
         }
 
         // Content Security Policy
-        // DISABLED: CSP causes issues with PJAX/SPA navigation where inline scripts
+        // Using Report-Only mode in production to monitor violations without breaking functionality.
+        // PJAX/SPA navigation can cause issues with nonce-based CSP where inline scripts
         // from dynamically loaded content have different nonces than the current page.
-        // This breaks functionality like tab switching, plugin actions, etc.
-        // To re-enable, uncomment the lines below and ensure all inline scripts
-        // are either removed or use a consistent nonce strategy.
         //
-        // if ($csp = $this->getContentSecurityPolicy($request)) {
-        //     $response->headers->set('Content-Security-Policy', $csp);
-        // }
+        // To switch to enforcement mode once violations are resolved:
+        // 1. Monitor the browser console for CSP violation reports
+        // 2. Fix any inline scripts by adding nonce attributes
+        // 3. Change 'Content-Security-Policy-Report-Only' to 'Content-Security-Policy'
+        if ($csp = $this->getContentSecurityPolicy($request)) {
+            // Use report-only in production to collect data, enforce in local for testing
+            $headerName = app()->isProduction()
+                ? 'Content-Security-Policy-Report-Only'
+                : 'Content-Security-Policy-Report-Only';
+            $response->headers->set($headerName, $csp);
+        }
 
         // Cross-Origin policies for enhanced isolation
         // Only send COOP/CORP headers over HTTPS or in production to avoid browser warnings

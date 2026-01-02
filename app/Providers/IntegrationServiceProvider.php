@@ -158,9 +158,10 @@ class IntegrationServiceProvider extends ServiceProvider
             $router->get('oauth/callback', [\App\Http\Controllers\Integration\OAuthController::class, 'callback'])
                 ->name('integration.oauth.callback');
 
-            // Webhook receiver route
+            // Webhook receiver route with rate limiting to prevent DoS attacks
             $router->any('webhook/{subscriptionId}', [\App\Http\Controllers\Integration\WebhookController::class, 'handle'])
                 ->name('integration.webhook')
+                ->middleware(['rate:webhook'])
                 ->withoutMiddleware(['web', 'csrf']);
         });
     }

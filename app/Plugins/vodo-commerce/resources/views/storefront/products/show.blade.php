@@ -125,7 +125,7 @@
                 <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
                     <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Description</h2>
                     <div style="color: #4b5563; line-height: 1.8;">
-                        {!! $product->description !!}
+                        {!! Str::sanitizeHtml($product->description) !!}
                     </div>
                 </div>
             @endif

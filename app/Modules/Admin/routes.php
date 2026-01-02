@@ -22,9 +22,6 @@ Route::middleware(['guest:admin'])->group(function () {
         ->name('admin.login.submit');
 });
 
-// Public debug route
-Route::get('/public-debug-dashboard', [DashboardController::class, 'index'])->name('admin.public_debug_dashboard');
-
 // Authenticated routes
 Route::middleware('auth:admin')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');

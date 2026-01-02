@@ -146,10 +146,10 @@
             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 {{-- Logo --}}
                 <div class="splash-logo">
-                    @if(isset($splashIcon))
-                        {!! $splashIcon !!}
+                    @if(isset($splashIcon) && is_string($splashIcon))
+                        {!! Str::sanitizeHtml($splashIcon, ['svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'defs', 'clipPath', 'use']) !!}
                     @else
-                        {{-- Zap Icon SVG --}}
+                        {{-- Default Zap Icon SVG --}}
                         <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
