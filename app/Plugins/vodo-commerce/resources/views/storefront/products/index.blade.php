@@ -1,4 +1,4 @@
-@extends('vodo-commerce::themes.default.layouts.main')
+@extends('vodo-commerce::default.layouts.main')
 
 @section('title', 'Products - ' . $store->name)
 

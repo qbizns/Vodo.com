@@ -134,7 +134,7 @@ return new class extends Migration
             $table->decimal('tax_amount', 12, 2)->default(0);
             $table->decimal('developer_amount', 12, 2);
             $table->string('status')->default('pending'); // pending, available, paid
-            $table->foreignId('payout_id')->nullable()->constrained('developer_payouts');
+            $table->unsignedBigInteger('payout_id')->nullable();
             $table->timestamps();
 
             $table->index(['developer_id', 'status']);
@@ -165,6 +165,11 @@ return new class extends Migration
 
             $table->index(['developer_id', 'status']);
             $table->index('payout_number');
+        });
+
+        // Add foreign key for revenue_splits -> developer_payouts after both tables exist
+        Schema::table('revenue_splits', function (Blueprint $table) {
+            $table->foreign('payout_id')->references('id')->on('developer_payouts')->nullOnDelete();
         });
 
         // Usage records for metered billing
@@ -250,8 +255,6 @@ return new class extends Migration
             $table->index(['tenant_id', 'status']);
         });
 
-        // Add foreign key for revenue_splits -> developer_payouts after both tables exist
-        // Already added inline above
     }
 
     public function down(): void

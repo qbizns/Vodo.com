@@ -361,7 +361,13 @@ class PluginAutoloader
     {
         if ($psr4Config) {
             foreach ($psr4Config as $namespace => $relativePath) {
-                $fullPath = $pluginPath . '/' . trim($relativePath, '/');
+                // Handle empty path (root directory)
+                $relativePath = trim($relativePath, '/');
+                if (empty($relativePath)) {
+                    $fullPath = $pluginPath;
+                } else {
+                    $fullPath = $pluginPath . '/' . $relativePath;
+                }
                 $this->addNamespace($namespace, $fullPath);
             }
         } else {

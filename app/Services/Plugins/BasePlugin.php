@@ -262,7 +262,10 @@ abstract class BasePlugin implements PluginInterface
      */
     protected function loadStorefrontRoutesFrom(string $path): void
     {
+        $baseDomain = config('modules.domain', 'vodo.com');
+        
         Route::middleware('web')
+            ->domain($baseDomain)
             ->prefix("store/{store}")
             ->name("storefront.{$this->plugin->slug}.")
             ->group(function () use ($path) {
@@ -332,6 +335,9 @@ abstract class BasePlugin implements PluginInterface
 
     /**
      * Load navigation items from the plugin manifest.
+     * 
+     * Note: Only registers categories here. Items are injected by 
+     * NavigationService::injectPluginMenuItems() to avoid duplicates.
      */
     protected function loadNavigationFromManifest(): void
     {
@@ -341,7 +347,7 @@ abstract class BasePlugin implements PluginInterface
 
         $navigation = $this->manifest['navigation'];
 
-        // Register categories first
+        // Register categories only - items are handled by NavigationService::injectPluginMenuItems()
         if (isset($navigation['categories']) && is_array($navigation['categories'])) {
             foreach ($navigation['categories'] as $category) {
                 $this->addNavigationCategory(
@@ -349,15 +355,6 @@ abstract class BasePlugin implements PluginInterface
                     $category['icon'] ?? 'folder',
                     $category['order'] ?? 100
                 );
-            }
-        }
-
-        // Register navigation items
-        if (isset($navigation['items']) && is_array($navigation['items'])) {
-            foreach ($navigation['items'] as $item) {
-                $navItem = $this->buildNavigationItem($item);
-                $category = $item['category'] ?? 'Plugins';
-                $this->addNavigationItem($navItem, $category);
             }
         }
     }
@@ -528,7 +525,7 @@ abstract class BasePlugin implements PluginInterface
             if (isset($item['url'])) {
                 $menuItem['url'] = $item['url'];
             } elseif (isset($item['route'])) {
-                $menuItem['route'] = $item['route'];
+                $menuItem['url'] = "/plugins/{$this->plugin->slug}" . ($item['route'] !== 'index' ? "/{$item['route']}" : '');
             } else {
                 $menuItem['url'] = "/plugins/{$this->plugin->slug}";
             }
@@ -544,11 +541,10 @@ abstract class BasePlugin implements PluginInterface
                 $menuItem['panels'] = $item['panels'];
             }
 
-            // Find and process children
-            $children = array_filter($manifestItems, fn($i) => ($i['parent'] ?? null) === $item['id']);
-            if (!empty($children)) {
+            // Process inline children array (plugin.json format)
+            if (isset($item['children']) && is_array($item['children'])) {
                 $menuItem['children'] = [];
-                foreach ($children as $child) {
+                foreach ($item['children'] as $child) {
                     $childItem = [
                         'id' => $child['id'] ?? "{$this->plugin->slug}-child",
                         'icon' => $child['icon'] ?? 'circle',
@@ -558,7 +554,9 @@ abstract class BasePlugin implements PluginInterface
                     if (isset($child['url'])) {
                         $childItem['url'] = $child['url'];
                     } elseif (isset($child['route'])) {
-                        $childItem['route'] = $child['route'];
+                        $childItem['url'] = "/plugins/{$this->plugin->slug}" . ($child['route'] !== 'index' ? "/{$child['route']}" : '');
+                    } else {
+                        $childItem['url'] = "/plugins/{$this->plugin->slug}";
                     }
 
                     if (isset($child['permission'])) {
@@ -566,6 +564,31 @@ abstract class BasePlugin implements PluginInterface
                     }
 
                     $menuItem['children'][] = $childItem;
+                }
+            } else {
+                // Fallback: Find children using parent property pattern
+                $children = array_filter($manifestItems, fn($i) => ($i['parent'] ?? null) === $item['id']);
+                if (!empty($children)) {
+                    $menuItem['children'] = [];
+                    foreach ($children as $child) {
+                        $childItem = [
+                            'id' => $child['id'] ?? "{$this->plugin->slug}-child",
+                            'icon' => $child['icon'] ?? 'circle',
+                            'label' => $child['label'] ?? 'Item',
+                        ];
+
+                        if (isset($child['url'])) {
+                            $childItem['url'] = $child['url'];
+                        } elseif (isset($child['route'])) {
+                            $childItem['url'] = "/plugins/{$this->plugin->slug}" . ($child['route'] !== 'index' ? "/{$child['route']}" : '');
+                        }
+
+                        if (isset($child['permission'])) {
+                            $childItem['permission'] = $child['permission'];
+                        }
+
+                        $menuItem['children'][] = $childItem;
+                    }
                 }
             }
 

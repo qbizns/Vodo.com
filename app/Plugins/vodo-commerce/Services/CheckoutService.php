@@ -10,6 +10,7 @@ use VodoCommerce\Contracts\PaymentGatewayContract;
 use VodoCommerce\Contracts\ShippingCarrierContract;
 use VodoCommerce\Contracts\TaxProviderContract;
 use VodoCommerce\Events\CommerceEvents;
+use VodoCommerce\Models\Address;
 use VodoCommerce\Models\Cart;
 use VodoCommerce\Models\Customer;
 use VodoCommerce\Models\Discount;
@@ -87,21 +88,26 @@ class CheckoutService
     public function getAvailableShippingRates(Cart $cart): array
     {
         if (empty($cart->shipping_address)) {
-            return [];
+            return $this->getDefaultShippingRates($cart);
         }
 
-        $address = new \VodoCommerce\Contracts\ShippingAddress(
-            firstName: $cart->shipping_address['first_name'] ?? '',
-            lastName: $cart->shipping_address['last_name'] ?? '',
-            address1: $cart->shipping_address['address1'] ?? '',
-            city: $cart->shipping_address['city'] ?? '',
-            postalCode: $cart->shipping_address['postal_code'] ?? '',
-            country: $cart->shipping_address['country'] ?? '',
-            address2: $cart->shipping_address['address2'] ?? null,
-            state: $cart->shipping_address['state'] ?? null,
-            phone: $cart->shipping_address['phone'] ?? null,
-            company: $cart->shipping_address['company'] ?? null,
-        );
+        try {
+            $address = new \VodoCommerce\Contracts\ShippingAddress(
+                firstName: $cart->shipping_address['first_name'] ?? '',
+                lastName: $cart->shipping_address['last_name'] ?? '',
+                address1: $cart->shipping_address['address1'] ?? '',
+                city: $cart->shipping_address['city'] ?? '',
+                postalCode: $cart->shipping_address['postal_code'] ?? '',
+                country: $cart->shipping_address['country'] ?? '',
+                address2: $cart->shipping_address['address2'] ?? null,
+                state: $cart->shipping_address['state'] ?? null,
+                phone: $cart->shipping_address['phone'] ?? null,
+                company: $cart->shipping_address['company'] ?? null,
+            );
+        } catch (\Exception $e) {
+            Log::warning('Failed to create shipping address', ['error' => $e->getMessage()]);
+            return $this->getDefaultShippingRates($cart);
+        }
 
         $items = [];
         foreach ($cart->items as $item) {
@@ -109,13 +115,20 @@ class CheckoutService
                 'product_id' => $item->product_id,
                 'quantity' => $item->quantity,
                 'weight' => $item->product->weight ?? 0,
-                'dimensions' => $item->product->dimensions ?? [],
+                'dimensions' => is_array($item->product->dimensions) ? $item->product->dimensions : [],
             ];
         }
 
         $rates = [];
 
-        foreach ($this->shippingCarriers->allEnabled() as $carrier) {
+        try {
+            $enabledCarriers = $this->shippingCarriers->allEnabled();
+        } catch (\Exception $e) {
+            Log::warning('Failed to get enabled shipping carriers', ['error' => $e->getMessage()]);
+            return $this->getDefaultShippingRates($cart);
+        }
+
+        foreach ($enabledCarriers as $carrier) {
             $circuitKey = $this->getCircuitKey('shipping', $carrier->getIdentifier());
 
             try {
@@ -146,7 +159,44 @@ class CheckoutService
             }
         }
 
+        // If no shipping carriers configured, provide default options
+        if (empty($rates)) {
+            return $this->getDefaultShippingRates($cart);
+        }
+
         return $rates;
+    }
+
+    /**
+     * Get default shipping rates when no carriers are configured.
+     */
+    protected function getDefaultShippingRates(Cart $cart): array
+    {
+        $currency = $cart->currency ?? $this->store->currency ?? 'USD';
+        
+        return [
+            [
+                'id' => 'standard',
+                'name' => 'Standard Shipping',
+                'cost' => 10.00,
+                'currency' => $currency,
+                'estimated_days' => '5-7',
+            ],
+            [
+                'id' => 'express',
+                'name' => 'Express Shipping',
+                'cost' => 25.00,
+                'currency' => $currency,
+                'estimated_days' => '2-3',
+            ],
+            [
+                'id' => 'free',
+                'name' => 'Free Shipping',
+                'cost' => 0.00,
+                'currency' => $currency,
+                'estimated_days' => '7-14',
+            ],
+        ];
     }
 
     public function calculateTax(Cart $cart): array
@@ -324,7 +374,12 @@ class CheckoutService
     protected function resolveCustomer(Cart $cart, ?string $email): ?Customer
     {
         if ($cart->customer_id) {
-            return Customer::find($cart->customer_id);
+            $customer = Customer::find($cart->customer_id);
+            if ($customer) {
+                // Still save/update addresses for existing customer
+                $this->saveCustomerAddresses($customer, $cart);
+                return $customer;
+            }
         }
 
         $email = $email ?? $cart->billing_address['email'] ?? null;
@@ -334,7 +389,7 @@ class CheckoutService
         }
 
         // Find or create customer
-        return Customer::firstOrCreate(
+        $customer = Customer::firstOrCreate(
             ['store_id' => $this->store->id, 'email' => $email],
             [
                 'first_name' => $cart->billing_address['first_name'] ?? '',
@@ -342,6 +397,87 @@ class CheckoutService
                 'phone' => $cart->billing_address['phone'] ?? null,
             ]
         );
+
+        // Save addresses for the customer
+        $this->saveCustomerAddresses($customer, $cart);
+
+        return $customer;
+    }
+
+    /**
+     * Save customer addresses from cart data.
+     */
+    protected function saveCustomerAddresses(Customer $customer, Cart $cart): void
+    {
+        // Save shipping address
+        if (!empty($cart->shipping_address)) {
+            $shippingAddress = $this->findOrCreateAddress(
+                $customer,
+                'shipping',
+                $cart->shipping_address
+            );
+            
+            // Set as default if customer doesn't have a default address
+            if (!$customer->default_address_id) {
+                $customer->update(['default_address_id' => $shippingAddress->id]);
+            }
+        }
+
+        // Save billing address
+        if (!empty($cart->billing_address)) {
+            $this->findOrCreateAddress(
+                $customer,
+                'billing',
+                $cart->billing_address
+            );
+        }
+    }
+
+    /**
+     * Find existing address or create new one.
+     */
+    protected function findOrCreateAddress(Customer $customer, string $type, array $addressData): Address
+    {
+        // Try to find existing matching address
+        $existingAddress = Address::where('customer_id', $customer->id)
+            ->where('type', $type)
+            ->where('address1', $addressData['address1'] ?? '')
+            ->where('city', $addressData['city'] ?? '')
+            ->where('postal_code', $addressData['postal_code'] ?? '')
+            ->where('country', $addressData['country'] ?? '')
+            ->first();
+
+        if ($existingAddress) {
+            // Update existing address with any new data
+            $existingAddress->update([
+                'first_name' => $addressData['first_name'] ?? $existingAddress->first_name,
+                'last_name' => $addressData['last_name'] ?? $existingAddress->last_name,
+                'company' => $addressData['company'] ?? $existingAddress->company,
+                'address2' => $addressData['address2'] ?? $existingAddress->address2,
+                'state' => $addressData['state'] ?? $existingAddress->state,
+                'phone' => $addressData['phone'] ?? $existingAddress->phone,
+            ]);
+            return $existingAddress;
+        }
+
+        // Create new address
+        $address = Address::create([
+            'customer_id' => $customer->id,
+            'type' => $type,
+            'first_name' => $addressData['first_name'] ?? '',
+            'last_name' => $addressData['last_name'] ?? '',
+            'company' => $addressData['company'] ?? null,
+            'address1' => $addressData['address1'] ?? '',
+            'address2' => $addressData['address2'] ?? null,
+            'city' => $addressData['city'] ?? '',
+            'state' => $addressData['state'] ?? null,
+            'postal_code' => $addressData['postal_code'] ?? '',
+            'country' => $addressData['country'] ?? '',
+            'phone' => $addressData['phone'] ?? null,
+            'is_default' => !$customer->addresses()->where('type', $type)->exists(),
+        ]);
+
+        return $address;
     }
 
     public function initiatePayment(Order $order): array
@@ -352,45 +488,56 @@ class CheckoutService
             throw new \InvalidArgumentException("Payment gateway '{$order->payment_method}' not found");
         }
 
-        $items = $order->items->map(fn($item) => [
-            'name' => $item->name,
-            'quantity' => $item->quantity,
-            'unit_price' => $item->unit_price,
-            'total' => $item->total,
-        ])->toArray();
+        // Check if this is an offline payment method (like COD)
+        $supports = method_exists($gateway, 'supports') ? $gateway->supports() : [];
+        $isOffline = in_array('offline', $supports['features'] ?? []);
 
-        $circuitKey = $this->getCircuitKey('payment', $gateway->getIdentifier());
+        if ($isOffline) {
+            // For offline payments, move order to processing (awaiting fulfillment)
+            $order->update([
+                'status' => Order::STATUS_PROCESSING,
+                'payment_status' => Order::PAYMENT_PENDING, // Will be collected on delivery
+            ]);
 
-        // Wrap external payment gateway call with circuit breaker
-        // For payments, we throw on circuit open since we can't proceed without payment
-        $session = $this->withCircuitBreaker(
-            $circuitKey,
-            fn() => $gateway->createCheckoutSession(
-                orderId: (string) $order->id,
-                amount: (float) $order->total,
-                currency: $order->currency,
-                items: $items,
-                customerEmail: $order->customer_email,
-                metadata: [
-                    'order_number' => $order->order_number,
-                    'store_id' => $order->store_id,
-                ]
-            ),
-            null,
-            true // Throw on open - payment is critical
-        );
+            Log::info('Offline payment order confirmed', [
+                'order_id' => $order->id,
+                'gateway' => $gateway->getIdentifier(),
+            ]);
+
+            return [
+                'session_id' => null,
+                'redirect_url' => route('storefront.vodo-commerce.checkout.success', [
+                    'store' => $this->store->slug,
+                    'order' => $order->order_number,
+                ]),
+                'client_secret' => null,
+                'expires_at' => null,
+                'offline' => true,
+                'message' => 'Order confirmed. Payment will be collected on delivery.',
+            ];
+        }
+
+        $session = $gateway->createCheckoutSession($order, [
+            'return_url' => route('storefront.vodo-commerce.checkout.success', [
+                'store' => $this->store->slug,
+                'order' => $order->order_number,
+            ]),
+            'cancel_url' => route('storefront.vodo-commerce.checkout.show', [
+                'store' => $this->store->slug,
+            ]),
+        ]);
 
         Log::info('Payment session initiated', [
             'order_id' => $order->id,
             'gateway' => $gateway->getIdentifier(),
-            'session_id' => $session->sessionId,
+            'session_id' => $session->id,
         ]);
 
         return [
-            'session_id' => $session->sessionId,
-            'redirect_url' => $session->redirectUrl,
-            'client_secret' => $session->clientSecret,
-            'expires_at' => $session->expiresAt?->toIso8601String(),
+            'session_id' => $session->id,
+            'redirect_url' => $session->url,
+            'client_secret' => $session->metadata['client_secret'] ?? null,
+            'expires_at' => $session->expiresAt ? date('c', $session->expiresAt) : null,
         ];
     }
 

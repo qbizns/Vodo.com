@@ -37,7 +37,7 @@ return new class extends Migration
             // Composite indexes for common queries
             $table->index(['product_id', 'expires_at']);
             $table->index(['variant_id', 'expires_at']);
-            $table->index(['cart_id', 'product_id', 'variant_id']);
+            $table->index(['cart_id', 'product_id', 'variant_id'], 'inv_res_cart_product_variant_idx');
 
             // Foreign keys
             $table->foreign('store_id')

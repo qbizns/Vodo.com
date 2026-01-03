@@ -247,8 +247,9 @@ class ProductService
             ->where(function ($query) use ($product) {
                 $query->where('category_id', $product->category_id);
 
-                if (!empty($product->tags)) {
-                    foreach ($product->tags as $tag) {
+                $tags = is_array($product->tags) ? $product->tags : [];
+                if (!empty($tags)) {
+                    foreach ($tags as $tag) {
                         $query->orWhereJsonContains('tags', $tag);
                     }
                 }

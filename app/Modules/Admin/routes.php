@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Controllers\AuthController;
 use App\Modules\Admin\Controllers\DashboardController;
+use App\Modules\Admin\Controllers\EntityViewController;
 use App\Modules\Admin\Controllers\PluginController;
 use App\Modules\Admin\Controllers\PluginInstallController;
 use App\Modules\Admin\Controllers\SettingsController;
@@ -154,7 +155,24 @@ Route::middleware('auth:admin')->group(function () {
         Route::get('/api/list', [PermissionController::class, 'listPermissions'])->name('api.list');
         Route::get('/api/roles', [PermissionController::class, 'listRoles'])->name('api.roles');
     });
+
+    // =========================================================================
+    // Dynamic Entity View Routes
+    // =========================================================================
+    // These routes render entity forms/lists dynamically from ViewRegistry definitions
+    // Usage: /admin/entities/{entity_name}/create renders form from getFormView()
     
+    Route::prefix('entities/{entity}')->name('admin.entities.')->group(function () {
+        Route::get('/', [EntityViewController::class, 'index'])->name('index');
+        Route::get('/create', [EntityViewController::class, 'create'])->name('create');
+        Route::get('/{id}', [EntityViewController::class, 'show'])->name('show')->whereNumber('id');
+        Route::get('/{id}/edit', [EntityViewController::class, 'edit'])->name('edit')->whereNumber('id');
+        
+        // API-style endpoints for form submissions (fallback if not using /api/v1/entities)
+        Route::post('/', [EntityViewController::class, 'store'])->name('store');
+        Route::put('/{id}', [EntityViewController::class, 'update'])->name('update')->whereNumber('id');
+        Route::delete('/{id}', [EntityViewController::class, 'destroy'])->name('destroy')->whereNumber('id');
+    });
     
     // Catch-all route for placeholder pages (must be last)
     // Excludes 'plugins', 'system', and 'dashboard' paths which are handled by specific routes

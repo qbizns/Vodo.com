@@ -1,0 +1,21 @@
+{
+    "name": "Notifier",
+    "slug": "notifier",
+    "description": "Simple email notifications for commerce events",
+    "version": "1.0.0",
+    "author": "Vodo",
+    "main_class": "App\\Plugins\\Notifier\\NotifierPlugin",
+    "autoload": {
+        "App\\Plugins\\Notifier\\": ""
+    },
+    "requires": {
+        "php": ">=8.2",
+        "plugins": ["vodo-commerce"]
+    },
+    "permissions": [],
+    "settings": [],
+    "navigation": {
+        "enabled": false
+    }
+}
+

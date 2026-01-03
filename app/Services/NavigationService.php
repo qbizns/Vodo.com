@@ -58,7 +58,7 @@ class NavigationService
         $navGroups = $this->getBaseNavGroups($modulePrefix);
 
         // Add menu items from all active plugins
-        //$navGroups = $this->injectPluginMenuItems($navGroups, $modulePrefix);
+        $navGroups = $this->injectPluginMenuItems($navGroups, $modulePrefix);
 
         // Apply plugin navigation_items filter (for additional customization)
         $navGroups = $this->hooks->applyFilters('navigation_items', $navGroups);
@@ -514,34 +514,78 @@ class NavigationService
                 continue;
             }
 
+            // Resolve URL from route or direct URL
+            $url = $item['url'] ?? null;
+            if (!$url && isset($item['route'])) {
+                $url = "/plugins/{$slug}" . ($item['route'] !== 'index' ? "/{$item['route']}" : '');
+            }
+            if (!$url) {
+                $url = "/plugins/{$slug}";
+            }
+
             $menuItem = [
                 'id' => $item['id'] ?? "{$slug}-" . ($item['label'] ?? 'item'),
                 'icon' => $item['icon'] ?? 'plug',
                 'label' => $item['label'] ?? $plugin->name,
-                'url' => $item['url'] ?? "/admin/plugins/{$slug}",
+                'url' => $url,
                 'plugin_slug' => $slug,
                 'position' => $item['order'] ?? 50,
+                'category' => $item['category'] ?? 'Plugins',
             ];
 
             if (isset($item['permission'])) {
                 $menuItem['permission'] = $item['permission'];
             }
 
-            // Find and add children
-            $children = array_filter($manifestItems, fn($i) => ($i['parent'] ?? null) === $item['id']);
-            if (!empty($children)) {
+            // Process inline children array (plugin.json format)
+            if (isset($item['children']) && is_array($item['children'])) {
                 $menuItem['children'] = [];
-                foreach ($children as $child) {
+                foreach ($item['children'] as $child) {
+                    // Resolve child URL
+                    $childUrl = $child['url'] ?? null;
+                    if (!$childUrl && isset($child['route'])) {
+                        $childUrl = "/plugins/{$slug}" . ($child['route'] !== 'index' ? "/{$child['route']}" : '');
+                    }
+                    if (!$childUrl) {
+                        $childUrl = $url . '/' . ($child['id'] ?? 'child');
+                    }
+
                     $childItem = [
                         'id' => $child['id'] ?? "{$slug}-child",
                         'icon' => $child['icon'] ?? 'circle',
                         'label' => $child['label'] ?? 'Item',
-                        'url' => $child['url'] ?? $menuItem['url'] . '/' . ($child['route'] ?? $child['id'] ?? 'item'),
+                        'url' => $childUrl,
                     ];
                     if (isset($child['permission'])) {
                         $childItem['permission'] = $child['permission'];
                     }
                     $menuItem['children'][] = $childItem;
+                }
+            } else {
+                // Fallback: Find children using parent property pattern
+                $children = array_filter($manifestItems, fn($i) => ($i['parent'] ?? null) === $item['id']);
+                if (!empty($children)) {
+                    $menuItem['children'] = [];
+                    foreach ($children as $child) {
+                        $childUrl = $child['url'] ?? null;
+                        if (!$childUrl && isset($child['route'])) {
+                            $childUrl = "/plugins/{$slug}" . ($child['route'] !== 'index' ? "/{$child['route']}" : '');
+                        }
+                        if (!$childUrl) {
+                            $childUrl = $url . '/' . ($child['id'] ?? 'item');
+                        }
+
+                        $childItem = [
+                            'id' => $child['id'] ?? "{$slug}-child",
+                            'icon' => $child['icon'] ?? 'circle',
+                            'label' => $child['label'] ?? 'Item',
+                            'url' => $childUrl,
+                        ];
+                        if (isset($child['permission'])) {
+                            $childItem['permission'] = $child['permission'];
+                        }
+                        $menuItem['children'][] = $childItem;
+                    }
                 }
             }
 

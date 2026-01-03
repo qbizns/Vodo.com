@@ -176,10 +176,11 @@ class DiscountController extends Controller
     {
         $tenantId = $request->user()?->tenant_id;
 
-        if (!$tenantId) {
-            return null;
+        if ($tenantId) {
+            return Store::where('tenant_id', $tenantId)->first();
         }
 
-        return Store::where('tenant_id', $tenantId)->first();
+        // For super_admin (no tenant_id), return the first available store
+        return Store::withoutGlobalScopes()->first();
     }
 }

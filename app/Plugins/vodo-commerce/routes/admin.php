@@ -1,12 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use VodoCommerce\Http\Controllers\Admin\CategoryController;
-use VodoCommerce\Http\Controllers\Admin\CustomerController;
 use VodoCommerce\Http\Controllers\Admin\DashboardController;
-use VodoCommerce\Http\Controllers\Admin\DiscountController;
-use VodoCommerce\Http\Controllers\Admin\OrderController;
-use VodoCommerce\Http\Controllers\Admin\ProductController;
 use VodoCommerce\Http\Controllers\Admin\SettingsController;
 
 /*
@@ -21,57 +16,83 @@ use VodoCommerce\Http\Controllers\Admin\SettingsController;
 // Dashboard
 Route::get('/', DashboardController::class)->name('dashboard');
 
-// Products
+// Stores - delegated to EntityViewController (uses View Registry)
+Route::prefix('stores')->name('stores.')->group(function () {
+    $controller = \App\Modules\Admin\Controllers\EntityViewController::class;
+    $entity = 'commerce_store';
+    
+    Route::get('/', fn(\Illuminate\Http\Request $r) => app($controller)->index($r, $entity))->name('index');
+    Route::get('/create', fn(\Illuminate\Http\Request $r) => app($controller)->create($r, $entity))->name('create');
+    Route::post('/', fn(\Illuminate\Http\Request $r) => app($controller)->store($r, $entity))->name('store');
+    Route::get('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->show($r, $entity, $id))->name('show');
+    Route::get('/{id}/edit', fn(\Illuminate\Http\Request $r, $id) => app($controller)->edit($r, $entity, $id))->name('edit');
+    Route::put('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->update($r, $entity, $id))->name('update');
+    Route::delete('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->destroy($r, $entity, $id))->name('destroy');
+});
+
+// Products - delegated to EntityViewController (uses View Registry)
 Route::prefix('products')->name('products.')->group(function () {
-    Route::get('/', [ProductController::class, 'index'])->name('index');
-    Route::get('/create', [ProductController::class, 'create'])->name('create');
-    Route::post('/', [ProductController::class, 'store'])->name('store');
-    Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [ProductController::class, 'update'])->name('update');
-    Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
-    Route::post('/{id}/duplicate', [ProductController::class, 'duplicate'])->name('duplicate');
+    $controller = \App\Modules\Admin\Controllers\EntityViewController::class;
+    $entity = 'commerce_product';
+    
+    Route::get('/', fn(\Illuminate\Http\Request $r) => app($controller)->index($r, $entity))->name('index');
+    Route::get('/create', fn(\Illuminate\Http\Request $r) => app($controller)->create($r, $entity))->name('create');
+    Route::post('/', fn(\Illuminate\Http\Request $r) => app($controller)->store($r, $entity))->name('store');
+    Route::get('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->show($r, $entity, $id))->name('show');
+    Route::get('/{id}/edit', fn(\Illuminate\Http\Request $r, $id) => app($controller)->edit($r, $entity, $id))->name('edit');
+    Route::put('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->update($r, $entity, $id))->name('update');
+    Route::delete('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->destroy($r, $entity, $id))->name('destroy');
 });
 
-// Categories
+// Categories - delegated to EntityViewController (uses View Registry)
 Route::prefix('categories')->name('categories.')->group(function () {
-    Route::get('/', [CategoryController::class, 'index'])->name('index');
-    Route::get('/create', [CategoryController::class, 'create'])->name('create');
-    Route::post('/', [CategoryController::class, 'store'])->name('store');
-    Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
-    Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy');
-    Route::post('/reorder', [CategoryController::class, 'reorder'])->name('reorder');
+    $controller = \App\Modules\Admin\Controllers\EntityViewController::class;
+    $entity = 'commerce_category';
+    
+    Route::get('/', fn(\Illuminate\Http\Request $r) => app($controller)->index($r, $entity))->name('index');
+    Route::get('/create', fn(\Illuminate\Http\Request $r) => app($controller)->create($r, $entity))->name('create');
+    Route::post('/', fn(\Illuminate\Http\Request $r) => app($controller)->store($r, $entity))->name('store');
+    Route::get('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->show($r, $entity, $id))->name('show');
+    Route::get('/{id}/edit', fn(\Illuminate\Http\Request $r, $id) => app($controller)->edit($r, $entity, $id))->name('edit');
+    Route::put('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->update($r, $entity, $id))->name('update');
+    Route::delete('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->destroy($r, $entity, $id))->name('destroy');
 });
 
-// Orders
+// Orders - delegated to EntityViewController (uses View Registry)
 Route::prefix('orders')->name('orders.')->group(function () {
-    Route::get('/', [OrderController::class, 'index'])->name('index');
-    Route::get('/{id}', [OrderController::class, 'show'])->name('show');
-    Route::post('/{id}/status', [OrderController::class, 'updateStatus'])->name('status');
-    Route::post('/{id}/cancel', [OrderController::class, 'cancel'])->name('cancel');
-    Route::post('/{id}/refund', [OrderController::class, 'refund'])->name('refund');
-    Route::post('/{id}/note', [OrderController::class, 'addNote'])->name('note');
-    Route::post('/{id}/shipment', [OrderController::class, 'createShipment'])->name('shipment');
+    $controller = \App\Modules\Admin\Controllers\EntityViewController::class;
+    $entity = 'commerce_order';
+    
+    Route::get('/', fn(\Illuminate\Http\Request $r) => app($controller)->index($r, $entity))->name('index');
+    Route::get('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->show($r, $entity, $id))->name('show');
+    Route::get('/{id}/edit', fn(\Illuminate\Http\Request $r, $id) => app($controller)->edit($r, $entity, $id))->name('edit');
+    Route::put('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->update($r, $entity, $id))->name('update');
 });
 
-// Customers
+// Customers - delegated to EntityViewController (uses View Registry)
 Route::prefix('customers')->name('customers.')->group(function () {
-    Route::get('/', [CustomerController::class, 'index'])->name('index');
-    Route::get('/{id}', [CustomerController::class, 'show'])->name('show');
-    Route::get('/{id}/edit', [CustomerController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [CustomerController::class, 'update'])->name('update');
-    Route::delete('/{id}', [CustomerController::class, 'destroy'])->name('destroy');
+    $controller = \App\Modules\Admin\Controllers\EntityViewController::class;
+    $entity = 'commerce_customer';
+    
+    Route::get('/', fn(\Illuminate\Http\Request $r) => app($controller)->index($r, $entity))->name('index');
+    Route::get('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->show($r, $entity, $id))->name('show');
+    Route::get('/{id}/edit', fn(\Illuminate\Http\Request $r, $id) => app($controller)->edit($r, $entity, $id))->name('edit');
+    Route::put('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->update($r, $entity, $id))->name('update');
+    Route::delete('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->destroy($r, $entity, $id))->name('destroy');
 });
 
-// Discounts
+// Discounts - delegated to EntityViewController (uses View Registry)
 Route::prefix('discounts')->name('discounts.')->group(function () {
-    Route::get('/', [DiscountController::class, 'index'])->name('index');
-    Route::get('/create', [DiscountController::class, 'create'])->name('create');
-    Route::post('/', [DiscountController::class, 'store'])->name('store');
-    Route::get('/{id}/edit', [DiscountController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [DiscountController::class, 'update'])->name('update');
-    Route::delete('/{id}', [DiscountController::class, 'destroy'])->name('destroy');
-    Route::post('/{id}/toggle', [DiscountController::class, 'toggleStatus'])->name('toggle');
+    $controller = \App\Modules\Admin\Controllers\EntityViewController::class;
+    $entity = 'commerce_discount';
+    
+    Route::get('/', fn(\Illuminate\Http\Request $r) => app($controller)->index($r, $entity))->name('index');
+    Route::get('/create', fn(\Illuminate\Http\Request $r) => app($controller)->create($r, $entity))->name('create');
+    Route::post('/', fn(\Illuminate\Http\Request $r) => app($controller)->store($r, $entity))->name('store');
+    Route::get('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->show($r, $entity, $id))->name('show');
+    Route::get('/{id}/edit', fn(\Illuminate\Http\Request $r, $id) => app($controller)->edit($r, $entity, $id))->name('edit');
+    Route::put('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->update($r, $entity, $id))->name('update');
+    Route::delete('/{id}', fn(\Illuminate\Http\Request $r, $id) => app($controller)->destroy($r, $entity, $id))->name('destroy');
 });
 
 // Settings

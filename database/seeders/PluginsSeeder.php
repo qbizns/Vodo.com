@@ -100,13 +100,22 @@ class PluginsSeeder extends Seeder
                 return;
             }
 
-            $slug = $manifest['name'] ?? basename($pluginDir);
+            // Use slug from manifest if available, otherwise normalize name or use directory name
+            $slug = $manifest['slug'] ?? $this->normalizeSlug($manifest['name'] ?? basename($pluginDir));
+            
+            // Ensure slug is valid (lowercase, alphanumeric with hyphens)
+            $slug = $this->normalizeSlug($slug);
             
             // Get the actual main class (reads from PHP file if possible)
-            $mainClass = $this->getMainClass($manifest, $slug, $pluginDir);
+            // If main_class is already specified in manifest, use it
+            $mainClass = $manifest['main_class'] ?? $this->getMainClass($manifest, $slug, $pluginDir);
             
             // Extract namespace from main class
             $namespace = $this->extractNamespaceFromMainClass($mainClass);
+            
+            // Check if plugin already exists to preserve status if it was active
+            $existingPlugin = Plugin::where('slug', $slug)->first();
+            $preserveStatus = $existingPlugin && $existingPlugin->status === Plugin::STATUS_ACTIVE;
             
             // Prepare plugin data from manifest
             $pluginData = [
@@ -133,8 +142,9 @@ class PluginsSeeder extends Seeder
                 'main_class' => $mainClass,
                 'requires' => $manifest['dependencies'] ?? null,
                 'settings' => $manifest['settings'] ?? null,
-                'status' => Plugin::STATUS_INACTIVE,
-                'installed_at' => now(),
+                'status' => $preserveStatus ? Plugin::STATUS_ACTIVE : Plugin::STATUS_INACTIVE,
+                'error_message' => null, // Clear any previous errors
+                'installed_at' => $existingPlugin?->installed_at ?? now(),
             ];
 
             // Create or update the plugin
@@ -171,12 +181,36 @@ class PluginsSeeder extends Seeder
      */
     protected function getMainClass(array $manifest, string $slug, string $pluginDir): string
     {
+        // Check for entry_class or main field
         $entryClass = $manifest['entry_class'] ?? null;
+        $mainFile = $manifest['main'] ?? null;
         
-        // If entry_class is specified, try to find and read the actual PHP file
-        if ($entryClass) {
-            $entryFile = $pluginDir . '/' . $entryClass . '.php';
-            
+        // If main is a file path, extract class name from it
+        if ($mainFile && !$entryClass) {
+            $entryClass = pathinfo($mainFile, PATHINFO_FILENAME);
+        }
+        
+        if (!$entryClass) {
+            // Fallback: Use the plugin directory namespace convention
+            $pluginNamespace = str_replace('-', '_', $slug);
+            $className = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $slug))) . 'Plugin';
+            return "App\\Plugins\\{$pluginNamespace}\\{$className}";
+        }
+        
+        // Try to find the entry class file in common locations
+        $possiblePaths = [];
+        
+        if ($mainFile) {
+            // If main is specified, try that path first
+            $possiblePaths[] = $pluginDir . '/' . $mainFile;
+            $possiblePaths[] = $pluginDir . '/' . $entryClass . '.php';
+        } else {
+            $possiblePaths[] = $pluginDir . '/' . $entryClass . '.php';  // Root of plugin directory
+        }
+        
+        $possiblePaths[] = $pluginDir . '/src/' . $entryClass . '.php';  // src directory
+        
+        foreach ($possiblePaths as $entryFile) {
             if (file_exists($entryFile)) {
                 // Parse the PHP file to get the actual namespace
                 $content = file_get_contents($entryFile);
@@ -188,12 +222,24 @@ class PluginsSeeder extends Seeder
             }
         }
         
-        // Fallback: Use the plugin directory namespace convention
-        // Hyphens become underscores in PHP namespaces
-        $pluginNamespace = str_replace('-', '_', $slug);
-        $className = $entryClass ?? (str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $slug))) . 'Plugin');
+        // If file not found but entry_class is specified, try to construct from autoload config
+        if (isset($manifest['autoload']['psr-4'])) {
+            $namespaces = array_keys($manifest['autoload']['psr-4']);
+            if (!empty($namespaces)) {
+                $namespace = rtrim($namespaces[0], '\\');
+                return "{$namespace}\\{$entryClass}";
+            }
+        }
         
-        return "App\\Plugins\\{$pluginNamespace}\\{$className}";
+        // Check if namespace is specified directly in manifest
+        if (isset($manifest['namespace'])) {
+            $namespace = rtrim($manifest['namespace'], '\\');
+            return "{$namespace}\\{$entryClass}";
+        }
+        
+        // Final fallback: Use the plugin directory namespace convention
+        $pluginNamespace = str_replace('-', '_', $slug);
+        return "App\\Plugins\\{$pluginNamespace}\\{$entryClass}";
     }
 
     /**
@@ -204,6 +250,31 @@ class PluginsSeeder extends Seeder
         $parts = explode('\\', $mainClass);
         array_pop($parts); // Remove the class name
         return implode('\\', $parts);
+    }
+
+    /**
+     * Normalize a slug to be lowercase with hyphens.
+     */
+    protected function normalizeSlug(string $slug): string
+    {
+        // Convert to lowercase
+        $slug = strtolower($slug);
+        
+        // Replace spaces and underscores with hyphens
+        $slug = preg_replace('/[\s_]+/', '-', $slug);
+        
+        // Remove any characters that aren't alphanumeric or hyphens
+        $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
+        
+        // Remove leading/trailing hyphens
+        $slug = trim($slug, '-');
+        
+        // Ensure it's not empty
+        if (empty($slug)) {
+            $slug = 'plugin';
+        }
+        
+        return $slug;
     }
 
     /**

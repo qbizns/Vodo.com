@@ -28,6 +28,13 @@ class Store extends Model
         'settings',
     ];
 
+    protected $attributes = [
+        'currency' => 'USD',
+        'timezone' => 'UTC',
+        'status' => 'active',
+        'settings' => '[]',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -58,6 +65,14 @@ class Store extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    /**
+     * Scope to only active stores.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
     }
 
     public function getSetting(string $key, mixed $default = null): mixed

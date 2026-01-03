@@ -14,7 +14,7 @@ class ProductController extends Controller
 {
     public function index(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $productService = new ProductService($store);
 
         $filters = $request->only([
@@ -45,7 +45,7 @@ class ProductController extends Controller
 
     public function show(Request $request, string $storeSlug, string $productSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $productService = new ProductService($store);
 
         $product = $productService->findBySlug($productSlug);
@@ -65,7 +65,7 @@ class ProductController extends Controller
 
     public function category(Request $request, string $storeSlug, string $categorySlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $category = Category::where('store_id', $store->id)
             ->where('slug', $categorySlug)
@@ -92,7 +92,7 @@ class ProductController extends Controller
 
     public function search(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $productService = new ProductService($store);
 
         $query = $request->input('q', '');

@@ -16,7 +16,7 @@ class CartController extends Controller
 {
     public function show(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $cartService = $this->getCartService($store, $request);
 
         return view('vodo-commerce::storefront.cart', [
@@ -27,7 +27,7 @@ class CartController extends Controller
 
     public function add(Request $request, string $storeSlug): JsonResponse
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $request->validate([
             'product_id' => 'required|integer',
@@ -69,7 +69,7 @@ class CartController extends Controller
 
     public function update(Request $request, string $storeSlug, int $itemId): JsonResponse
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $request->validate([
             'quantity' => 'required|integer|min:0',
@@ -90,7 +90,7 @@ class CartController extends Controller
 
     public function remove(Request $request, string $storeSlug, int $itemId): JsonResponse
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $cartService = $this->getCartService($store, $request);
         $cart = $cartService->getCart();
@@ -107,7 +107,7 @@ class CartController extends Controller
 
     public function applyDiscount(Request $request, string $storeSlug): JsonResponse
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $request->validate([
             'code' => 'required|string|max:50',
@@ -126,7 +126,7 @@ class CartController extends Controller
 
     public function removeDiscount(Request $request, string $storeSlug, string $code): JsonResponse
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $cartService = $this->getCartService($store, $request);
         $cartService->removeDiscountCode($code);
@@ -140,7 +140,7 @@ class CartController extends Controller
 
     public function clear(Request $request, string $storeSlug): JsonResponse
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
 
         $cartService = $this->getCartService($store, $request);
         $cartService->clear();

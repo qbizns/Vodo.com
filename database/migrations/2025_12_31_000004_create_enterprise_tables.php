@@ -11,7 +11,9 @@ return new class extends Migration
     public function up(): void
     {
         // Audit logs for compliance and security
-        Schema::create('audit_logs', function (Blueprint $table) {
+        // Note: audit_logs may already exist from a previous migration
+        if (! Schema::hasTable('audit_logs')) {
+            Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->unsignedBigInteger('tenant_id')->nullable()->index();
@@ -34,7 +36,8 @@ return new class extends Migration
             $table->index(['tenant_id', 'created_at']);
             $table->index(['user_id', 'created_at']);
             $table->index('event');
-        });
+            });
+        }
 
         // API rate limits configuration per tenant/plan
         Schema::create('rate_limit_configs', function (Blueprint $table) {

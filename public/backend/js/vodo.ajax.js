@@ -325,6 +325,7 @@
     ajax.fragment = function(url, options = {}) {
         return this.request(url, {
             ...options,
+            cache: false, // Never cache PJAX fragment requests - always get fresh data
             dataType: 'html',
             headers: {
                 ...options.headers,

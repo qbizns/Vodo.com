@@ -13,25 +13,62 @@ use Illuminate\Support\Facades\Schema;
 class PluginMigrator
 {
     /**
+     * Get the migrations path for a plugin.
+     *
+     * Supports multiple conventions:
+     * 1. Custom path defined in plugin.json settings['migrations_path']
+     * 2. Laravel convention: database/migrations
+     * 3. Legacy: migrations folder in root
+     */
+    protected function getMigrationsPath(Plugin $plugin): ?string
+    {
+        $basePath = $plugin->getFullPath();
+
+        // Check for custom path in plugin.json settings
+        $customPath = $plugin->settings['migrations_path'] ?? null;
+        if ($customPath && File::isDirectory($basePath . '/' . ltrim($customPath, '/'))) {
+            return $basePath . '/' . ltrim($customPath, '/');
+        }
+
+        // Laravel convention: database/migrations
+        if (File::isDirectory($basePath . '/database/migrations')) {
+            return $basePath . '/database/migrations';
+        }
+
+        // Legacy: migrations folder in root
+        if (File::isDirectory($basePath . '/migrations')) {
+            return $basePath . '/migrations';
+        }
+
+        return null;
+    }
+
+    /**
      * Run all pending migrations for a plugin.
      *
      * @throws \Exception
      */
     public function runMigrations(Plugin $plugin): array
     {
-        $migrationsPath = $plugin->getFullPath() . '/migrations';
-        
-        if (!File::isDirectory($migrationsPath)) {
+        $migrationsPath = $this->getMigrationsPath($plugin);
+
+        if (!$migrationsPath) {
+            Log::debug("No migrations directory found for plugin: {$plugin->slug}");
             return [];
         }
+
+        Log::info("Found migrations at: {$migrationsPath} for plugin: {$plugin->slug}");
 
         $files = $this->getMigrationFiles($migrationsPath);
         $ran = $this->getRanMigrations($plugin);
         $pending = array_diff(array_keys($files), $ran);
 
         if (empty($pending)) {
+            Log::info("No pending migrations for plugin: {$plugin->slug}");
             return [];
         }
+
+        Log::info("Running " . count($pending) . " pending migrations for plugin: {$plugin->slug}");
 
         $batch = PluginMigration::getNextBatch($plugin->id);
         $migrated = [];
@@ -55,7 +92,7 @@ class PluginMigrator
 
         try {
             $migration = $this->resolveMigration($path);
-            
+
             // Run migration without wrapping in transaction
             // Laravel migrations handle transactions internally
             $migration->up();
@@ -66,6 +103,8 @@ class PluginMigrator
                 'migration' => $name,
                 'batch' => $batch,
             ]);
+
+            Log::info("Migration completed successfully: {$name}");
         } catch (\Throwable $e) {
             Log::error("Migration failed: {$name}", [
                 'plugin' => $plugin->slug,
@@ -83,7 +122,7 @@ class PluginMigrator
     public function rollbackLastBatch(Plugin $plugin): array
     {
         $batch = PluginMigration::getLastBatch($plugin->id);
-        
+
         if ($batch === 0) {
             return [];
         }
@@ -102,11 +141,20 @@ class PluginMigrator
             ->get();
 
         $rolledBack = [];
-        $migrationsPath = $plugin->getFullPath() . '/migrations';
+        $migrationsPath = $this->getMigrationsPath($plugin);
+
+        if (!$migrationsPath) {
+            // Still delete migration records even if path not found
+            foreach ($migrations as $migration) {
+                $migration->delete();
+                $rolledBack[] = $migration->migration;
+            }
+            return $rolledBack;
+        }
 
         foreach ($migrations as $migration) {
             $path = $migrationsPath . '/' . $migration->migration . '.php';
-            
+
             if (File::exists($path)) {
                 $this->rollbackMigration($path, $migration->migration);
             }
@@ -129,16 +177,18 @@ class PluginMigrator
             ->get();
 
         $rolledBack = [];
-        $migrationsPath = $plugin->getFullPath() . '/migrations';
+        $migrationsPath = $this->getMigrationsPath($plugin);
 
         foreach ($migrations as $migration) {
-            $path = $migrationsPath . '/' . $migration->migration . '.php';
-            
-            if (File::exists($path)) {
-                try {
-                    $this->rollbackMigration($path, $migration->migration);
-                } catch (\Throwable $e) {
-                    Log::warning("Failed to rollback migration {$migration->migration}: " . $e->getMessage());
+            if ($migrationsPath) {
+                $path = $migrationsPath . '/' . $migration->migration . '.php';
+
+                if (File::exists($path)) {
+                    try {
+                        $this->rollbackMigration($path, $migration->migration);
+                    } catch (\Throwable $e) {
+                        Log::warning("Failed to rollback migration {$migration->migration}: " . $e->getMessage());
+                    }
                 }
             }
 
@@ -157,7 +207,7 @@ class PluginMigrator
         Log::info("Rolling back plugin migration: {$name}");
 
         $migration = $this->resolveMigration($path);
-        
+
         // Run migration without wrapping in transaction
         // Laravel migrations handle transactions internally
         $migration->down();
@@ -223,7 +273,12 @@ class PluginMigrator
      */
     public function getMigrationStatus(Plugin $plugin): array
     {
-        $migrationsPath = $plugin->getFullPath() . '/migrations';
+        $migrationsPath = $this->getMigrationsPath($plugin);
+
+        if (!$migrationsPath) {
+            return [];
+        }
+
         $files = $this->getMigrationFiles($migrationsPath);
         $ran = $this->getRanMigrations($plugin);
 
@@ -257,9 +312,9 @@ class PluginMigrator
      */
     public function hasPendingMigrations(Plugin $plugin): bool
     {
-        $migrationsPath = $plugin->getFullPath() . '/migrations';
-        
-        if (!File::isDirectory($migrationsPath)) {
+        $migrationsPath = $this->getMigrationsPath($plugin);
+
+        if (!$migrationsPath) {
             return false;
         }
 
@@ -274,9 +329,9 @@ class PluginMigrator
      */
     public function countPendingMigrations(Plugin $plugin): int
     {
-        $migrationsPath = $plugin->getFullPath() . '/migrations';
-        
-        if (!File::isDirectory($migrationsPath)) {
+        $migrationsPath = $this->getMigrationsPath($plugin);
+
+        if (!$migrationsPath) {
             return 0;
         }
 

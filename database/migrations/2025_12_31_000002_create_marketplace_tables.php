@@ -198,7 +198,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('submission_id')->references('id')->on('marketplace_submissions')->cascadeOnDelete();
-            $table->index(['submission_id', 'review_type', 'result']);
+            $table->index(['submission_id', 'review_type', 'result'], 'idx_review_results_submission_type_result');
         });
 
         // =====================================================================

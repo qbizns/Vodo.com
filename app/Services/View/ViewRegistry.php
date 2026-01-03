@@ -251,6 +251,10 @@ class ViewRegistry implements ViewRegistryContract
 
     /**
      * Get a view definition.
+     *
+     * If a view is registered with sections but no fields, the fields will be
+     * auto-populated from entity_fields. This allows plugins to define section
+     * metadata (labels, columns, collapsible) while leveraging auto-generation.
      */
     public function getView(string $entityName, string $viewType, ?string $slug = null): ?array
     {
@@ -273,8 +277,115 @@ class ViewRegistry implements ViewRegistryContract
                 return $this->generateDefaultView($entityName, $viewType);
             }
 
-            return $view->getCompiledArch();
+            $registered = $view->getCompiledArch();
+
+            // For form views, merge with auto-generated fields if sections lack field definitions
+            if ($viewType === UIViewDefinition::TYPE_FORM && $this->needsFieldMerge($registered)) {
+                $generated = $this->generateDefaultView($entityName, $viewType);
+                return $this->mergeViewDefinitions($registered, $generated);
+            }
+
+            return $registered;
         });
+    }
+
+    /**
+     * Check if a view definition needs fields merged from entity_fields.
+     *
+     * Returns true if the view has sections but any section lacks fields or has empty fields.
+     */
+    protected function needsFieldMerge(array $definition): bool
+    {
+        // Check 'sections' key (used in registered views)
+        $sections = $definition['sections'] ?? $definition['groups'] ?? [];
+
+        if (empty($sections)) {
+            return false;
+        }
+
+        foreach ($sections as $section) {
+            $fields = $section['fields'] ?? [];
+            // If any section has no fields, we need to merge
+            if (empty($fields)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Merge registered view definition with auto-generated view.
+     *
+     * The registered view provides section metadata (label, columns, collapsible).
+     * The generated view provides field definitions from entity_fields.
+     *
+     * Rules:
+     * - If a section in registered has fields, keep them (explicit override)
+     * - If a section in registered has no fields, use fields from generated view
+     * - Section metadata (label, columns, collapsible) always comes from registered view
+     * - Sections in generated but not in registered are added at the end
+     */
+    public function mergeViewDefinitions(array $registered, array $generated): array
+    {
+        // Normalize keys - support both 'sections' and 'groups'
+        $registeredSections = $registered['sections'] ?? $registered['groups'] ?? [];
+        $generatedSections = $generated['sections'] ?? $generated['groups'] ?? [];
+
+        $mergedSections = [];
+
+        // First, process registered sections (preserving order)
+        foreach ($registeredSections as $sectionKey => $registeredSection) {
+            $mergedSection = $registeredSection;
+
+            // If section has no fields, populate from generated
+            if (empty($registeredSection['fields'])) {
+                // Find matching section in generated
+                $generatedFields = $generatedSections[$sectionKey]['fields'] ?? [];
+
+                if (empty($generatedFields)) {
+                    // No exact match - collect all fields for this group from generated
+                    $generatedFields = $this->collectFieldsForGroup($generatedSections, $sectionKey);
+                }
+
+                $mergedSection['fields'] = $generatedFields;
+            }
+
+            $mergedSections[$sectionKey] = $mergedSection;
+        }
+
+        // Add any sections from generated that aren't in registered
+        foreach ($generatedSections as $sectionKey => $generatedSection) {
+            if (!isset($mergedSections[$sectionKey])) {
+                // Only add if section has fields
+                if (!empty($generatedSection['fields'])) {
+                    $mergedSections[$sectionKey] = $generatedSection;
+                }
+            }
+        }
+
+        // Build merged result - use 'sections' as canonical key
+        $result = $registered;
+        $result['sections'] = $mergedSections;
+        unset($result['groups']); // Remove 'groups' if present to avoid duplication
+
+        return $result;
+    }
+
+    /**
+     * Collect fields from all sections that belong to a specific group.
+     */
+    protected function collectFieldsForGroup(array $sections, string $targetGroup): array
+    {
+        $fields = [];
+
+        foreach ($sections as $sectionKey => $section) {
+            if ($sectionKey === $targetGroup) {
+                return $section['fields'] ?? [];
+            }
+        }
+
+        return $fields;
     }
 
     /**

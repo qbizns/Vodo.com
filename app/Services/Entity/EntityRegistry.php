@@ -107,13 +107,22 @@ class EntityRegistry
                     'all_items' => "All {$plural}",
                 ];
 
+                // Build entity config (merge explicit config with model settings)
+                $entityConfig = array_merge(
+                    $config['config'] ?? [],
+                    array_filter([
+                        'model_class' => $config['model_class'] ?? null,
+                        'search_columns' => $config['search_columns'] ?? null,
+                    ])
+                );
+
                 // Create entity definition
                 $entity = EntityDefinition::create([
                     'name' => $name,
                     'slug' => $config['slug'] ?? Str::slug($name),
                     'table_name' => $config['table_name'] ?? 'entity_records',
                     'labels' => array_merge($defaultLabels, $config['labels'] ?? []),
-                    'config' => $config['config'] ?? [],
+                    'config' => $entityConfig,
                     'supports' => $config['supports'] ?? ['title', 'content', 'author', 'thumbnail'],
                     'icon' => $config['icon'] ?? 'box',
                     'menu_position' => $config['menu_position'] ?? 100,

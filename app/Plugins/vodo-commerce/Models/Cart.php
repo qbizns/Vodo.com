@@ -38,11 +38,11 @@ class Cart extends Model
     protected function casts(): array
     {
         return [
-            'subtotal' => 'decimal:2',
-            'discount_total' => 'decimal:2',
-            'shipping_total' => 'decimal:2',
-            'tax_total' => 'decimal:2',
-            'total' => 'decimal:2',
+            'subtotal' => 'float',
+            'discount_total' => 'float',
+            'shipping_total' => 'float',
+            'tax_total' => 'float',
+            'total' => 'float',
             'discount_codes' => 'array',
             'billing_address' => 'array',
             'shipping_address' => 'array',
@@ -100,7 +100,11 @@ class Cart extends Model
         // Apply discount codes
         if (!empty($this->discount_codes)) {
             foreach ($this->discount_codes as $code) {
-                $discount = Discount::where('code', $code)->first();
+                // Use withoutGlobalScopes to bypass store scope, then filter by store_id
+                $discount = Discount::withoutGlobalScopes()
+                    ->where('store_id', $this->store_id)
+                    ->where('code', $code)
+                    ->first();
                 if ($discount && $discount->isApplicable($subtotal, $this->customer_id)) {
                     $discountTotal += $discount->calculateDiscount($subtotal);
                 }

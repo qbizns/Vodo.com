@@ -16,6 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use WeakMap;
 
 /**
@@ -147,6 +148,9 @@ class PluginManager
 
         return DB::transaction(function () use ($plugin, $slug) {
             try {
+                // Register autoloader for this plugin before loading
+                $this->registerPluginAutoloader($plugin);
+                
                 // Load and instantiate the plugin class
                 $instance = $this->loadPluginInstance($plugin);
 
@@ -293,6 +297,15 @@ class PluginManager
     /**
      * Uninstall a plugin completely.
      *
+     * Cleanup order:
+     * 1. Deactivate if active
+     * 2. Call plugin's uninstall() hook
+     * 3. Clean up plugin data from base tables (entity_definitions, etc.)
+     * 4. Rollback plugin migrations (drop plugin-specific tables)
+     * 5. Fire uninstall hook
+     * 6. Delete plugin files
+     * 7. Delete plugin record from database
+     *
      * @throws PluginException
      */
     public function uninstall(string $slug): bool
@@ -310,10 +323,15 @@ class PluginManager
                 // Load instance for uninstall hook
                 $instance = $this->loadPluginInstance($plugin);
 
-                // Call uninstall hook
+                // Call uninstall hook (plugin's own cleanup)
                 $instance->uninstall();
 
-                // Rollback all migrations
+                // Clean up plugin data from base platform tables
+                // (entity_definitions, entity_fields, ui_view_definitions, etc.)
+                // This must happen BEFORE rolling back migrations
+                $this->cleanupPluginData($slug);
+
+                // Rollback all migrations (drops plugin-specific tables)
                 $this->migrator->rollbackAllMigrations($plugin);
 
                 // Fire uninstall hook
@@ -550,6 +568,61 @@ class PluginManager
     }
 
     /**
+     * Clean up all plugin data from base platform tables.
+     *
+     * This method deletes all records associated with a plugin from tables
+     * that have a `plugin_slug` column. Called during uninstall BEFORE
+     * rolling back migrations to ensure proper cleanup order.
+     *
+     * Order matters: entity_fields before entity_definitions (foreign key).
+     */
+    protected function cleanupPluginData(string $slug): void
+    {
+        // Tables with plugin_slug column, ordered for proper cleanup
+        // (children before parents to respect foreign key constraints)
+        $tables = [
+            'entity_fields',           // Must be before entity_definitions
+            'entity_definitions',
+            'ui_view_definitions',
+            'view_extensions',
+            'permissions',
+            'menu_items',
+            'api_endpoints',
+            'field_types',
+            'shortcodes',
+            'scheduled_tasks',
+            'scheduled_task_logs',
+            'dashboard_widgets',
+            'taxonomies',
+            'taxonomy_terms',
+            'themes',
+        ];
+
+        $deletedCounts = [];
+
+        foreach ($tables as $table) {
+            try {
+                if (Schema::hasTable($table) && Schema::hasColumn($table, 'plugin_slug')) {
+                    $count = DB::table($table)->where('plugin_slug', $slug)->count();
+                    if ($count > 0) {
+                        DB::table($table)->where('plugin_slug', $slug)->delete();
+                        $deletedCounts[$table] = $count;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Failed to cleanup plugin data from {$table}", [
+                    'plugin' => $slug,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (!empty($deletedCounts)) {
+            Log::info("Plugin data cleaned up: {$slug}", $deletedCounts);
+        }
+    }
+
+    /**
      * Rebuild the provider cache.
      * Called after activate/deactivate/uninstall to update the cached provider list.
      */
@@ -574,6 +647,93 @@ class PluginManager
     public function cache(): ?PluginCacheManager
     {
         return $this->cacheManager;
+    }
+
+    /**
+     * Register autoloader for a plugin.
+     */
+    protected function registerPluginAutoloader(Plugin $plugin): void
+    {
+        $basePath = $plugin->getFullPath();
+        $namespaceSlug = str_replace('-', '_', $plugin->slug);
+        $namespace = "App\\Plugins\\{$namespaceSlug}\\";
+
+        // Register default App\Plugins\{slug} namespace
+        spl_autoload_register(function ($class) use ($basePath, $namespace) {
+            if (strpos($class, $namespace) !== 0) {
+                return;
+            }
+
+            $relativeClass = substr($class, strlen($namespace));
+            $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
+
+            // Check src directory first
+            $srcPath = $basePath . '/src/' . $relativePath;
+            if (file_exists($srcPath)) {
+                require_once $srcPath;
+                return;
+            }
+
+            // Check root directory
+            $rootPath = $basePath . '/' . $relativePath;
+            if (file_exists($rootPath)) {
+                require_once $rootPath;
+                return;
+            }
+        });
+        
+        // Register custom namespaces from plugin.json autoload config
+        $this->registerCustomPluginAutoloader($basePath);
+    }
+
+    /**
+     * Register custom autoloader from plugin.json autoload configuration.
+     */
+    protected function registerCustomPluginAutoloader(string $basePath): void
+    {
+        $manifestPath = $basePath . '/plugin.json';
+        
+        if (!file_exists($manifestPath)) {
+            return;
+        }
+        
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        
+        if (!isset($manifest['autoload']['psr-4'])) {
+            return;
+        }
+        
+        foreach ($manifest['autoload']['psr-4'] as $namespace => $path) {
+            // Ensure namespace ends with backslash
+            $namespace = rtrim($namespace, '\\') . '\\';
+            // Normalize path - empty string means root of plugin directory
+            $path = rtrim($path, '/');
+            
+            spl_autoload_register(function ($class) use ($basePath, $namespace, $path) {
+                // Check if the class belongs to this namespace
+                if (strpos($class, $namespace) !== 0) {
+                    return;
+                }
+
+                // Get the relative class name
+                $relativeClass = substr($class, strlen($namespace));
+                
+                // Convert namespace separators to directory separators
+                $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
+
+                // Build full path - handle empty path (root directory)
+                if (empty($path)) {
+                    $fullPath = $basePath . '/' . $relativePath;
+                } else {
+                    $fullPath = $basePath . '/' . $path . '/' . $relativePath;
+                }
+                
+                if (file_exists($fullPath)) {
+                    require_once $fullPath;
+                    return;
+                }
+            });
+        }
     }
 
     /**

@@ -41,9 +41,9 @@ class Discount extends Model
     protected function casts(): array
     {
         return [
-            'value' => 'decimal:2',
-            'minimum_order' => 'decimal:2',
-            'maximum_discount' => 'decimal:2',
+            'value' => 'float',
+            'minimum_order' => 'float',
+            'maximum_discount' => 'float',
             'usage_limit' => 'integer',
             'usage_count' => 'integer',
             'per_customer_limit' => 'integer',

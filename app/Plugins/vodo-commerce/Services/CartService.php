@@ -187,12 +187,12 @@ class CartService
             return ['success' => false, 'message' => 'Invalid discount code'];
         }
 
-        if (!$discount->isApplicable($cart->subtotal, $cart->customer_id)) {
+        if (!$discount->isApplicable((float) $cart->subtotal, $cart->customer_id)) {
             if (!$discount->isValid()) {
                 return ['success' => false, 'message' => 'This discount code has expired or is no longer valid'];
             }
 
-            if ($discount->minimum_order && $cart->subtotal < $discount->minimum_order) {
+            if ($discount->minimum_order && (float) $cart->subtotal < $discount->minimum_order) {
                 return [
                     'success' => false,
                     'message' => "Minimum order of {$discount->minimum_order} required for this discount",
@@ -215,7 +215,7 @@ class CartService
         return [
             'success' => true,
             'message' => 'Discount code applied successfully',
-            'discount' => $discount->calculateDiscount($cart->subtotal),
+            'discount' => $discount->calculateDiscount((float) $cart->subtotal),
         ];
     }
 

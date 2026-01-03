@@ -114,6 +114,7 @@ class SubscriptionsPlugin extends BasePlugin
         // PLAN ENTITY - Subscription plans available for purchase
         // =====================================================================
         $this->entityRegistry->register('plan', [
+            'table_name' => 'plans',
             'labels' => [
                 'singular' => 'Plan',
                 'plural' => 'Plans',
@@ -239,6 +240,7 @@ class SubscriptionsPlugin extends BasePlugin
         // SUBSCRIPTION ENTITY - Active subscriptions
         // =====================================================================
         $this->entityRegistry->register('subscription', [
+            'table_name' => 'subscriptions',
             'labels' => [
                 'singular' => 'Subscription',
                 'plural' => 'Subscriptions',
@@ -366,6 +368,7 @@ class SubscriptionsPlugin extends BasePlugin
         // INVOICE ENTITY - Subscription invoices
         // =====================================================================
         $this->entityRegistry->register('invoice', [
+            'table_name' => 'subscription_invoices',
             'labels' => [
                 'singular' => 'Invoice',
                 'plural' => 'Invoices',

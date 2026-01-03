@@ -21,8 +21,8 @@ class DashboardController extends Controller
         $store = $this->getCurrentStore($request);
 
         if (!$store) {
-            return redirect()->route('commerce.admin.stores.create')
-                ->with('info', 'Please create a store first');
+            return redirect()->route('commerce.admin.settings.general')
+                ->with('info', 'Please configure your store settings first');
         }
 
         $orderService = new OrderService(
@@ -64,12 +64,18 @@ class DashboardController extends Controller
 
     protected function getCurrentStore(Request $request): ?Store
     {
-        $tenantId = $request->user()?->tenant_id;
-
-        if (!$tenantId) {
+        $user = $request->user();
+        
+        if (!$user) {
             return null;
         }
 
-        return Store::where('tenant_id', $tenantId)->first();
+        // If user has tenant_id, get their tenant's store
+        if ($user->tenant_id) {
+            return Store::where('tenant_id', $user->tenant_id)->first();
+        }
+
+        // Super admin - get first available store (bypass tenant scope)
+        return Store::withoutTenantScope()->first();
     }
 }

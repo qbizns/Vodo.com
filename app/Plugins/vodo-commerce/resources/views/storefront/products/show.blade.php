@@ -1,4 +1,4 @@
-@extends('vodo-commerce::themes.default.layouts.main')
+@extends('vodo-commerce::default.layouts.main')
 
 @section('title', $product->name . ' - ' . $store->name)
 @section('description', $product->short_description ?? Str::limit(strip_tags($product->description), 160))
@@ -30,9 +30,10 @@
                     </div>
                 @endif
             </div>
-            @if(count($product->images ?? []) > 1)
+            @php $images = is_array($product->images) ? $product->images : []; @endphp
+            @if(count($images) > 1)
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    @foreach($product->images as $image)
+                    @foreach($images as $image)
                         <button onclick="document.getElementById('main-image').src = '{{ $image }}'" style="border: 2px solid transparent; padding: 0.25rem; border-radius: 0.5rem; cursor: pointer; background: white;">
                             <img src="{{ $image }}" alt="{{ $product->name }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 0.25rem;">
                         </button>
@@ -131,9 +132,10 @@
             @endif
 
             <!-- Tags -->
-            @if(!empty($product->tags))
+            @php $tags = is_array($product->tags) ? $product->tags : []; @endphp
+            @if(!empty($tags))
                 <div style="margin-top: 1.5rem;">
-                    @foreach($product->tags as $tag)
+                    @foreach($tags as $tag)
                         <span style="display: inline-block; background: #f3f4f6; color: #4b5563; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; margin-right: 0.5rem; margin-bottom: 0.5rem;">
                             {{ $tag }}
                         </span>

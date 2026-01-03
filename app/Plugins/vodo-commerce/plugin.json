@@ -16,7 +16,7 @@
     "namespace": "App\\Plugins\\vodo_commerce",
     "autoload": {
         "psr-4": {
-            "VodoCommerce\\": "src/"
+            "VodoCommerce\\": ""
         }
     },
     "settings": true,
@@ -35,55 +35,76 @@
         ],
         "items": [
             {
-                "id": "commerce",
-                "label": "Commerce",
-                "icon": "shoppingCart",
+                "id": "commerce.dashboard",
+                "label": "Dashboard",
+                "icon": "layoutDashboard",
+                "url": "/plugins/vodo-commerce",
                 "category": "Commerce",
-                "order": 10,
-                "children": [
-                    {
-                        "id": "commerce.dashboard",
-                        "label": "Dashboard",
-                        "icon": "layoutDashboard",
-                        "route": "index",
-                        "permission": "commerce.dashboard.view"
-                    },
-                    {
-                        "id": "commerce.orders",
-                        "label": "Orders",
-                        "icon": "clipboardList",
-                        "route": "orders",
-                        "permission": "commerce.orders.view"
-                    },
-                    {
-                        "id": "commerce.products",
-                        "label": "Products",
-                        "icon": "package",
-                        "route": "products",
-                        "permission": "commerce.products.view"
-                    },
-                    {
-                        "id": "commerce.categories",
-                        "label": "Categories",
-                        "icon": "folder",
-                        "route": "categories",
-                        "permission": "commerce.categories.view"
-                    },
-                    {
-                        "id": "commerce.customers",
-                        "label": "Customers",
-                        "icon": "users",
-                        "route": "customers",
-                        "permission": "commerce.customers.view"
-                    },
-                    {
-                        "id": "commerce.settings",
-                        "label": "Settings",
-                        "icon": "settings",
-                        "route": "settings",
-                        "permission": "commerce.settings.manage"
-                    }
-                ]
+                "order": 1,
+                "permission": "commerce.dashboard.view"
+            },
+            {
+                "id": "commerce.stores",
+                "label": "Stores",
+                "icon": "store",
+                "url": "/plugins/vodo-commerce/stores",
+                "category": "Commerce",
+                "order": 2,
+                "permission": "commerce.stores.view"
+            },
+            {
+                "id": "commerce.orders",
+                "label": "Orders",
+                "icon": "clipboardList",
+                "url": "/plugins/vodo-commerce/orders",
+                "category": "Commerce",
+                "order": 3,
+                "permission": "commerce.orders.view"
+            },
+            {
+                "id": "commerce.products",
+                "label": "Products",
+                "icon": "package",
+                "url": "/plugins/vodo-commerce/products",
+                "category": "Commerce",
+                "order": 4,
+                "permission": "commerce.products.view"
+            },
+            {
+                "id": "commerce.categories",
+                "label": "Categories",
+                "icon": "folder",
+                "url": "/plugins/vodo-commerce/categories",
+                "category": "Commerce",
+                "order": 5,
+                "permission": "commerce.categories.view"
+            },
+            {
+                "id": "commerce.customers",
+                "label": "Customers",
+                "icon": "users",
+                "url": "/plugins/vodo-commerce/customers",
+                "category": "Commerce",
+                "order": 6,
+                "permission": "commerce.customers.view"
+            },
+            {
+                "id": "commerce.discounts",
+                "label": "Discounts",
+                "icon": "tag",
+                "url": "/plugins/vodo-commerce/discounts",
+                "category": "Commerce",
+                "order": 7,
+                "permission": "commerce.discounts.view"
+            },
+            {
+                "id": "commerce.settings",
+                "label": "Settings",
+                "icon": "settings",
+                "url": "/plugins/vodo-commerce/settings/general",
+                "category": "Commerce",
+                "order": 8,
+                "permission": "commerce.settings.manage"
             }
         ]
     },

@@ -99,6 +99,7 @@ class UmsPlugin extends BasePlugin
         // USER PROFILE ENTITY - Extended user information
         // =====================================================================
         $this->entityRegistry->register('user_profile', [
+            'table_name' => 'user_profiles',
             'labels' => [
                 'singular' => 'User Profile',
                 'plural' => 'User Profiles',
@@ -215,6 +216,7 @@ class UmsPlugin extends BasePlugin
         // TEAM ENTITY - User groups/teams
         // =====================================================================
         $this->entityRegistry->register('team', [
+            'table_name' => 'teams',
             'labels' => [
                 'singular' => 'Team',
                 'plural' => 'Teams',
@@ -313,6 +315,7 @@ class UmsPlugin extends BasePlugin
         // ACTIVITY LOG ENTITY - User activity tracking
         // =====================================================================
         $this->entityRegistry->register('activity_log', [
+            'table_name' => 'activity_logs',
             'labels' => [
                 'singular' => 'Activity',
                 'plural' => 'Activities',

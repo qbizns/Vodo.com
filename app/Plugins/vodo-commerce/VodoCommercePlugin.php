@@ -87,6 +87,9 @@ class VodoCommercePlugin extends BasePlugin
         $this->registerTheme();
         $this->registerWorkflowTriggers();
         $this->registerApiRoutes();
+        
+        // Add themes directory to the view namespace for storefront views
+        \Illuminate\Support\Facades\View::addNamespace('vodo-commerce', $this->basePath . '/Themes');
 
         Log::info('Vodo Commerce Plugin: Booted');
     }
@@ -96,14 +99,20 @@ class VodoCommercePlugin extends BasePlugin
      */
     protected function registerApiRoutes(): void
     {
+        // Load admin routes for the backend management
+        \Illuminate\Support\Facades\Route::middleware(['web', 'auth:admin'])
+            ->prefix('plugins/vodo-commerce')
+            ->name('commerce.admin.')
+            ->group($this->basePath . '/routes/admin.php');
+
         // Load API documentation routes
         $this->loadRoutesFrom($this->basePath . '/routes/api.php');
 
         // Load OAuth 2.0 routes
         $this->loadRoutesFrom($this->basePath . '/routes/oauth.php');
 
-        // Load storefront routes
-        $this->loadRoutesFrom($this->basePath . '/routes/storefront.php');
+        // Load storefront routes (public, under /store/{store})
+        $this->loadStorefrontRoutesFrom($this->basePath . '/routes/storefront.php');
 
         // Register commerce API endpoints with the platform's ApiRegistry
         if ($this->apiRegistry) {
@@ -147,6 +156,22 @@ class VodoCommercePlugin extends BasePlugin
         // Tax Provider Registry
         $this->taxProviders = new TaxProviderRegistry();
         app()->singleton(TaxProviderRegistry::class, fn() => $this->taxProviders);
+
+        // Register default payment gateways
+        $this->registerDefaultPaymentGateways();
+    }
+
+    /**
+     * Register default payment gateways.
+     */
+    protected function registerDefaultPaymentGateways(): void
+    {
+        // Register Cash On Delivery gateway
+        $this->paymentGateways->register(
+            'cod',
+            new \VodoCommerce\Gateways\CashOnDeliveryGateway(),
+            $this->plugin->slug
+        );
     }
 
     /**
@@ -232,6 +257,9 @@ class VodoCommercePlugin extends BasePlugin
     {
         // Store Entity
         $this->entityRegistry->register('commerce_store', [
+            'table_name' => 'commerce_stores',
+            'model_class' => \VodoCommerce\Models\Store::class,
+            'search_columns' => ['name', 'slug', 'description'],
             'labels' => ['singular' => 'Store', 'plural' => 'Stores'],
             'icon' => 'store',
             'supports' => ['title', 'content', 'thumbnail'],
@@ -254,16 +282,26 @@ class VodoCommercePlugin extends BasePlugin
 
         // Category Entity
         $this->entityRegistry->register('commerce_category', [
+            'table_name' => 'commerce_categories',
+            'model_class' => \VodoCommerce\Models\Category::class,
             'labels' => ['singular' => 'Category', 'plural' => 'Categories'],
             'icon' => 'folder',
             'supports' => ['title', 'content', 'thumbnail'],
             'is_hierarchical' => true,
+            'search_columns' => ['name', 'slug', 'description'],
             'fields' => [
                 'name' => ['type' => 'string', 'required' => true, 'searchable' => true],
                 'slug' => ['type' => 'slug', 'required' => true],
                 'description' => ['type' => 'text'],
                 'image' => ['type' => 'image'],
-                'parent_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_category']],
+                'parent_id' => [
+                    'type' => 'relation',
+                    'config' => [
+                        'entity' => 'commerce_category',
+                        'model' => \VodoCommerce\Models\Category::class,
+                        'display_field' => 'name',
+                    ],
+                ],
                 'position' => ['type' => 'integer', 'default' => 0],
                 'is_visible' => ['type' => 'boolean', 'default' => true],
             ],
@@ -271,6 +309,7 @@ class VodoCommercePlugin extends BasePlugin
 
         // Product Entity
         $this->entityRegistry->register('commerce_product', [
+            'table_name' => 'commerce_products',
             'labels' => ['singular' => 'Product', 'plural' => 'Products'],
             'icon' => 'package',
             'supports' => ['title', 'content', 'thumbnail', 'author'],
@@ -278,14 +317,18 @@ class VodoCommercePlugin extends BasePlugin
                 'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
                 'slug' => ['type' => 'slug', 'required' => true, 'unique' => true],
                 'sku' => ['type' => 'string', 'unique' => true, 'show_in_list' => true],
-                'description' => ['type' => 'html'],
+                'description' => ['type' => 'richtext'],
                 'short_description' => ['type' => 'text'],
                 'price' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
                 'compare_at_price' => ['type' => 'money'],
                 'cost_price' => ['type' => 'money'],
                 'category_id' => [
                     'type' => 'relation',
-                    'config' => ['entity' => 'commerce_category', 'display_field' => 'name'],
+                    'config' => [
+                        'entity' => 'commerce_category',
+                        'model' => \VodoCommerce\Models\Category::class,
+                        'display_field' => 'name',
+                    ],
                     'filterable' => true,
                 ],
                 'images' => ['type' => 'json'],
@@ -296,7 +339,7 @@ class VodoCommercePlugin extends BasePlugin
                     'config' => ['options' => ['in_stock' => 'In Stock', 'out_of_stock' => 'Out of Stock', 'backorder' => 'On Backorder']],
                     'filterable' => true,
                 ],
-                'weight' => ['type' => 'decimal'],
+                'weight' => ['type' => 'float'],
                 'dimensions' => ['type' => 'json'],
                 'is_virtual' => ['type' => 'boolean', 'default' => false],
                 'is_downloadable' => ['type' => 'boolean', 'default' => false],
@@ -308,13 +351,14 @@ class VodoCommercePlugin extends BasePlugin
                     'show_in_list' => true,
                 ],
                 'featured' => ['type' => 'boolean', 'default' => false, 'filterable' => true],
-                'tags' => ['type' => 'tags'],
+                'tags' => ['type' => 'json'],
                 'meta' => ['type' => 'json'],
             ],
         ], self::SLUG);
 
         // Product Variant Entity
         $this->entityRegistry->register('commerce_product_variant', [
+            'table_name' => 'commerce_product_variants',
             'labels' => ['singular' => 'Product Variant', 'plural' => 'Product Variants'],
             'icon' => 'layers',
             'show_in_menu' => false,
@@ -327,7 +371,7 @@ class VodoCommercePlugin extends BasePlugin
                 'stock_quantity' => ['type' => 'integer', 'default' => 0],
                 'options' => ['type' => 'json'],
                 'image' => ['type' => 'image'],
-                'weight' => ['type' => 'decimal'],
+                'weight' => ['type' => 'float'],
                 'position' => ['type' => 'integer', 'default' => 0],
                 'is_active' => ['type' => 'boolean', 'default' => true],
             ],
@@ -335,6 +379,7 @@ class VodoCommercePlugin extends BasePlugin
 
         // Customer Entity
         $this->entityRegistry->register('commerce_customer', [
+            'table_name' => 'commerce_customers',
             'labels' => ['singular' => 'Customer', 'plural' => 'Customers'],
             'icon' => 'user',
             'supports' => ['author'],
@@ -349,7 +394,7 @@ class VodoCommercePlugin extends BasePlugin
                 'accepts_marketing' => ['type' => 'boolean', 'default' => false],
                 'total_orders' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
                 'total_spent' => ['type' => 'money', 'show_in_list' => true],
-                'tags' => ['type' => 'tags'],
+                'tags' => ['type' => 'json'],
                 'notes' => ['type' => 'text'],
                 'meta' => ['type' => 'json'],
             ],
@@ -357,6 +402,7 @@ class VodoCommercePlugin extends BasePlugin
 
         // Customer Address Entity
         $this->entityRegistry->register('commerce_address', [
+            'table_name' => 'commerce_addresses',
             'labels' => ['singular' => 'Address', 'plural' => 'Addresses'],
             'icon' => 'mapPin',
             'show_in_menu' => false,
@@ -379,6 +425,7 @@ class VodoCommercePlugin extends BasePlugin
 
         // Order Entity
         $this->entityRegistry->register('commerce_order', [
+            'table_name' => 'commerce_orders',
             'labels' => ['singular' => 'Order', 'plural' => 'Orders'],
             'icon' => 'clipboardList',
             'supports' => ['author'],
@@ -449,6 +496,7 @@ class VodoCommercePlugin extends BasePlugin
 
         // Order Item Entity
         $this->entityRegistry->register('commerce_order_item', [
+            'table_name' => 'commerce_order_items',
             'labels' => ['singular' => 'Order Item', 'plural' => 'Order Items'],
             'icon' => 'package',
             'show_in_menu' => false,
@@ -470,6 +518,7 @@ class VodoCommercePlugin extends BasePlugin
 
         // Discount/Coupon Entity
         $this->entityRegistry->register('commerce_discount', [
+            'table_name' => 'commerce_discounts',
             'labels' => ['singular' => 'Discount', 'plural' => 'Discounts'],
             'icon' => 'tag',
             'fields' => [
@@ -482,7 +531,7 @@ class VodoCommercePlugin extends BasePlugin
                     'config' => ['options' => ['percentage' => 'Percentage', 'fixed_amount' => 'Fixed Amount', 'free_shipping' => 'Free Shipping']],
                     'show_in_list' => true,
                 ],
-                'value' => ['type' => 'decimal', 'required' => true, 'show_in_list' => true],
+                'value' => ['type' => 'float', 'required' => true, 'show_in_list' => true],
                 'minimum_order' => ['type' => 'money'],
                 'maximum_discount' => ['type' => 'money'],
                 'usage_limit' => ['type' => 'integer'],

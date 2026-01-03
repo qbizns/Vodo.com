@@ -356,7 +356,7 @@ class PluginServiceProvider extends ServiceProvider
         foreach ($manifest['autoload']['psr-4'] as $namespace => $path) {
             // Ensure namespace ends with backslash
             $namespace = rtrim($namespace, '\\') . '\\';
-            // Normalize path
+            // Normalize path - empty string means root of plugin directory
             $path = rtrim($path, '/');
             
             spl_autoload_register(function ($class) use ($basePath, $namespace, $path) {
@@ -371,8 +371,12 @@ class PluginServiceProvider extends ServiceProvider
                 // Convert namespace separators to directory separators
                 $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
 
-                // Build full path
-                $fullPath = $basePath . '/' . $path . '/' . $relativePath;
+                // Build full path - handle empty path (root directory)
+                if (empty($path)) {
+                    $fullPath = $basePath . '/' . $relativePath;
+                } else {
+                    $fullPath = $basePath . '/' . $path . '/' . $relativePath;
+                }
                 
                 if (file_exists($fullPath)) {
                     require_once $fullPath;

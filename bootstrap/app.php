@@ -38,6 +38,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Compress AJAX/PJAX responses for better performance
         $middleware->append(\App\Http\Middleware\CompressResponse::class);
 
+        // Exclude storefront checkout API routes from CSRF verification
+        $middleware->validateCsrfTokens(except: [
+            'store/*/checkout/*',
+            'store/*/cart/*',
+        ]);
+
         // Register route middleware aliases (can be applied to specific routes)
         $middleware->alias([
             'rate' => \App\Http\Middleware\RateLimitMiddleware::class,

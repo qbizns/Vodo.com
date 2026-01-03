@@ -1,60 +1,95 @@
 {
-  "name": "Stripe Payment Gateway",
-  "slug": "stripe-gateway",
-  "version": "1.0.0",
-  "description": "Accept credit card payments via Stripe",
-  "author": "Vodo Commerce",
-  "author_url": "https://vodo.com",
-  "main_class": "StripeGateway\\StripeGatewayPlugin",
-  "namespace": "StripeGateway",
-  "requires": {
-    "php": ">=8.1",
-    "vodo-commerce": ">=1.0.0"
-  },
-  "permissions": [
-    "payment:process",
-    "webhook:receive"
-  ],
-  "settings": {
-    "publishable_key": {
-      "type": "string",
-      "label": "Publishable Key",
-      "description": "Your Stripe publishable key (pk_...)",
-      "required": true
+    "name": "stripe-gateway",
+    "title": "Stripe Payment Gateway",
+    "description": "Accept credit card payments via Stripe",
+    "version": "1.0.0",
+    "author": {
+        "name": "Vodo Commerce",
+        "email": "support@vodo.com",
+        "url": "https://vodo.com"
     },
-    "secret_key": {
-      "type": "password",
-      "label": "Secret Key",
-      "description": "Your Stripe secret key (sk_...)",
-      "required": true,
-      "encrypted": true
+    "homepage": "https://vodo.com/plugins/stripe-gateway",
+    "documentation": "https://docs.vodo.com/plugins/stripe-gateway",
+    "license": "MIT",
+    "category": "payments",
+    "tags": ["payment", "stripe", "credit-card", "gateway"],
+    "icon": "resources/assets/icon.png",
+    "screenshots": [],
+    "requirements": {
+        "php": "^8.1",
+        "system": "^1.0",
+        "extensions": []
     },
-    "webhook_secret": {
-      "type": "password",
-      "label": "Webhook Secret",
-      "description": "Your Stripe webhook signing secret (whsec_...)",
-      "required": true,
-      "encrypted": true
+    "dependencies": {
+        "vodo-commerce": "^1.0.0"
     },
-    "payment_mode": {
-      "type": "select",
-      "label": "Payment Mode",
-      "options": {
-        "payment": "One-time Payment",
-        "subscription": "Subscription"
-      },
-      "default": "payment"
+    "optional_dependencies": {},
+    "autoload": {
+        "psr-4": {
+            "StripeGateway\\": ""
+        }
     },
-    "capture_method": {
-      "type": "select",
-      "label": "Capture Method",
-      "options": {
-        "automatic": "Automatic",
-        "manual": "Manual (authorize only)"
-      },
-      "default": "automatic"
+    "providers": [],
+    "main": "StripeGatewayPlugin.php",
+    "entry_class": "StripeGatewayPlugin",
+    "is_premium": false,
+    "requires_license": false,
+    "settings": {
+        "has_settings_page": true,
+        "settings_route": "admin.plugins.stripe-gateway.settings",
+        "fields": {
+            "publishable_key": {
+                "type": "string",
+                "label": "Publishable Key",
+                "description": "Your Stripe publishable key (pk_...)",
+                "required": true
+            },
+            "secret_key": {
+                "type": "password",
+                "label": "Secret Key",
+                "description": "Your Stripe secret key (sk_...)",
+                "required": true,
+                "encrypted": true
+            },
+            "webhook_secret": {
+                "type": "password",
+                "label": "Webhook Secret",
+                "description": "Your Stripe webhook signing secret (whsec_...)",
+                "required": true,
+                "encrypted": true
+            },
+            "payment_mode": {
+                "type": "select",
+                "label": "Payment Mode",
+                "options": {
+                    "payment": "One-time Payment",
+                    "subscription": "Subscription"
+                },
+                "default": "payment"
+            },
+            "capture_method": {
+                "type": "select",
+                "label": "Capture Method",
+                "options": {
+                    "automatic": "Automatic",
+                    "manual": "Manual (authorize only)"
+                },
+                "default": "automatic"
+            }
+        }
+    },
+    "navigation": {
+        "categories": [],
+        "items": []
+    },
+    "permissions": {
+        "payment.process": {
+            "label": "Process Payments",
+            "group": "Stripe Gateway"
+        },
+        "webhook.receive": {
+            "label": "Receive Webhooks",
+            "group": "Stripe Gateway"
+        }
     }
-  },
-  "keywords": ["payment", "stripe", "credit-card", "gateway"],
-  "license": "MIT"
 }

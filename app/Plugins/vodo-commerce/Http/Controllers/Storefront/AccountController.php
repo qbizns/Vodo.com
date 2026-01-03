@@ -19,7 +19,7 @@ class AccountController extends Controller
 
     public function dashboard(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -40,7 +40,7 @@ class AccountController extends Controller
 
     public function orders(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -60,7 +60,7 @@ class AccountController extends Controller
 
     public function orderDetail(Request $request, string $storeSlug, string $orderNumber)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -81,7 +81,7 @@ class AccountController extends Controller
 
     public function addresses(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -99,7 +99,7 @@ class AccountController extends Controller
 
     public function storeAddress(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -135,7 +135,7 @@ class AccountController extends Controller
 
     public function updateAddress(Request $request, string $storeSlug, int $addressId)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -170,7 +170,7 @@ class AccountController extends Controller
 
     public function deleteAddress(Request $request, string $storeSlug, int $addressId)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -185,7 +185,7 @@ class AccountController extends Controller
 
     public function profile(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
@@ -200,7 +200,7 @@ class AccountController extends Controller
 
     public function updateProfile(Request $request, string $storeSlug)
     {
-        $store = Store::where('slug', $storeSlug)->active()->firstOrFail();
+        $store = Store::withoutGlobalScopes()->where('slug', $storeSlug)->active()->firstOrFail();
         $customer = $this->getCustomer($request, $store);
 
         if (!$customer) {
