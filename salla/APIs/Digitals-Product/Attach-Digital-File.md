@@ -1,0 +1,357 @@
+# Attach Digital File
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /products/{product}/digital-files:
+    post:
+      summary: Attach Digital File
+      deprecated: false
+      description: >-
+        This endpoint allows you to add digital files to a specific digital
+        product by passing the `product` as a path parameter. 
+
+
+
+        :::tip[Important]
+
+        - You can only attach digital files to digital products.
+
+        - You can only add one digital file per request.
+
+        :::
+
+
+        <Accordion title="Scopes" defaultOpen={true} icon="lucide-key-round">
+
+        `products.read_write`- Products Read & Write
+
+        </Accordion>
+      operationId: Attache-Digital-File
+      tags:
+        - Merchant API/APIs/Digitals Product
+        - Digitals Product
+      parameters:
+        - name: product
+          in: path
+          description: >-
+            Unique identification number assigned to a product. List of products
+            IDs can be found [here](https://docs.salla.dev/api-5394168).
+          required: true
+          example: 0
+          schema:
+            type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  description: The actual file to upload.
+                  example: ''
+                  type: string
+                  format: binary
+                file_name:
+                  description: The name of the file which will display to customers.
+                  example: ''
+                  type: string
+            example:
+              file: document.pdf
+              file_name: Great document
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/productDigitalFile_response_body'
+              example:
+                status: 201
+                success: true
+                data:
+                  name: YDKLARAVEL
+                  url: >-
+                    https://drive.google.com/file/d/1f1PJKAGj_09LH7jZTi0X7rydbR_XGvnN/view?usp=sharing
+                  size: 297
+          headers: {}
+          x-apidog-name: Attached Successfully
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error_unauthorized_401'
+              example:
+                status: 401
+                success: false
+                error:
+                  code: Unauthorized
+                  message: >-
+                    The access token should have access to one of those scopes:
+                    products.read_write
+          headers: {}
+          x-apidog-name: Unauthorized
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Object%20Not%20Found(404)'
+              example:
+                success: false
+                status: 404
+                error:
+                  code: 404
+                  message: The content you are trying to access is no longer available
+          headers: {}
+          x-apidog-name: Not Found
+        '422':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error_validation_422'
+              example:
+                status: 422
+                success: false
+                error:
+                  code: validation_failed
+                  message: The validation have failed
+                  fields:
+                    '{field-name}':
+                      - The {field-label} field is required.
+          headers: {}
+          x-apidog-name: Error Validation
+      security:
+        - bearer: []
+      x-salla-php-method-name: attachFile
+      x-salla-php-return-type: ProductDigitalFile
+      x-apidog-folder: Merchant API/APIs/Digitals Product
+      x-apidog-status: released
+      x-run-in-apidog: https://app.apidog.com/web/project/451700/apis/api-5394182-run
+components:
+  schemas:
+    productDigitalFile_response_body:
+      type: object
+      properties:
+        status:
+          type: number
+          description: >-
+            Response status code, a numeric or alphanumeric identifier used to
+            convey the outcome or status of a request, operation, or transaction
+            in various systems and applications, typically indicating whether
+            the action was successful, encountered an error, or resulted in a
+            specific condition.
+        success:
+          type: boolean
+          description: >-
+            Response flag, boolean indicator used to signal a particular
+            condition or state in the response of a system or application, often
+            representing the presence or absence of certain conditions or
+            outcomes.
+        data:
+          $ref: '#/components/schemas/ProductDigitalFile'
+      x-apidog-orders:
+        - status
+        - success
+        - data
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+    ProductDigitalFile:
+      title: ProductDigitalFile
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name or title of a digital file associated with a product.
+        url:
+          type: string
+          description: >-
+            A web address or link that points to a specific digital file
+            associated with a product.
+        size:
+          type: number
+          description: Product digital file size.
+      x-apidog-orders:
+        - name
+        - url
+        - size
+      required:
+        - name
+        - url
+        - size
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+    Object Not Found(404):
+      type: object
+      properties:
+        status:
+          type: integer
+          description: >-
+            Response status code, a numeric or alphanumeric identifier used to
+            convey the outcome or status of a request, operation, or transaction
+            in various systems and applications, typically indicating whether
+            the action was successful, encountered an error, or resulted in a
+            specific condition.
+        success:
+          type: boolean
+          description: >-
+            Response flag, boolean indicator used to signal a particular
+            condition or state in the response of a system or application, often
+            representing the presence or absence of certain conditions or
+            outcomes.
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+              description: >-
+                Not Found Response error code, a numeric or alphanumeric unique
+                identifier used to represent the error.
+            message:
+              type: string
+              description: >-
+                A message or data structure that is generated or returned when
+                the response is not found or explain the error.
+          required:
+            - code
+            - message
+          x-apidog-orders:
+            - code
+            - message
+          x-apidog-ignore-properties: []
+      required:
+        - status
+        - success
+        - error
+      x-apidog-orders:
+        - status
+        - success
+        - error
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+    error_validation_422:
+      type: object
+      properties:
+        status:
+          type: number
+          description: >-
+            Response status code, a numeric or alphanumeric identifier used to
+            convey the outcome or status of a request, operation, or transaction
+            in various systems and applications, typically indicating whether
+            the action was successful, encountered an error, or resulted in a
+            specific condition.
+        success:
+          type: boolean
+          description: >-
+            Response flag, boolean indicator used to signal a particular
+            condition or state in the response of a system or application, often
+            representing the presence or absence of certain conditions or
+            outcomes.
+        error:
+          $ref: '#/components/schemas/Validation'
+      x-apidog-orders:
+        - status
+        - success
+        - error
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+    Validation:
+      type: object
+      properties:
+        code:
+          type: string
+          description: >-
+            Response error code,a numeric or alphanumeric unique identifier used
+            to represent the error.
+        message:
+          type: string
+          description: >-
+            A message or data structure that is generated or returned when the
+            response is not found or explain the error.
+        fields:
+          type: object
+          description: Validation rules with problems
+          properties:
+            '{field-name}':
+              type: array
+              items:
+                type: string
+          x-apidog-orders:
+            - '{field-name}'
+          x-apidog-ignore-properties: []
+      x-apidog-orders:
+        - code
+        - message
+        - fields
+      required:
+        - code
+        - message
+        - fields
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+    error_unauthorized_401:
+      type: object
+      properties:
+        status:
+          type: number
+          description: >-
+            Response status code, a numeric or alphanumeric identifier used to
+            convey the outcome or status of a request, operation, or transaction
+            in various systems and applications, typically indicating whether
+            the action was successful, encountered an error, or resulted in a
+            specific condition.
+        success:
+          type: boolean
+          description: >-
+            Response flag, boolean indicator used to signal a particular
+            condition or state in the response of a system or application, often
+            representing the presence or absence of certain conditions or
+            outcomes.
+        error:
+          $ref: '#/components/schemas/Unauthorized'
+      x-apidog-orders:
+        - status
+        - success
+        - error
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+    Unauthorized:
+      type: object
+      x-examples: {}
+      title: Unauthorized
+      properties:
+        code:
+          type: string
+          description: Code Error
+        message:
+          type: string
+          description: Message Error
+      x-apidog-orders:
+        - code
+        - message
+      required:
+        - code
+        - message
+      x-apidog-ignore-properties: []
+      x-apidog-folder: ''
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+servers:
+  - url: ''
+    description: Cloud Mock
+  - url: https://api.salla.dev/admin/v2
+    description: Production
+security:
+  - bearer: []
+
+```
