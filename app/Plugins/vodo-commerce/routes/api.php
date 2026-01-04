@@ -121,8 +121,14 @@ Route::prefix('v1/commerce/plugins/review')->name('v1.commerce.plugins.review.')
 // Commerce API Endpoints - V2 (Salla-compatible)
 // =========================================================================
 
+use VodoCommerce\Http\Controllers\Api\V2\AffiliateController;
 use VodoCommerce\Http\Controllers\Api\V2\BrandController;
+use VodoCommerce\Http\Controllers\Api\V2\CustomerController;
+use VodoCommerce\Http\Controllers\Api\V2\CustomerGroupController;
+use VodoCommerce\Http\Controllers\Api\V2\CustomerWalletController;
 use VodoCommerce\Http\Controllers\Api\V2\DigitalProductController;
+use VodoCommerce\Http\Controllers\Api\V2\EmployeeController;
+use VodoCommerce\Http\Controllers\Api\V2\LoyaltyPointController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductImageController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductOptionController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductTagController;
@@ -159,4 +165,35 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('products/{product}/digital-codes', [DigitalProductController::class, 'generateCodes'])->name('products.digital-codes.generate');
     Route::post('products/{product}/digital-codes/import', [DigitalProductController::class, 'importCodes'])->name('products.digital-codes.import');
     Route::get('products/{product}/digital-codes', [DigitalProductController::class, 'listCodes'])->name('products.digital-codes.index');
+
+    // =========================================================================
+    // Phase 2: Customer Management
+    // =========================================================================
+
+    // Customer Groups
+    Route::apiResource('customer-groups', CustomerGroupController::class);
+
+    // Customer Wallet
+    Route::post('customers/{customer}/wallet/deposit', [CustomerWalletController::class, 'deposit'])->name('customers.wallet.deposit');
+    Route::post('customers/{customer}/wallet/withdraw', [CustomerWalletController::class, 'withdraw'])->name('customers.wallet.withdraw');
+    Route::get('customers/{customer}/wallet/transactions', [CustomerWalletController::class, 'transactions'])->name('customers.wallet.transactions');
+
+    // Affiliates
+    Route::apiResource('affiliates', AffiliateController::class);
+    Route::get('affiliates/{affiliate}/links', [AffiliateController::class, 'links'])->name('affiliates.links.index');
+    Route::post('affiliates/{affiliate}/links', [AffiliateController::class, 'storeLink'])->name('affiliates.links.store');
+
+    // Loyalty Points
+    Route::get('customers/{customer}/loyalty-points', [LoyaltyPointController::class, 'show'])->name('customers.loyalty-points.show');
+    Route::post('customers/{customer}/loyalty-points/adjust', [LoyaltyPointController::class, 'adjust'])->name('customers.loyalty-points.adjust');
+    Route::get('customers/{customer}/loyalty-points/transactions', [LoyaltyPointController::class, 'transactions'])->name('customers.loyalty-points.transactions');
+
+    // Employees
+    Route::get('employees', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
+
+    // Customer Extensions
+    Route::post('customers/{customer}/ban', [CustomerController::class, 'ban'])->name('customers.ban');
+    Route::post('customers/{customer}/unban', [CustomerController::class, 'unban'])->name('customers.unban');
+    Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
 });
