@@ -118,8 +118,45 @@ Route::prefix('v1/commerce/plugins/review')->name('v1.commerce.plugins.review.')
 });
 
 // =========================================================================
-// Commerce API Endpoints
+// Commerce API Endpoints - V2 (Salla-compatible)
 // =========================================================================
-// Note: The actual API endpoints are registered dynamically via ApiRegistry.
-// This file only contains the documentation and sandbox routes.
-// See CommerceApiDocumentation for endpoint definitions.
+
+use VodoCommerce\Http\Controllers\Api\V2\BrandController;
+use VodoCommerce\Http\Controllers\Api\V2\DigitalProductController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductImageController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductOptionController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductTagController;
+
+Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
+    // Brands
+    Route::apiResource('brands', BrandController::class);
+
+    // Product Tags
+    Route::apiResource('tags', ProductTagController::class)->except(['update']);
+    Route::post('products/{product}/tags', [ProductTagController::class, 'attachToProduct'])->name('products.tags.attach');
+
+    // Product Options
+    Route::get('products/{product}/options', [ProductOptionController::class, 'index'])->name('products.options.index');
+    Route::post('products/{product}/options', [ProductOptionController::class, 'store'])->name('products.options.store');
+    Route::put('products/{product}/options/{option}', [ProductOptionController::class, 'update'])->name('products.options.update');
+    Route::delete('products/{product}/options/{option}', [ProductOptionController::class, 'destroy'])->name('products.options.destroy');
+
+    // Product Option Templates
+    Route::get('product-option-templates', [ProductOptionController::class, 'listTemplates'])->name('product-option-templates.index');
+    Route::post('product-option-templates', [ProductOptionController::class, 'storeTemplate'])->name('product-option-templates.store');
+    Route::get('product-option-templates/{template}', [ProductOptionController::class, 'showTemplate'])->name('product-option-templates.show');
+    Route::put('product-option-templates/{template}', [ProductOptionController::class, 'updateTemplate'])->name('product-option-templates.update');
+
+    // Product Images
+    Route::post('products/{product}/images', [ProductImageController::class, 'store'])->name('products.images.store');
+    Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy'])->name('products.images.destroy');
+
+    // Digital Products - Files
+    Route::post('products/{product}/digital-files', [DigitalProductController::class, 'attachFile'])->name('products.digital-files.attach');
+    Route::get('products/{product}/digital-files', [DigitalProductController::class, 'listFiles'])->name('products.digital-files.index');
+
+    // Digital Products - Codes
+    Route::post('products/{product}/digital-codes', [DigitalProductController::class, 'generateCodes'])->name('products.digital-codes.generate');
+    Route::post('products/{product}/digital-codes/import', [DigitalProductController::class, 'importCodes'])->name('products.digital-codes.import');
+    Route::get('products/{product}/digital-codes', [DigitalProductController::class, 'listCodes'])->name('products.digital-codes.index');
+});
