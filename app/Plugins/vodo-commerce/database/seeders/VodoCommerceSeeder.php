@@ -11,6 +11,12 @@ use VodoCommerce\Models\Customer;
 use VodoCommerce\Models\CustomerGroup;
 use VodoCommerce\Models\DigitalProductCode;
 use VodoCommerce\Models\Employee;
+use VodoCommerce\Models\Order;
+use VodoCommerce\Models\OrderFulfillment;
+use VodoCommerce\Models\OrderItem;
+use VodoCommerce\Models\OrderRefund;
+use VodoCommerce\Models\OrderStatusHistory;
+use VodoCommerce\Models\OrderTimelineEvent;
 use VodoCommerce\Models\Product;
 use VodoCommerce\Models\ProductImage;
 use VodoCommerce\Models\ProductOption;
@@ -52,6 +58,9 @@ class VodoCommerceSeeder extends Seeder
         $this->seedCustomerGroups($store);
         $this->seedCustomers($store);
         $this->seedEmployees($store);
+
+        // Phase 3: Order Management Extensions
+        $this->seedOrders($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -397,5 +406,311 @@ class VodoCommerceSeeder extends Seeder
         }
 
         $this->command->info('  ✓ Seeded ' . count($employees) . ' employees');
+    }
+
+    protected function seedOrders(Store $store): void
+    {
+        $customers = Customer::where('store_id', $store->id)->get();
+        $products = Product::where('store_id', $store->id)->get();
+
+        if ($customers->isEmpty() || $products->isEmpty()) {
+            $this->command->warn('  ⚠ Skipping order seeding - no customers or products found');
+            return;
+        }
+
+        $ordersData = [
+            [
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'fulfillment_status' => 'fulfilled',
+                'items_count' => 2,
+                'with_notes' => true,
+                'with_fulfillment' => true,
+                'fulfillment_status_override' => 'delivered',
+            ],
+            [
+                'status' => 'processing',
+                'payment_status' => 'paid',
+                'fulfillment_status' => 'partial',
+                'items_count' => 3,
+                'with_notes' => true,
+                'with_fulfillment' => true,
+                'fulfillment_status_override' => 'in_transit',
+            ],
+            [
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'fulfillment_status' => 'fulfilled',
+                'items_count' => 1,
+                'with_refund' => true,
+                'refund_status' => 'completed',
+            ],
+            [
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'fulfillment_status' => 'unfulfilled',
+                'items_count' => 2,
+                'with_notes' => true,
+            ],
+            [
+                'status' => 'cancelled',
+                'payment_status' => 'refunded',
+                'fulfillment_status' => 'unfulfilled',
+                'items_count' => 1,
+                'cancel_reason' => 'Customer requested cancellation',
+            ],
+            [
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'fulfillment_status' => 'fulfilled',
+                'items_count' => 2,
+                'with_refund' => true,
+                'refund_status' => 'pending',
+            ],
+        ];
+
+        $createdOrders = 0;
+
+        foreach ($ordersData as $index => $orderData) {
+            $customer = $customers->random();
+            $orderNumber = 'ORD-' . now()->format('Ymd') . '-' . str_pad((string)($index + 1001), 4, '0', STR_PAD_LEFT);
+
+            // Create order
+            $order = Order::firstOrCreate(
+                ['store_id' => $store->id, 'order_number' => $orderNumber],
+                [
+                    'store_id' => $store->id,
+                    'customer_id' => $customer->id,
+                    'order_number' => $orderNumber,
+                    'customer_email' => $customer->email,
+                    'status' => $orderData['status'],
+                    'payment_status' => $orderData['payment_status'],
+                    'fulfillment_status' => $orderData['fulfillment_status'],
+                    'subtotal' => 0,
+                    'tax_total' => 0,
+                    'shipping_total' => 15.00,
+                    'discount_total' => 0,
+                    'total' => 0,
+                    'currency' => 'USD',
+                    'payment_method' => 'credit_card',
+                    'shipping_method' => 'standard',
+                    'placed_at' => now()->subDays(rand(1, 30)),
+                    'notes' => 'Seed order for testing',
+                ]
+            );
+
+            // Add order items
+            $subtotal = 0;
+            for ($i = 0; $i < $orderData['items_count']; $i++) {
+                $product = $products->random();
+                $quantity = rand(1, 3);
+                $price = (float) $product->price;
+                $itemTotal = $price * $quantity;
+                $subtotal += $itemTotal;
+
+                OrderItem::firstOrCreate(
+                    ['order_id' => $order->id, 'product_id' => $product->id],
+                    [
+                        'order_id' => $order->id,
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'product_sku' => $product->sku,
+                        'quantity' => $quantity,
+                        'price' => $price,
+                        'total' => $itemTotal,
+                    ]
+                );
+            }
+
+            // Update order totals
+            $tax = $subtotal * 0.10;
+            $total = $subtotal + $tax + 15.00;
+            $order->update([
+                'subtotal' => $subtotal,
+                'tax_total' => $tax,
+                'total' => $total,
+            ]);
+
+            // Add timeline event for order creation
+            OrderTimelineEvent::firstOrCreate(
+                ['order_id' => $order->id, 'event_type' => 'order_created'],
+                [
+                    'order_id' => $order->id,
+                    'event_type' => 'order_created',
+                    'title' => 'Order Created',
+                    'description' => "Order {$order->order_number} was created",
+                    'created_by_type' => 'system',
+                ]
+            );
+
+            // Add status history
+            if ($order->status !== 'pending') {
+                OrderStatusHistory::firstOrCreate(
+                    ['order_id' => $order->id, 'from_status' => 'pending', 'to_status' => $orderData['status']],
+                    [
+                        'order_id' => $order->id,
+                        'from_status' => 'pending',
+                        'to_status' => $orderData['status'],
+                        'note' => "Order moved to {$orderData['status']}",
+                        'changed_by_type' => 'admin',
+                        'changed_by_id' => 1,
+                    ]
+                );
+            }
+
+            // Add order notes if specified
+            if (isset($orderData['with_notes']) && $orderData['with_notes']) {
+                $order->addNote('Customer requested express shipping', true, 'customer', $customer->id);
+                $order->addNote('Internal note: Priority order', false, 'admin', 1);
+                $order->addNote('Order verified and ready for fulfillment', false, 'system');
+            }
+
+            // Add fulfillment if specified
+            if (isset($orderData['with_fulfillment']) && $orderData['with_fulfillment']) {
+                $fulfillmentStatus = $orderData['fulfillment_status_override'] ?? 'pending';
+                $trackingNumber = 'TRK-' . strtoupper(\Illuminate\Support\Str::random(10));
+
+                $fulfillment = OrderFulfillment::firstOrCreate(
+                    ['order_id' => $order->id, 'tracking_number' => $trackingNumber],
+                    [
+                        'store_id' => $store->id,
+                        'order_id' => $order->id,
+                        'tracking_number' => $trackingNumber,
+                        'carrier' => 'DHL',
+                        'tracking_url' => 'https://tracking.dhl.com/' . $trackingNumber,
+                        'status' => $fulfillmentStatus,
+                        'shipped_at' => $fulfillmentStatus !== 'pending' ? now()->subDays(rand(2, 7)) : null,
+                        'delivered_at' => $fulfillmentStatus === 'delivered' ? now()->subDays(rand(1, 3)) : null,
+                        'estimated_delivery' => now()->addDays(rand(3, 10)),
+                    ]
+                );
+
+                // Add all order items to fulfillment
+                foreach ($order->items as $item) {
+                    $fulfillment->items()->firstOrCreate(
+                        ['order_item_id' => $item->id],
+                        [
+                            'fulfillment_id' => $fulfillment->id,
+                            'order_item_id' => $item->id,
+                            'quantity' => $item->quantity,
+                        ]
+                    );
+                }
+
+                // Add timeline event
+                OrderTimelineEvent::firstOrCreate(
+                    ['order_id' => $order->id, 'event_type' => 'fulfillment_created'],
+                    [
+                        'order_id' => $order->id,
+                        'event_type' => 'fulfillment_created',
+                        'title' => 'Fulfillment Created',
+                        'description' => "Fulfillment created with tracking number {$trackingNumber}",
+                        'metadata' => ['tracking_number' => $trackingNumber, 'carrier' => 'DHL'],
+                        'created_by_type' => 'admin',
+                    ]
+                );
+
+                if ($fulfillmentStatus === 'delivered') {
+                    OrderTimelineEvent::firstOrCreate(
+                        ['order_id' => $order->id, 'event_type' => 'delivered'],
+                        [
+                            'order_id' => $order->id,
+                            'event_type' => 'delivered',
+                            'title' => 'Order Delivered',
+                            'description' => 'Order successfully delivered to customer',
+                            'created_by_type' => 'system',
+                        ]
+                    );
+                }
+            }
+
+            // Add refund if specified
+            if (isset($orderData['with_refund']) && $orderData['with_refund']) {
+                $refundStatus = $orderData['refund_status'] ?? 'pending';
+                $refundAmount = $order->total * 0.5; // 50% refund
+
+                $refund = OrderRefund::firstOrCreate(
+                    ['order_id' => $order->id],
+                    [
+                        'store_id' => $store->id,
+                        'order_id' => $order->id,
+                        'refund_number' => 'RF-' . now()->format('YmdHis') . '-' . strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 4)),
+                        'amount' => $refundAmount,
+                        'reason' => 'Product defective',
+                        'status' => $refundStatus,
+                        'refund_method' => 'original_payment',
+                        'approved_at' => in_array($refundStatus, ['processing', 'completed']) ? now()->subDays(3) : null,
+                        'processed_at' => $refundStatus === 'completed' ? now()->subDays(1) : null,
+                    ]
+                );
+
+                // Add refund items (refund first item)
+                if ($order->items->isNotEmpty()) {
+                    $firstItem = $order->items->first();
+                    $refund->items()->firstOrCreate(
+                        ['order_item_id' => $firstItem->id],
+                        [
+                            'refund_id' => $refund->id,
+                            'order_item_id' => $firstItem->id,
+                            'quantity' => 1,
+                            'amount' => $refundAmount,
+                        ]
+                    );
+                }
+
+                // Add timeline events
+                OrderTimelineEvent::firstOrCreate(
+                    ['order_id' => $order->id, 'event_type' => 'refund_requested'],
+                    [
+                        'order_id' => $order->id,
+                        'event_type' => 'refund_requested',
+                        'title' => 'Refund Requested',
+                        'description' => "Refund of {$refundAmount} requested",
+                        'metadata' => ['refund_id' => $refund->id, 'amount' => $refundAmount],
+                        'created_by_type' => 'customer',
+                    ]
+                );
+
+                if ($refundStatus === 'completed') {
+                    OrderTimelineEvent::firstOrCreate(
+                        ['order_id' => $order->id, 'event_type' => 'refund_completed'],
+                        [
+                            'order_id' => $order->id,
+                            'event_type' => 'refund_completed',
+                            'title' => 'Refund Completed',
+                            'description' => "Refund of {$refundAmount} completed",
+                            'metadata' => ['refund_id' => $refund->id, 'amount' => $refundAmount],
+                            'created_by_type' => 'admin',
+                        ]
+                    );
+                }
+            }
+
+            // Handle cancelled orders
+            if (isset($orderData['cancel_reason'])) {
+                $order->update([
+                    'cancel_reason' => $orderData['cancel_reason'],
+                    'cancelled_by_type' => 'customer',
+                    'cancelled_by_id' => $customer->id,
+                    'cancelled_at' => now()->subDays(rand(1, 5)),
+                ]);
+
+                OrderTimelineEvent::firstOrCreate(
+                    ['order_id' => $order->id, 'event_type' => 'order_cancelled'],
+                    [
+                        'order_id' => $order->id,
+                        'event_type' => 'order_cancelled',
+                        'title' => 'Order Cancelled',
+                        'description' => $orderData['cancel_reason'],
+                        'created_by_type' => 'customer',
+                        'created_by_id' => $customer->id,
+                    ]
+                );
+            }
+
+            $createdOrders++;
+        }
+
+        $this->command->info("  ✓ Seeded {$createdOrders} orders with items, notes, fulfillments, refunds, and timeline events");
     }
 }

@@ -882,6 +882,243 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Order Note Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_note', [
+            'table_name' => 'commerce_order_notes',
+            'model_class' => \VodoCommerce\Models\OrderNote::class,
+            'labels' => ['singular' => 'Order Note', 'plural' => 'Order Notes'],
+            'icon' => 'sticky-note',
+            'search_columns' => ['content'],
+            'fields' => [
+                'order_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order',
+                        'model' => \VodoCommerce\Models\Order::class,
+                        'display_field' => 'order_number',
+                    ],
+                ],
+                'content' => ['type' => 'text', 'required' => true, 'searchable' => true],
+                'is_customer_visible' => ['type' => 'boolean', 'default' => false, 'filterable' => true],
+                'author_type' => [
+                    'type' => 'select',
+                    'default' => 'admin',
+                    'config' => ['options' => ['admin' => 'Admin', 'customer' => 'Customer', 'system' => 'System']],
+                    'filterable' => true,
+                ],
+                'author_id' => ['type' => 'integer'],
+            ],
+        ], self::SLUG);
+
+        // Order Fulfillment Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_fulfillment', [
+            'table_name' => 'commerce_order_fulfillments',
+            'model_class' => \VodoCommerce\Models\OrderFulfillment::class,
+            'labels' => ['singular' => 'Order Fulfillment', 'plural' => 'Order Fulfillments'],
+            'icon' => 'truck',
+            'search_columns' => ['tracking_number', 'carrier'],
+            'fields' => [
+                'order_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order',
+                        'model' => \VodoCommerce\Models\Order::class,
+                        'display_field' => 'order_number',
+                    ],
+                ],
+                'tracking_number' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'carrier' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'tracking_url' => ['type' => 'url'],
+                'status' => [
+                    'type' => 'select',
+                    'default' => 'pending',
+                    'config' => ['options' => [
+                        'pending' => 'Pending',
+                        'in_transit' => 'In Transit',
+                        'out_for_delivery' => 'Out for Delivery',
+                        'delivered' => 'Delivered',
+                        'failed' => 'Failed',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'shipped_at' => ['type' => 'datetime'],
+                'delivered_at' => ['type' => 'datetime'],
+                'estimated_delivery' => ['type' => 'datetime'],
+                'notes' => ['type' => 'text'],
+            ],
+        ], self::SLUG);
+
+        // Order Fulfillment Item Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_fulfillment_item', [
+            'table_name' => 'commerce_order_fulfillment_items',
+            'model_class' => \VodoCommerce\Models\OrderFulfillmentItem::class,
+            'labels' => ['singular' => 'Fulfillment Item', 'plural' => 'Fulfillment Items'],
+            'icon' => 'box',
+            'fields' => [
+                'fulfillment_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order_fulfillment',
+                        'model' => \VodoCommerce\Models\OrderFulfillment::class,
+                        'display_field' => 'tracking_number',
+                    ],
+                ],
+                'order_item_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order_item',
+                        'model' => \VodoCommerce\Models\OrderItem::class,
+                        'display_field' => 'product_name',
+                    ],
+                ],
+                'quantity' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Order Refund Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_refund', [
+            'table_name' => 'commerce_order_refunds',
+            'model_class' => \VodoCommerce\Models\OrderRefund::class,
+            'labels' => ['singular' => 'Order Refund', 'plural' => 'Order Refunds'],
+            'icon' => 'undo',
+            'search_columns' => ['refund_number', 'reason'],
+            'fields' => [
+                'order_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order',
+                        'model' => \VodoCommerce\Models\Order::class,
+                        'display_field' => 'order_number',
+                    ],
+                ],
+                'refund_number' => ['type' => 'string', 'unique' => true, 'searchable' => true, 'show_in_list' => true],
+                'amount' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
+                'reason' => ['type' => 'string', 'searchable' => true],
+                'status' => [
+                    'type' => 'select',
+                    'default' => 'pending',
+                    'config' => ['options' => [
+                        'pending' => 'Pending',
+                        'processing' => 'Processing',
+                        'completed' => 'Completed',
+                        'rejected' => 'Rejected',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'refund_method' => [
+                    'type' => 'select',
+                    'default' => 'original_payment',
+                    'config' => ['options' => [
+                        'original_payment' => 'Original Payment',
+                        'store_credit' => 'Store Credit',
+                        'manual' => 'Manual',
+                    ]],
+                    'filterable' => true,
+                ],
+                'notes' => ['type' => 'text'],
+                'processed_at' => ['type' => 'datetime'],
+                'approved_at' => ['type' => 'datetime'],
+                'rejected_at' => ['type' => 'datetime'],
+                'rejection_reason' => ['type' => 'string'],
+            ],
+        ], self::SLUG);
+
+        // Order Refund Item Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_refund_item', [
+            'table_name' => 'commerce_order_refund_items',
+            'model_class' => \VodoCommerce\Models\OrderRefundItem::class,
+            'labels' => ['singular' => 'Refund Item', 'plural' => 'Refund Items'],
+            'icon' => 'box-open',
+            'fields' => [
+                'refund_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order_refund',
+                        'model' => \VodoCommerce\Models\OrderRefund::class,
+                        'display_field' => 'refund_number',
+                    ],
+                ],
+                'order_item_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order_item',
+                        'model' => \VodoCommerce\Models\OrderItem::class,
+                        'display_field' => 'product_name',
+                    ],
+                ],
+                'quantity' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'amount' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Order Timeline Event Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_timeline_event', [
+            'table_name' => 'commerce_order_timeline_events',
+            'model_class' => \VodoCommerce\Models\OrderTimelineEvent::class,
+            'labels' => ['singular' => 'Timeline Event', 'plural' => 'Timeline Events'],
+            'icon' => 'clock',
+            'search_columns' => ['event_type', 'title', 'description'],
+            'fields' => [
+                'order_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order',
+                        'model' => \VodoCommerce\Models\Order::class,
+                        'display_field' => 'order_number',
+                    ],
+                ],
+                'event_type' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'title' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text', 'searchable' => true],
+                'metadata' => ['type' => 'json'],
+                'created_by_type' => [
+                    'type' => 'select',
+                    'config' => ['options' => ['admin' => 'Admin', 'customer' => 'Customer', 'system' => 'System']],
+                    'filterable' => true,
+                ],
+                'created_by_id' => ['type' => 'integer'],
+            ],
+        ], self::SLUG);
+
+        // Order Status History Entity (Phase 3)
+        $this->entityRegistry->register('commerce_order_status_history', [
+            'table_name' => 'commerce_order_status_histories',
+            'model_class' => \VodoCommerce\Models\OrderStatusHistory::class,
+            'labels' => ['singular' => 'Status History', 'plural' => 'Status Histories'],
+            'icon' => 'history',
+            'search_columns' => ['from_status', 'to_status', 'note'],
+            'fields' => [
+                'order_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_order',
+                        'model' => \VodoCommerce\Models\Order::class,
+                        'display_field' => 'order_number',
+                    ],
+                ],
+                'from_status' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'to_status' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'note' => ['type' => 'text', 'searchable' => true],
+                'changed_by_type' => [
+                    'type' => 'select',
+                    'config' => ['options' => ['admin' => 'Admin', 'customer' => 'Customer', 'system' => 'System']],
+                    'filterable' => true,
+                ],
+                'changed_by_id' => ['type' => 'integer'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
