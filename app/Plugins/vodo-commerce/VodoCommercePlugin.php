@@ -690,6 +690,198 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Customer Group Entity
+        $this->entityRegistry->register('commerce_customer_group', [
+            'table_name' => 'commerce_customer_groups',
+            'model_class' => \VodoCommerce\Models\CustomerGroup::class,
+            'labels' => ['singular' => 'Customer Group', 'plural' => 'Customer Groups'],
+            'icon' => 'users',
+            'search_columns' => ['name', 'slug'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'slug' => ['type' => 'slug', 'required' => true],
+                'discount_percentage' => ['type' => 'float', 'default' => 0, 'show_in_list' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Customer Wallet Entity
+        $this->entityRegistry->register('commerce_customer_wallet', [
+            'table_name' => 'commerce_customer_wallets',
+            'model_class' => \VodoCommerce\Models\CustomerWallet::class,
+            'labels' => ['singular' => 'Customer Wallet', 'plural' => 'Customer Wallets'],
+            'icon' => 'wallet',
+            'show_in_menu' => false,
+            'fields' => [
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'email'],
+                    'required' => true,
+                ],
+                'balance' => ['type' => 'money', 'default' => 0, 'show_in_list' => true],
+                'currency' => ['type' => 'string', 'default' => 'USD'],
+            ],
+        ], self::SLUG);
+
+        // Customer Wallet Transaction Entity
+        $this->entityRegistry->register('commerce_customer_wallet_transaction', [
+            'table_name' => 'commerce_customer_wallet_transactions',
+            'model_class' => \VodoCommerce\Models\CustomerWalletTransaction::class,
+            'labels' => ['singular' => 'Wallet Transaction', 'plural' => 'Wallet Transactions'],
+            'icon' => 'dollarSign',
+            'show_in_menu' => false,
+            'fields' => [
+                'wallet_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_customer_wallet'], 'required' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => ['deposit' => 'Deposit', 'withdraw' => 'Withdraw', 'purchase' => 'Purchase', 'refund' => 'Refund', 'adjustment' => 'Adjustment']],
+                    'show_in_list' => true,
+                ],
+                'amount' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
+                'balance_after' => ['type' => 'money', 'required' => true],
+                'description' => ['type' => 'text'],
+                'reference' => ['type' => 'string'],
+            ],
+        ], self::SLUG);
+
+        // Affiliate Entity
+        $this->entityRegistry->register('commerce_affiliate', [
+            'table_name' => 'commerce_affiliates',
+            'model_class' => \VodoCommerce\Models\Affiliate::class,
+            'labels' => ['singular' => 'Affiliate', 'plural' => 'Affiliates'],
+            'icon' => 'share2',
+            'search_columns' => ['code'],
+            'fields' => [
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'email'],
+                    'required' => true,
+                    'show_in_list' => true,
+                ],
+                'code' => ['type' => 'string', 'required' => true, 'unique' => true, 'searchable' => true, 'show_in_list' => true],
+                'commission_rate' => ['type' => 'float', 'required' => true, 'show_in_list' => true],
+                'commission_type' => [
+                    'type' => 'select',
+                    'default' => 'percentage',
+                    'config' => ['options' => ['percentage' => 'Percentage', 'fixed' => 'Fixed']],
+                    'show_in_list' => true,
+                ],
+                'total_earnings' => ['type' => 'money', 'default' => 0],
+                'pending_balance' => ['type' => 'money', 'default' => 0],
+                'paid_balance' => ['type' => 'money', 'default' => 0],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Affiliate Link Entity
+        $this->entityRegistry->register('commerce_affiliate_link', [
+            'table_name' => 'commerce_affiliate_links',
+            'model_class' => \VodoCommerce\Models\AffiliateLink::class,
+            'labels' => ['singular' => 'Affiliate Link', 'plural' => 'Affiliate Links'],
+            'icon' => 'link',
+            'show_in_menu' => false,
+            'fields' => [
+                'affiliate_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_affiliate'], 'required' => true],
+                'url' => ['type' => 'string', 'required' => true],
+                'utm_source' => ['type' => 'string'],
+                'utm_medium' => ['type' => 'string'],
+                'utm_campaign' => ['type' => 'string'],
+                'clicks' => ['type' => 'integer', 'default' => 0],
+                'conversions' => ['type' => 'integer', 'default' => 0],
+                'is_active' => ['type' => 'boolean', 'default' => true],
+            ],
+        ], self::SLUG);
+
+        // Affiliate Commission Entity
+        $this->entityRegistry->register('commerce_affiliate_commission', [
+            'table_name' => 'commerce_affiliate_commissions',
+            'model_class' => \VodoCommerce\Models\AffiliateCommission::class,
+            'labels' => ['singular' => 'Affiliate Commission', 'plural' => 'Affiliate Commissions'],
+            'icon' => 'trendingUp',
+            'show_in_menu' => false,
+            'fields' => [
+                'affiliate_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_affiliate'], 'required' => true],
+                'order_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_order'], 'required' => true],
+                'link_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_affiliate_link']],
+                'order_amount' => ['type' => 'money', 'required' => true],
+                'commission_amount' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
+                'commission_rate' => ['type' => 'float', 'required' => true],
+                'status' => [
+                    'type' => 'select',
+                    'default' => 'pending',
+                    'config' => ['options' => ['pending' => 'Pending', 'approved' => 'Approved', 'paid' => 'Paid', 'rejected' => 'Rejected']],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+            ],
+        ], self::SLUG);
+
+        // Loyalty Point Entity
+        $this->entityRegistry->register('commerce_loyalty_point', [
+            'table_name' => 'commerce_loyalty_points',
+            'model_class' => \VodoCommerce\Models\LoyaltyPoint::class,
+            'labels' => ['singular' => 'Loyalty Point', 'plural' => 'Loyalty Points'],
+            'icon' => 'award',
+            'show_in_menu' => false,
+            'fields' => [
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'email'],
+                    'required' => true,
+                ],
+                'balance' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'lifetime_earned' => ['type' => 'integer', 'default' => 0],
+                'lifetime_spent' => ['type' => 'integer', 'default' => 0],
+                'expires_at' => ['type' => 'datetime'],
+            ],
+        ], self::SLUG);
+
+        // Loyalty Point Transaction Entity
+        $this->entityRegistry->register('commerce_loyalty_point_transaction', [
+            'table_name' => 'commerce_loyalty_point_transactions',
+            'model_class' => \VodoCommerce\Models\LoyaltyPointTransaction::class,
+            'labels' => ['singular' => 'Loyalty Point Transaction', 'plural' => 'Loyalty Point Transactions'],
+            'icon' => 'activity',
+            'show_in_menu' => false,
+            'fields' => [
+                'loyalty_point_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_loyalty_point'], 'required' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => ['earned' => 'Earned', 'spent' => 'Spent', 'adjusted' => 'Adjusted']],
+                    'show_in_list' => true,
+                ],
+                'points' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'balance_after' => ['type' => 'integer', 'required' => true],
+                'description' => ['type' => 'text'],
+            ],
+        ], self::SLUG);
+
+        // Employee Entity
+        $this->entityRegistry->register('commerce_employee', [
+            'table_name' => 'commerce_employees',
+            'model_class' => \VodoCommerce\Models\Employee::class,
+            'labels' => ['singular' => 'Employee', 'plural' => 'Employees'],
+            'icon' => 'briefcase',
+            'search_columns' => ['name', 'email'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'email' => ['type' => 'email', 'required' => true, 'unique' => true, 'searchable' => true, 'show_in_list' => true],
+                'phone' => ['type' => 'phone'],
+                'role' => [
+                    'type' => 'select',
+                    'default' => 'staff',
+                    'config' => ['options' => ['staff' => 'Staff', 'manager' => 'Manager', 'admin' => 'Admin', 'support' => 'Support']],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'permissions' => ['type' => 'json'],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+                'hired_at' => ['type' => 'datetime'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -1124,6 +1316,11 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_digital_product_file', 'commerce_digital_product_code',
                 'commerce_customer', 'commerce_address',
                 'commerce_order', 'commerce_order_item', 'commerce_discount',
+                'commerce_customer_group', 'commerce_customer_wallet',
+                'commerce_customer_wallet_transaction', 'commerce_affiliate',
+                'commerce_affiliate_link', 'commerce_affiliate_commission',
+                'commerce_loyalty_point', 'commerce_loyalty_point_transaction',
+                'commerce_employee',
             ];
 
             foreach ($entities as $entity) {
