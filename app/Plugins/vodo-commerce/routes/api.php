@@ -136,6 +136,10 @@ use VodoCommerce\Http\Controllers\Api\V2\OrderRefundController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductImageController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductOptionController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductTagController;
+use VodoCommerce\Http\Controllers\Api\V2\ShippingMethodController;
+use VodoCommerce\Http\Controllers\Api\V2\ShippingZoneController;
+use VodoCommerce\Http\Controllers\Api\V2\TaxRateController;
+use VodoCommerce\Http\Controllers\Api\V2\TaxZoneController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -235,4 +239,52 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('orders/{order}/status', [OrderManagementController::class, 'updateStatus'])->name('orders.status');
     Route::post('orders/export', [OrderManagementController::class, 'export'])->name('orders.export');
     Route::post('orders/bulk-action', [OrderManagementController::class, 'bulkAction'])->name('orders.bulk-action');
+
+    // =========================================================================
+    // Phase 4.1: Shipping & Tax Configuration
+    // =========================================================================
+
+    // Shipping Zones
+    Route::get('shipping-zones', [ShippingZoneController::class, 'index'])->name('shipping-zones.index');
+    Route::post('shipping-zones', [ShippingZoneController::class, 'store'])->name('shipping-zones.store');
+    Route::get('shipping-zones/{shipping_zone}', [ShippingZoneController::class, 'show'])->name('shipping-zones.show');
+    Route::put('shipping-zones/{shipping_zone}', [ShippingZoneController::class, 'update'])->name('shipping-zones.update');
+    Route::delete('shipping-zones/{shipping_zone}', [ShippingZoneController::class, 'destroy'])->name('shipping-zones.destroy');
+    Route::post('shipping-zones/{shipping_zone}/activate', [ShippingZoneController::class, 'activate'])->name('shipping-zones.activate');
+    Route::post('shipping-zones/{shipping_zone}/deactivate', [ShippingZoneController::class, 'deactivate'])->name('shipping-zones.deactivate');
+
+    // Shipping Methods
+    Route::get('shipping-methods', [ShippingMethodController::class, 'index'])->name('shipping-methods.index');
+    Route::post('shipping-methods', [ShippingMethodController::class, 'store'])->name('shipping-methods.store');
+    Route::get('shipping-methods/{shipping_method}', [ShippingMethodController::class, 'show'])->name('shipping-methods.show');
+    Route::put('shipping-methods/{shipping_method}', [ShippingMethodController::class, 'update'])->name('shipping-methods.update');
+    Route::delete('shipping-methods/{shipping_method}', [ShippingMethodController::class, 'destroy'])->name('shipping-methods.destroy');
+    Route::post('shipping-methods/{shipping_method}/activate', [ShippingMethodController::class, 'activate'])->name('shipping-methods.activate');
+    Route::post('shipping-methods/{shipping_method}/deactivate', [ShippingMethodController::class, 'deactivate'])->name('shipping-methods.deactivate');
+    Route::post('shipping-methods/{shipping_method}/rates', [ShippingMethodController::class, 'addRate'])->name('shipping-methods.rates.add');
+    Route::delete('shipping-methods/{shipping_method}/rates/{rate}', [ShippingMethodController::class, 'removeRate'])->name('shipping-methods.rates.remove');
+    Route::post('shipping/calculate', [ShippingMethodController::class, 'calculate'])->name('shipping.calculate');
+
+    // Tax Zones
+    Route::get('tax-zones', [TaxZoneController::class, 'index'])->name('tax-zones.index');
+    Route::post('tax-zones', [TaxZoneController::class, 'store'])->name('tax-zones.store');
+    Route::get('tax-zones/{tax_zone}', [TaxZoneController::class, 'show'])->name('tax-zones.show');
+    Route::put('tax-zones/{tax_zone}', [TaxZoneController::class, 'update'])->name('tax-zones.update');
+    Route::delete('tax-zones/{tax_zone}', [TaxZoneController::class, 'destroy'])->name('tax-zones.destroy');
+    Route::post('tax-zones/{tax_zone}/activate', [TaxZoneController::class, 'activate'])->name('tax-zones.activate');
+    Route::post('tax-zones/{tax_zone}/deactivate', [TaxZoneController::class, 'deactivate'])->name('tax-zones.deactivate');
+
+    // Tax Rates
+    Route::get('tax-rates', [TaxRateController::class, 'index'])->name('tax-rates.index');
+    Route::post('tax-rates', [TaxRateController::class, 'store'])->name('tax-rates.store');
+    Route::get('tax-rates/{tax_rate}', [TaxRateController::class, 'show'])->name('tax-rates.show');
+    Route::put('tax-rates/{tax_rate}', [TaxRateController::class, 'update'])->name('tax-rates.update');
+    Route::delete('tax-rates/{tax_rate}', [TaxRateController::class, 'destroy'])->name('tax-rates.destroy');
+    Route::post('tax/calculate', [TaxRateController::class, 'calculate'])->name('tax.calculate');
+
+    // Tax Exemptions
+    Route::get('tax-exemptions', [TaxRateController::class, 'indexExemptions'])->name('tax-exemptions.index');
+    Route::post('tax-exemptions', [TaxRateController::class, 'storeExemption'])->name('tax-exemptions.store');
+    Route::get('tax-exemptions/{exemption}', [TaxRateController::class, 'showExemption'])->name('tax-exemptions.show');
+    Route::delete('tax-exemptions/{exemption}', [TaxRateController::class, 'destroyExemption'])->name('tax-exemptions.destroy');
 });
