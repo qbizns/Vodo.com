@@ -49,6 +49,8 @@ class Order extends Model
         'shipping_total',
         'tax_total',
         'total',
+        'refund_total',
+        'has_refunds',
         'billing_address',
         'shipping_address',
         'shipping_method',
@@ -56,6 +58,12 @@ class Order extends Model
         'payment_reference',
         'discount_codes',
         'notes',
+        'cancel_reason',
+        'cancelled_by_type',
+        'cancelled_by_id',
+        'cancelled_at',
+        'is_exported',
+        'exported_at',
         'meta',
         'placed_at',
         'paid_at',
@@ -70,6 +78,9 @@ class Order extends Model
             'shipping_total' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'total' => 'decimal:2',
+            'refund_total' => 'decimal:2',
+            'has_refunds' => 'boolean',
+            'is_exported' => 'boolean',
             'billing_address' => 'array',
             'shipping_address' => 'array',
             'discount_codes' => 'array',
@@ -77,6 +88,8 @@ class Order extends Model
             'placed_at' => 'datetime',
             'paid_at' => 'datetime',
             'completed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'exported_at' => 'datetime',
         ];
     }
 
@@ -206,14 +219,17 @@ class Order extends Model
         ]);
     }
 
-    public function cancel(?string $reason = null): void
-    {
-        $meta = $this->meta ?? [];
-        $meta['cancellation_reason'] = $reason;
-
+    public function cancel(
+        ?string $reason = null,
+        ?string $cancelledByType = 'system',
+        ?int $cancelledById = null
+    ): void {
         $this->update([
             'status' => self::STATUS_CANCELLED,
-            'meta' => $meta,
+            'cancel_reason' => $reason,
+            'cancelled_by_type' => $cancelledByType,
+            'cancelled_by_id' => $cancelledById,
+            'cancelled_at' => now(),
         ]);
 
         // Restore stock
@@ -222,6 +238,17 @@ class Order extends Model
                 $item->product->incrementStock($item->quantity);
             }
         }
+
+        // Add timeline event
+        OrderTimelineEvent::createEvent(
+            $this,
+            'order_cancelled',
+            'Order Cancelled',
+            $reason,
+            null,
+            $cancelledByType,
+            $cancelledById
+        );
     }
 
     public function getItemCount(): int
@@ -257,5 +284,126 @@ class Order extends Model
     public function scopeUnfulfilled($query)
     {
         return $query->where('fulfillment_status', self::FULFILLMENT_UNFULFILLED);
+    }
+
+    /**
+     * Phase 3: Order Management Extensions - Relationships
+     */
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(OrderNote::class);
+    }
+
+    public function fulfillments(): HasMany
+    {
+        return $this->hasMany(OrderFulfillment::class);
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(OrderRefund::class);
+    }
+
+    public function timeline(): HasMany
+    {
+        return $this->hasMany(OrderTimelineEvent::class)->orderBy('created_at', 'desc');
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Phase 3: Order Management Extensions - Methods
+     */
+
+    public function addNote(
+        string $content,
+        bool $isCustomerVisible = false,
+        ?string $authorType = 'admin',
+        ?int $authorId = null
+    ): OrderNote {
+        return $this->notes()->create([
+            'store_id' => $this->store_id,
+            'content' => $content,
+            'is_customer_visible' => $isCustomerVisible,
+            'author_type' => $authorType,
+            'author_id' => $authorId,
+        ]);
+    }
+
+    public function createRefund(
+        float $amount,
+        array $items,
+        ?string $reason = null,
+        string $refundMethod = 'original_payment'
+    ): OrderRefund {
+        $refund = $this->refunds()->create([
+            'store_id' => $this->store_id,
+            'amount' => $amount,
+            'reason' => $reason,
+            'refund_method' => $refundMethod,
+            'status' => 'pending',
+        ]);
+
+        foreach ($items as $item) {
+            $refund->items()->create([
+                'order_item_id' => $item['order_item_id'],
+                'quantity' => $item['quantity'],
+                'amount' => $item['amount'],
+            ]);
+        }
+
+        return $refund;
+    }
+
+    public function export(): void
+    {
+        $this->update([
+            'is_exported' => true,
+            'exported_at' => now(),
+        ]);
+    }
+
+    /**
+     * Phase 3: Order Management Extensions - Scopes
+     */
+
+    public function scopeCancelled($query)
+    {
+        return $query->where('status', self::STATUS_CANCELLED);
+    }
+
+    public function scopeRefunded($query)
+    {
+        return $query->where('status', self::STATUS_REFUNDED);
+    }
+
+    public function scopeExported($query)
+    {
+        return $query->where('is_exported', true);
+    }
+
+    public function scopeNotExported($query)
+    {
+        return $query->where('is_exported', false);
+    }
+
+    /**
+     * Check if order has been exported.
+     */
+    public function isExported(): bool
+    {
+        return $this->is_exported;
+    }
+
+    /**
+     * Check if order has refunds.
+     */
+    public function hasRefunds(): bool
+    {
+        return $this->has_refunds;
     }
 }
