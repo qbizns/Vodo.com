@@ -377,6 +377,152 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Brand Entity
+        $this->entityRegistry->register('commerce_brand', [
+            'table_name' => 'commerce_brands',
+            'model_class' => \VodoCommerce\Models\Brand::class,
+            'labels' => ['singular' => 'Brand', 'plural' => 'Brands'],
+            'icon' => 'award',
+            'search_columns' => ['name', 'slug', 'description'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'slug' => ['type' => 'slug', 'required' => true],
+                'logo' => ['type' => 'image'],
+                'description' => ['type' => 'text'],
+                'website' => ['type' => 'string'],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Product Tag Entity
+        $this->entityRegistry->register('commerce_product_tag', [
+            'table_name' => 'commerce_product_tags',
+            'model_class' => \VodoCommerce\Models\ProductTag::class,
+            'labels' => ['singular' => 'Product Tag', 'plural' => 'Product Tags'],
+            'icon' => 'tag',
+            'search_columns' => ['name', 'slug'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'slug' => ['type' => 'slug', 'required' => true],
+                'description' => ['type' => 'text'],
+                'color' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Product Option Template Entity
+        $this->entityRegistry->register('commerce_product_option_template', [
+            'table_name' => 'commerce_product_option_templates',
+            'model_class' => \VodoCommerce\Models\ProductOptionTemplate::class,
+            'labels' => ['singular' => 'Product Option Template', 'plural' => 'Product Option Templates'],
+            'icon' => 'clipboard',
+            'search_columns' => ['name'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => ['select' => 'Select', 'radio' => 'Radio', 'checkbox' => 'Checkbox', 'text' => 'Text']],
+                    'show_in_list' => true,
+                ],
+                'values' => ['type' => 'json'],
+                'is_required' => ['type' => 'boolean', 'default' => false],
+                'position' => ['type' => 'integer', 'default' => 0],
+            ],
+        ], self::SLUG);
+
+        // Product Option Entity
+        $this->entityRegistry->register('commerce_product_option', [
+            'table_name' => 'commerce_product_options',
+            'model_class' => \VodoCommerce\Models\ProductOption::class,
+            'labels' => ['singular' => 'Product Option', 'plural' => 'Product Options'],
+            'icon' => 'settings',
+            'show_in_menu' => false,
+            'fields' => [
+                'product_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_product'], 'required' => true],
+                'name' => ['type' => 'string', 'required' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => ['select' => 'Select', 'radio' => 'Radio', 'checkbox' => 'Checkbox', 'text' => 'Text']],
+                ],
+                'is_required' => ['type' => 'boolean', 'default' => false],
+                'position' => ['type' => 'integer', 'default' => 0],
+            ],
+        ], self::SLUG);
+
+        // Product Option Value Entity
+        $this->entityRegistry->register('commerce_product_option_value', [
+            'table_name' => 'commerce_product_option_values',
+            'model_class' => \VodoCommerce\Models\ProductOptionValue::class,
+            'labels' => ['singular' => 'Product Option Value', 'plural' => 'Product Option Values'],
+            'icon' => 'list',
+            'show_in_menu' => false,
+            'fields' => [
+                'option_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_product_option'], 'required' => true],
+                'label' => ['type' => 'string', 'required' => true],
+                'price_adjustment' => ['type' => 'money', 'default' => 0],
+                'price_type' => [
+                    'type' => 'select',
+                    'default' => 'fixed',
+                    'config' => ['options' => ['fixed' => 'Fixed', 'percentage' => 'Percentage']],
+                ],
+                'position' => ['type' => 'integer', 'default' => 0],
+                'is_default' => ['type' => 'boolean', 'default' => false],
+            ],
+        ], self::SLUG);
+
+        // Product Image Entity
+        $this->entityRegistry->register('commerce_product_image', [
+            'table_name' => 'commerce_product_images',
+            'model_class' => \VodoCommerce\Models\ProductImage::class,
+            'labels' => ['singular' => 'Product Image', 'plural' => 'Product Images'],
+            'icon' => 'image',
+            'show_in_menu' => false,
+            'fields' => [
+                'product_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_product'], 'required' => true],
+                'url' => ['type' => 'image', 'required' => true],
+                'alt_text' => ['type' => 'string'],
+                'position' => ['type' => 'integer', 'default' => 0],
+                'is_primary' => ['type' => 'boolean', 'default' => false],
+            ],
+        ], self::SLUG);
+
+        // Digital Product File Entity
+        $this->entityRegistry->register('commerce_digital_product_file', [
+            'table_name' => 'commerce_digital_product_files',
+            'model_class' => \VodoCommerce\Models\DigitalProductFile::class,
+            'labels' => ['singular' => 'Digital Product File', 'plural' => 'Digital Product Files'],
+            'icon' => 'download',
+            'show_in_menu' => false,
+            'fields' => [
+                'product_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_product'], 'required' => true],
+                'name' => ['type' => 'string', 'required' => true],
+                'file_path' => ['type' => 'string', 'required' => true],
+                'file_size' => ['type' => 'integer'],
+                'mime_type' => ['type' => 'string'],
+                'download_limit' => ['type' => 'integer'],
+                'is_active' => ['type' => 'boolean', 'default' => true],
+            ],
+        ], self::SLUG);
+
+        // Digital Product Code Entity
+        $this->entityRegistry->register('commerce_digital_product_code', [
+            'table_name' => 'commerce_digital_product_codes',
+            'model_class' => \VodoCommerce\Models\DigitalProductCode::class,
+            'labels' => ['singular' => 'Digital Product Code', 'plural' => 'Digital Product Codes'],
+            'icon' => 'key',
+            'show_in_menu' => false,
+            'fields' => [
+                'product_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_product'], 'required' => true],
+                'code' => ['type' => 'string', 'required' => true, 'unique' => true],
+                'order_item_id' => ['type' => 'relation', 'config' => ['entity' => 'commerce_order_item']],
+                'assigned_at' => ['type' => 'datetime'],
+                'expires_at' => ['type' => 'datetime'],
+            ],
+        ], self::SLUG);
+
         // Customer Entity
         $this->entityRegistry->register('commerce_customer', [
             'table_name' => 'commerce_customers',
@@ -972,7 +1118,11 @@ class VodoCommercePlugin extends BasePlugin
             // Unregister entities
             $entities = [
                 'commerce_store', 'commerce_category', 'commerce_product',
-                'commerce_product_variant', 'commerce_customer', 'commerce_address',
+                'commerce_product_variant', 'commerce_brand', 'commerce_product_tag',
+                'commerce_product_option_template', 'commerce_product_option',
+                'commerce_product_option_value', 'commerce_product_image',
+                'commerce_digital_product_file', 'commerce_digital_product_code',
+                'commerce_customer', 'commerce_address',
                 'commerce_order', 'commerce_order_item', 'commerce_discount',
             ];
 

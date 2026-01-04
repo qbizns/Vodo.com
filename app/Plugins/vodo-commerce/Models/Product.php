@@ -7,6 +7,7 @@ namespace VodoCommerce\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use VodoCommerce\Traits\BelongsToStore;
@@ -20,6 +21,7 @@ class Product extends Model
     protected $fillable = [
         'store_id',
         'category_id',
+        'brand_id',
         'name',
         'slug',
         'sku',
@@ -64,9 +66,40 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class)->orderBy('position');
+    }
+
+    public function options(): HasMany
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('position');
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('position');
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductTag::class, 'commerce_product_tag_pivot', 'product_id', 'tag_id')
+            ->withTimestamps();
+    }
+
+    public function digitalFiles(): HasMany
+    {
+        return $this->hasMany(DigitalProductFile::class);
+    }
+
+    public function digitalCodes(): HasMany
+    {
+        return $this->hasMany(DigitalProductCode::class);
     }
 
     public function orderItems(): HasMany
@@ -170,5 +203,41 @@ class Product extends Model
     public function scopeFeatured($query)
     {
         return $query->where('featured', true);
+    }
+
+    public function scopeByBrand($query, int $brandId)
+    {
+        return $query->where('brand_id', $brandId);
+    }
+
+    public function scopeWithTags($query, array $tagIds)
+    {
+        return $query->whereHas('tags', fn($q) => $q->whereIn('commerce_product_tags.id', $tagIds));
+    }
+
+    public function scopeDigital($query)
+    {
+        return $query->where('is_downloadable', true);
+    }
+
+    public function hasOptions(): bool
+    {
+        return $this->options()->exists();
+    }
+
+    public function getPrimaryImageUrl(): ?string
+    {
+        $primaryImage = $this->images()->primary()->first();
+
+        if ($primaryImage) {
+            return $primaryImage->url;
+        }
+
+        return $this->getPrimaryImage();
+    }
+
+    public function getAvailableDigitalCodesCount(): int
+    {
+        return $this->digitalCodes()->available()->count();
     }
 }
