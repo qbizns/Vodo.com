@@ -1119,6 +1119,216 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Shipping Zone Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_shipping_zone', [
+            'table_name' => 'commerce_shipping_zones',
+            'model_class' => \VodoCommerce\Models\ShippingZone::class,
+            'labels' => ['singular' => 'Shipping Zone', 'plural' => 'Shipping Zones'],
+            'icon' => 'map',
+            'search_columns' => ['name', 'description'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text', 'searchable' => true],
+                'priority' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Shipping Zone Location Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_shipping_zone_location', [
+            'table_name' => 'commerce_shipping_zone_locations',
+            'model_class' => \VodoCommerce\Models\ShippingZoneLocation::class,
+            'labels' => ['singular' => 'Shipping Zone Location', 'plural' => 'Shipping Zone Locations'],
+            'icon' => 'map-pin',
+            'show_in_menu' => false,
+            'fields' => [
+                'zone_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_shipping_zone',
+                        'model' => \VodoCommerce\Models\ShippingZone::class,
+                        'display_field' => 'name',
+                    ],
+                ],
+                'country_code' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'state_code' => ['type' => 'string'],
+                'city' => ['type' => 'string'],
+                'postal_code_pattern' => ['type' => 'string'],
+            ],
+        ], self::SLUG);
+
+        // Shipping Method Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_shipping_method', [
+            'table_name' => 'commerce_shipping_methods',
+            'model_class' => \VodoCommerce\Models\ShippingMethod::class,
+            'labels' => ['singular' => 'Shipping Method', 'plural' => 'Shipping Methods'],
+            'icon' => 'truck',
+            'search_columns' => ['name', 'code', 'description'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'code' => ['type' => 'string', 'required' => true, 'unique' => true, 'searchable' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text', 'searchable' => true],
+                'calculation_type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'flat_rate' => 'Flat Rate',
+                        'per_item' => 'Per Item',
+                        'weight_based' => 'Weight Based',
+                        'price_based' => 'Price Based',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'base_cost' => ['type' => 'money', 'default' => 0],
+                'min_delivery_days' => ['type' => 'integer'],
+                'max_delivery_days' => ['type' => 'integer'],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Shipping Rate Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_shipping_rate', [
+            'table_name' => 'commerce_shipping_rates',
+            'model_class' => \VodoCommerce\Models\ShippingRate::class,
+            'labels' => ['singular' => 'Shipping Rate', 'plural' => 'Shipping Rates'],
+            'icon' => 'dollar-sign',
+            'show_in_menu' => false,
+            'fields' => [
+                'shipping_zone_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_shipping_zone',
+                        'model' => \VodoCommerce\Models\ShippingZone::class,
+                        'display_field' => 'name',
+                    ],
+                ],
+                'shipping_method_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_shipping_method',
+                        'model' => \VodoCommerce\Models\ShippingMethod::class,
+                        'display_field' => 'name',
+                    ],
+                ],
+                'rate' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
+                'min_weight' => ['type' => 'float'],
+                'max_weight' => ['type' => 'float'],
+                'min_price' => ['type' => 'money'],
+                'max_price' => ['type' => 'money'],
+                'is_free_shipping' => ['type' => 'boolean', 'default' => false],
+            ],
+        ], self::SLUG);
+
+        // Tax Zone Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_tax_zone', [
+            'table_name' => 'commerce_tax_zones',
+            'model_class' => \VodoCommerce\Models\TaxZone::class,
+            'labels' => ['singular' => 'Tax Zone', 'plural' => 'Tax Zones'],
+            'icon' => 'globe',
+            'search_columns' => ['name', 'description'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text', 'searchable' => true],
+                'priority' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Tax Zone Location Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_tax_zone_location', [
+            'table_name' => 'commerce_tax_zone_locations',
+            'model_class' => \VodoCommerce\Models\TaxZoneLocation::class,
+            'labels' => ['singular' => 'Tax Zone Location', 'plural' => 'Tax Zone Locations'],
+            'icon' => 'map-pin',
+            'show_in_menu' => false,
+            'fields' => [
+                'zone_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_tax_zone',
+                        'model' => \VodoCommerce\Models\TaxZone::class,
+                        'display_field' => 'name',
+                    ],
+                ],
+                'country_code' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'state_code' => ['type' => 'string'],
+                'city' => ['type' => 'string'],
+                'postal_code_pattern' => ['type' => 'string'],
+            ],
+        ], self::SLUG);
+
+        // Tax Rate Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_tax_rate', [
+            'table_name' => 'commerce_tax_rates',
+            'model_class' => \VodoCommerce\Models\TaxRate::class,
+            'labels' => ['singular' => 'Tax Rate', 'plural' => 'Tax Rates'],
+            'icon' => 'percent',
+            'search_columns' => ['name', 'code'],
+            'fields' => [
+                'tax_zone_id' => [
+                    'type' => 'relation',
+                    'required' => true,
+                    'config' => [
+                        'entity' => 'commerce_tax_zone',
+                        'model' => \VodoCommerce\Models\TaxZone::class,
+                        'display_field' => 'name',
+                    ],
+                    'show_in_list' => true,
+                ],
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'code' => ['type' => 'string', 'required' => true, 'unique' => true, 'searchable' => true, 'show_in_list' => true],
+                'rate' => ['type' => 'float', 'required' => true, 'show_in_list' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'default' => 'percentage',
+                    'config' => ['options' => ['percentage' => 'Percentage', 'fixed' => 'Fixed']],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'compound' => ['type' => 'boolean', 'default' => false, 'filterable' => true],
+                'priority' => ['type' => 'integer', 'default' => 0],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // Tax Exemption Entity (Phase 4.1)
+        $this->entityRegistry->register('commerce_tax_exemption', [
+            'table_name' => 'commerce_tax_exemptions',
+            'model_class' => \VodoCommerce\Models\TaxExemption::class,
+            'labels' => ['singular' => 'Tax Exemption', 'plural' => 'Tax Exemptions'],
+            'icon' => 'shield',
+            'search_columns' => ['name', 'certificate_number'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text'],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'customer' => 'Customer',
+                        'product' => 'Product',
+                        'category' => 'Category',
+                        'customer_group' => 'Customer Group',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'entity_id' => ['type' => 'integer', 'required' => true],
+                'certificate_number' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'valid_from' => ['type' => 'datetime'],
+                'valid_until' => ['type' => 'datetime'],
+                'country_code' => ['type' => 'string'],
+                'state_code' => ['type' => 'string'],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -1558,6 +1768,13 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_affiliate_link', 'commerce_affiliate_commission',
                 'commerce_loyalty_point', 'commerce_loyalty_point_transaction',
                 'commerce_employee',
+                'commerce_order_note', 'commerce_order_fulfillment', 'commerce_order_fulfillment_item',
+                'commerce_order_refund', 'commerce_order_refund_item', 'commerce_order_timeline_event',
+                'commerce_order_status_history',
+                'commerce_shipping_zone', 'commerce_shipping_zone_location',
+                'commerce_shipping_method', 'commerce_shipping_rate',
+                'commerce_tax_zone', 'commerce_tax_zone_location',
+                'commerce_tax_rate', 'commerce_tax_exemption',
             ];
 
             foreach ($entities as $entity) {

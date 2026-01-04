@@ -23,7 +23,13 @@ use VodoCommerce\Models\ProductOption;
 use VodoCommerce\Models\ProductOptionTemplate;
 use VodoCommerce\Models\ProductOptionValue;
 use VodoCommerce\Models\ProductTag;
+use VodoCommerce\Models\ShippingMethod;
+use VodoCommerce\Models\ShippingRate;
+use VodoCommerce\Models\ShippingZone;
 use VodoCommerce\Models\Store;
+use VodoCommerce\Models\TaxExemption;
+use VodoCommerce\Models\TaxRate;
+use VodoCommerce\Models\TaxZone;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -61,6 +67,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 3: Order Management Extensions
         $this->seedOrders($store);
+
+        // Phase 4.1: Shipping & Tax Configuration
+        $this->seedShippingTax($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -712,5 +721,367 @@ class VodoCommerceSeeder extends Seeder
         }
 
         $this->command->info("  ✓ Seeded {$createdOrders} orders with items, notes, fulfillments, refunds, and timeline events");
+    }
+
+    protected function seedShippingTax(Store $store): void
+    {
+        // ========== SHIPPING ZONES ==========
+        $shippingZones = [
+            [
+                'name' => 'North America',
+                'description' => 'United States and Canada',
+                'priority' => 10,
+                'locations' => [
+                    ['country_code' => 'US', 'state_code' => null],
+                    ['country_code' => 'CA', 'state_code' => null],
+                ],
+            ],
+            [
+                'name' => 'Europe',
+                'description' => 'European Union countries',
+                'priority' => 20,
+                'locations' => [
+                    ['country_code' => 'GB', 'state_code' => null],
+                    ['country_code' => 'DE', 'state_code' => null],
+                    ['country_code' => 'FR', 'state_code' => null],
+                    ['country_code' => 'IT', 'state_code' => null],
+                    ['country_code' => 'ES', 'state_code' => null],
+                ],
+            ],
+            [
+                'name' => 'Asia Pacific',
+                'description' => 'Asia and Pacific regions',
+                'priority' => 30,
+                'locations' => [
+                    ['country_code' => 'AU', 'state_code' => null],
+                    ['country_code' => 'JP', 'state_code' => null],
+                    ['country_code' => 'CN', 'state_code' => null],
+                    ['country_code' => 'SG', 'state_code' => null],
+                ],
+            ],
+            [
+                'name' => 'US - California Express Zone',
+                'description' => 'Express shipping for California',
+                'priority' => 5,
+                'locations' => [
+                    ['country_code' => 'US', 'state_code' => 'CA', 'postal_code_pattern' => '^9[0-6]'],
+                ],
+            ],
+        ];
+
+        $createdShippingZones = [];
+        foreach ($shippingZones as $zoneData) {
+            $zone = ShippingZone::firstOrCreate(
+                ['store_id' => $store->id, 'name' => $zoneData['name']],
+                [
+                    'store_id' => $store->id,
+                    'name' => $zoneData['name'],
+                    'description' => $zoneData['description'],
+                    'priority' => $zoneData['priority'],
+                    'is_active' => true,
+                ]
+            );
+
+            // Add locations
+            foreach ($zoneData['locations'] as $locationData) {
+                $zone->locations()->firstOrCreate(
+                    [
+                        'country_code' => $locationData['country_code'],
+                        'state_code' => $locationData['state_code'] ?? null,
+                    ],
+                    array_merge($locationData, ['zone_id' => $zone->id])
+                );
+            }
+
+            $createdShippingZones[$zoneData['name']] = $zone;
+        }
+
+        $this->command->info('  ✓ Seeded ' . count($shippingZones) . ' shipping zones with locations');
+
+        // ========== SHIPPING METHODS ==========
+        $shippingMethods = [
+            [
+                'name' => 'Standard Shipping',
+                'code' => 'standard',
+                'description' => 'Standard delivery in 5-7 business days',
+                'calculation_type' => 'flat_rate',
+                'base_cost' => 9.99,
+                'min_delivery_days' => 5,
+                'max_delivery_days' => 7,
+                'min_order_amount' => null,
+                'max_order_amount' => null,
+            ],
+            [
+                'name' => 'Express Shipping',
+                'code' => 'express',
+                'description' => 'Fast delivery in 2-3 business days',
+                'calculation_type' => 'flat_rate',
+                'base_cost' => 19.99,
+                'min_delivery_days' => 2,
+                'max_delivery_days' => 3,
+                'min_order_amount' => null,
+                'max_order_amount' => null,
+            ],
+            [
+                'name' => 'Overnight Shipping',
+                'code' => 'overnight',
+                'description' => 'Next business day delivery',
+                'calculation_type' => 'weight_based',
+                'base_cost' => 29.99,
+                'min_delivery_days' => 1,
+                'max_delivery_days' => 1,
+                'min_order_amount' => null,
+                'max_order_amount' => null,
+            ],
+            [
+                'name' => 'Free Shipping',
+                'code' => 'free',
+                'description' => 'Free standard shipping on orders over $100',
+                'calculation_type' => 'flat_rate',
+                'base_cost' => 0.00,
+                'min_delivery_days' => 7,
+                'max_delivery_days' => 10,
+                'min_order_amount' => 100.00,
+                'max_order_amount' => null,
+            ],
+        ];
+
+        $createdShippingMethods = [];
+        foreach ($shippingMethods as $methodData) {
+            $method = ShippingMethod::firstOrCreate(
+                ['store_id' => $store->id, 'code' => $methodData['code']],
+                array_merge($methodData, [
+                    'store_id' => $store->id,
+                    'is_active' => true,
+                ])
+            );
+            $createdShippingMethods[$methodData['code']] = $method;
+        }
+
+        $this->command->info('  ✓ Seeded ' . count($shippingMethods) . ' shipping methods');
+
+        // ========== SHIPPING RATES ==========
+        $shippingRates = [
+            // Standard rates for North America
+            ['zone' => 'North America', 'method' => 'standard', 'rate' => 9.99, 'min_weight' => null, 'max_weight' => null],
+            ['zone' => 'North America', 'method' => 'express', 'rate' => 19.99, 'min_weight' => null, 'max_weight' => null],
+            ['zone' => 'North America', 'method' => 'overnight', 'rate' => 29.99, 'min_weight' => 0, 'max_weight' => 5, 'weight_rate' => 2.50],
+            ['zone' => 'North America', 'method' => 'overnight', 'rate' => 39.99, 'min_weight' => 5, 'max_weight' => 20, 'weight_rate' => 5.00],
+            ['zone' => 'North America', 'method' => 'free', 'rate' => 0.00, 'is_free' => true, 'free_threshold' => 100.00],
+
+            // Europe rates
+            ['zone' => 'Europe', 'method' => 'standard', 'rate' => 24.99, 'min_weight' => null, 'max_weight' => null],
+            ['zone' => 'Europe', 'method' => 'express', 'rate' => 49.99, 'min_weight' => null, 'max_weight' => null],
+
+            // Asia Pacific rates
+            ['zone' => 'Asia Pacific', 'method' => 'standard', 'rate' => 34.99, 'min_weight' => null, 'max_weight' => null],
+            ['zone' => 'Asia Pacific', 'method' => 'express', 'rate' => 69.99, 'min_weight' => null, 'max_weight' => null],
+
+            // California Express Zone
+            ['zone' => 'US - California Express Zone', 'method' => 'express', 'rate' => 14.99, 'min_weight' => null, 'max_weight' => null],
+            ['zone' => 'US - California Express Zone', 'method' => 'overnight', 'rate' => 19.99, 'min_weight' => null, 'max_weight' => null],
+        ];
+
+        $createdRates = 0;
+        foreach ($shippingRates as $rateData) {
+            $zone = $createdShippingZones[$rateData['zone']] ?? null;
+            $method = $createdShippingMethods[$rateData['method']] ?? null;
+
+            if ($zone && $method) {
+                ShippingRate::firstOrCreate(
+                    [
+                        'shipping_zone_id' => $zone->id,
+                        'shipping_method_id' => $method->id,
+                        'min_weight' => $rateData['min_weight'] ?? null,
+                        'max_weight' => $rateData['max_weight'] ?? null,
+                    ],
+                    [
+                        'shipping_zone_id' => $zone->id,
+                        'shipping_method_id' => $method->id,
+                        'rate' => $rateData['rate'],
+                        'min_weight' => $rateData['min_weight'] ?? null,
+                        'max_weight' => $rateData['max_weight'] ?? null,
+                        'min_price' => $rateData['min_price'] ?? null,
+                        'max_price' => $rateData['max_price'] ?? null,
+                        'per_item_rate' => $rateData['per_item_rate'] ?? null,
+                        'weight_rate' => $rateData['weight_rate'] ?? null,
+                        'is_free_shipping' => $rateData['is_free'] ?? false,
+                        'free_shipping_threshold' => $rateData['free_threshold'] ?? null,
+                    ]
+                );
+                $createdRates++;
+            }
+        }
+
+        $this->command->info("  ✓ Seeded {$createdRates} shipping rates");
+
+        // ========== TAX ZONES ==========
+        $taxZones = [
+            [
+                'name' => 'United States',
+                'description' => 'US Sales Tax',
+                'priority' => 10,
+                'locations' => [
+                    ['country_code' => 'US', 'state_code' => null],
+                ],
+            ],
+            [
+                'name' => 'California',
+                'description' => 'California state tax',
+                'priority' => 5,
+                'locations' => [
+                    ['country_code' => 'US', 'state_code' => 'CA'],
+                ],
+            ],
+            [
+                'name' => 'New York',
+                'description' => 'New York state tax',
+                'priority' => 5,
+                'locations' => [
+                    ['country_code' => 'US', 'state_code' => 'NY'],
+                ],
+            ],
+            [
+                'name' => 'Canada',
+                'description' => 'Canadian taxes (GST/PST)',
+                'priority' => 10,
+                'locations' => [
+                    ['country_code' => 'CA', 'state_code' => null],
+                ],
+            ],
+            [
+                'name' => 'European Union',
+                'description' => 'EU VAT',
+                'priority' => 10,
+                'locations' => [
+                    ['country_code' => 'GB', 'state_code' => null],
+                    ['country_code' => 'DE', 'state_code' => null],
+                    ['country_code' => 'FR', 'state_code' => null],
+                ],
+            ],
+        ];
+
+        $createdTaxZones = [];
+        foreach ($taxZones as $zoneData) {
+            $zone = TaxZone::firstOrCreate(
+                ['store_id' => $store->id, 'name' => $zoneData['name']],
+                [
+                    'store_id' => $store->id,
+                    'name' => $zoneData['name'],
+                    'description' => $zoneData['description'],
+                    'priority' => $zoneData['priority'],
+                    'is_active' => true,
+                ]
+            );
+
+            // Add locations
+            foreach ($zoneData['locations'] as $locationData) {
+                $zone->locations()->firstOrCreate(
+                    [
+                        'country_code' => $locationData['country_code'],
+                        'state_code' => $locationData['state_code'] ?? null,
+                    ],
+                    array_merge($locationData, ['zone_id' => $zone->id])
+                );
+            }
+
+            $createdTaxZones[$zoneData['name']] = $zone;
+        }
+
+        $this->command->info('  ✓ Seeded ' . count($taxZones) . ' tax zones with locations');
+
+        // ========== TAX RATES ==========
+        $taxRates = [
+            // US Federal - Base rate
+            ['zone' => 'United States', 'name' => 'US Sales Tax', 'code' => 'US_SALES', 'rate' => 0.00, 'type' => 'percentage', 'compound' => false, 'priority' => 1],
+
+            // California
+            ['zone' => 'California', 'name' => 'CA State Tax', 'code' => 'CA_STATE', 'rate' => 7.25, 'type' => 'percentage', 'compound' => false, 'priority' => 1],
+            ['zone' => 'California', 'name' => 'CA Local Tax', 'code' => 'CA_LOCAL', 'rate' => 1.00, 'type' => 'percentage', 'compound' => false, 'priority' => 2],
+
+            // New York
+            ['zone' => 'New York', 'name' => 'NY State Tax', 'code' => 'NY_STATE', 'rate' => 4.00, 'type' => 'percentage', 'compound' => false, 'priority' => 1],
+            ['zone' => 'New York', 'name' => 'NY Local Tax', 'code' => 'NY_LOCAL', 'rate' => 4.875, 'type' => 'percentage', 'compound' => false, 'priority' => 2],
+
+            // Canada
+            ['zone' => 'Canada', 'name' => 'GST (Goods and Services Tax)', 'code' => 'CA_GST', 'rate' => 5.00, 'type' => 'percentage', 'compound' => false, 'priority' => 1],
+            ['zone' => 'Canada', 'name' => 'PST (Provincial Sales Tax)', 'code' => 'CA_PST', 'rate' => 7.00, 'type' => 'percentage', 'compound' => true, 'priority' => 2],
+
+            // EU VAT
+            ['zone' => 'European Union', 'name' => 'VAT (Value Added Tax)', 'code' => 'EU_VAT', 'rate' => 20.00, 'type' => 'percentage', 'compound' => false, 'priority' => 1],
+        ];
+
+        $createdTaxRates = 0;
+        foreach ($taxRates as $rateData) {
+            $zone = $createdTaxZones[$rateData['zone']] ?? null;
+
+            if ($zone) {
+                TaxRate::firstOrCreate(
+                    ['tax_zone_id' => $zone->id, 'code' => $rateData['code']],
+                    [
+                        'tax_zone_id' => $zone->id,
+                        'name' => $rateData['name'],
+                        'code' => $rateData['code'],
+                        'rate' => $rateData['rate'],
+                        'type' => $rateData['type'],
+                        'compound' => $rateData['compound'],
+                        'priority' => $rateData['priority'],
+                        'is_active' => true,
+                    ]
+                );
+                $createdTaxRates++;
+            }
+        }
+
+        $this->command->info("  ✓ Seeded {$createdTaxRates} tax rates");
+
+        // ========== TAX EXEMPTIONS ==========
+        $customers = Customer::where('store_id', $store->id)->get();
+        $customerGroups = CustomerGroup::where('store_id', $store->id)->get();
+
+        if ($customers->isNotEmpty()) {
+            // Customer-specific exemption
+            $vipCustomer = $customers->first();
+            TaxExemption::firstOrCreate(
+                ['store_id' => $store->id, 'type' => 'customer', 'entity_id' => $vipCustomer->id],
+                [
+                    'store_id' => $store->id,
+                    'name' => 'VIP Customer Tax Exemption',
+                    'description' => 'Tax exemption for VIP customer',
+                    'type' => 'customer',
+                    'entity_id' => $vipCustomer->id,
+                    'certificate_number' => 'CERT-VIP-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                    'valid_from' => now(),
+                    'valid_until' => now()->addYear(),
+                    'country_code' => 'US',
+                    'state_code' => 'CA',
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        if ($customerGroups->isNotEmpty()) {
+            // Customer group exemption
+            $wholesaleGroup = $customerGroups->where('slug', 'wholesale')->first();
+            if ($wholesaleGroup) {
+                TaxExemption::firstOrCreate(
+                    ['store_id' => $store->id, 'type' => 'customer_group', 'entity_id' => $wholesaleGroup->id],
+                    [
+                        'store_id' => $store->id,
+                        'name' => 'Wholesale Tax Exemption',
+                        'description' => 'Tax exemption for wholesale customers',
+                        'type' => 'customer_group',
+                        'entity_id' => $wholesaleGroup->id,
+                        'certificate_number' => 'CERT-WHOLESALE-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                        'valid_from' => now(),
+                        'valid_until' => null, // Permanent
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+
+        $exemptionsCount = TaxExemption::where('store_id', $store->id)->count();
+        $this->command->info("  ✓ Seeded {$exemptionsCount} tax exemptions");
     }
 }
