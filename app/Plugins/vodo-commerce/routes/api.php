@@ -129,6 +129,10 @@ use VodoCommerce\Http\Controllers\Api\V2\CustomerWalletController;
 use VodoCommerce\Http\Controllers\Api\V2\DigitalProductController;
 use VodoCommerce\Http\Controllers\Api\V2\EmployeeController;
 use VodoCommerce\Http\Controllers\Api\V2\LoyaltyPointController;
+use VodoCommerce\Http\Controllers\Api\V2\OrderFulfillmentController;
+use VodoCommerce\Http\Controllers\Api\V2\OrderManagementController;
+use VodoCommerce\Http\Controllers\Api\V2\OrderNoteController;
+use VodoCommerce\Http\Controllers\Api\V2\OrderRefundController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductImageController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductOptionController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductTagController;
@@ -196,4 +200,39 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('customers/{customer}/ban', [CustomerController::class, 'ban'])->name('customers.ban');
     Route::post('customers/{customer}/unban', [CustomerController::class, 'unban'])->name('customers.unban');
     Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
+
+    // =========================================================================
+    // Phase 3: Order Management Extensions
+    // =========================================================================
+
+    // Order Notes
+    Route::get('orders/{order}/notes', [OrderNoteController::class, 'index'])->name('orders.notes.index');
+    Route::post('orders/{order}/notes', [OrderNoteController::class, 'store'])->name('orders.notes.store');
+    Route::put('notes/{note}', [OrderNoteController::class, 'update'])->name('notes.update');
+    Route::delete('notes/{note}', [OrderNoteController::class, 'destroy'])->name('notes.destroy');
+
+    // Order Fulfillments
+    Route::get('orders/{order}/fulfillments', [OrderFulfillmentController::class, 'index'])->name('orders.fulfillments.index');
+    Route::post('orders/{order}/fulfillments', [OrderFulfillmentController::class, 'store'])->name('orders.fulfillments.store');
+    Route::get('fulfillments/{fulfillment}', [OrderFulfillmentController::class, 'show'])->name('fulfillments.show');
+    Route::put('fulfillments/{fulfillment}', [OrderFulfillmentController::class, 'update'])->name('fulfillments.update');
+    Route::post('fulfillments/{fulfillment}/ship', [OrderFulfillmentController::class, 'ship'])->name('fulfillments.ship');
+    Route::post('fulfillments/{fulfillment}/deliver', [OrderFulfillmentController::class, 'markAsDelivered'])->name('fulfillments.deliver');
+    Route::delete('fulfillments/{fulfillment}', [OrderFulfillmentController::class, 'destroy'])->name('fulfillments.destroy');
+
+    // Order Refunds
+    Route::get('orders/{order}/refunds', [OrderRefundController::class, 'index'])->name('orders.refunds.index');
+    Route::post('orders/{order}/refunds', [OrderRefundController::class, 'store'])->name('orders.refunds.store');
+    Route::get('refunds/{refund}', [OrderRefundController::class, 'show'])->name('refunds.show');
+    Route::post('refunds/{refund}/approve', [OrderRefundController::class, 'approve'])->name('refunds.approve');
+    Route::post('refunds/{refund}/reject', [OrderRefundController::class, 'reject'])->name('refunds.reject');
+    Route::post('refunds/{refund}/process', [OrderRefundController::class, 'process'])->name('refunds.process');
+    Route::delete('refunds/{refund}', [OrderRefundController::class, 'destroy'])->name('refunds.destroy');
+
+    // Order Management
+    Route::get('orders/{order}/timeline', [OrderManagementController::class, 'timeline'])->name('orders.timeline');
+    Route::post('orders/{order}/cancel', [OrderManagementController::class, 'cancel'])->name('orders.cancel');
+    Route::post('orders/{order}/status', [OrderManagementController::class, 'updateStatus'])->name('orders.status');
+    Route::post('orders/export', [OrderManagementController::class, 'export'])->name('orders.export');
+    Route::post('orders/bulk-action', [OrderManagementController::class, 'bulkAction'])->name('orders.bulk-action');
 });
