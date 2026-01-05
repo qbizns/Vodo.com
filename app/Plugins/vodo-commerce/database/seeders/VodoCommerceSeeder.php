@@ -10,6 +10,7 @@ use VodoCommerce\Models\Brand;
 use VodoCommerce\Models\Customer;
 use VodoCommerce\Models\CustomerGroup;
 use VodoCommerce\Models\DigitalProductCode;
+use VodoCommerce\Models\Discount;
 use VodoCommerce\Models\Employee;
 use VodoCommerce\Models\Order;
 use VodoCommerce\Models\OrderFulfillment;
@@ -23,6 +24,7 @@ use VodoCommerce\Models\ProductOption;
 use VodoCommerce\Models\ProductOptionTemplate;
 use VodoCommerce\Models\ProductOptionValue;
 use VodoCommerce\Models\ProductTag;
+use VodoCommerce\Models\PromotionRule;
 use VodoCommerce\Models\ShippingMethod;
 use VodoCommerce\Models\ShippingRate;
 use VodoCommerce\Models\ShippingZone;
@@ -70,6 +72,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 4.1: Shipping & Tax Configuration
         $this->seedShippingTax($store);
+
+        // Phase 4.2: Coupons & Promotions
+        $this->seedPromotions($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -1083,5 +1088,286 @@ class VodoCommerceSeeder extends Seeder
 
         $exemptionsCount = TaxExemption::where('store_id', $store->id)->count();
         $this->command->info("  ✓ Seeded {$exemptionsCount} tax exemptions");
+    }
+
+    protected function seedPromotions(Store $store): void
+    {
+        // Get products for product-specific promotions
+        $products = Product::where('store_id', $store->id)->get();
+
+        // ========== STANDARD DISCOUNTS ==========
+        $standardDiscounts = [
+            [
+                'code' => 'SAVE10',
+                'name' => '10% Off Any Order',
+                'description' => 'Get 10% off your entire order',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 10,
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(30),
+            ],
+            [
+                'code' => 'FREESHIP',
+                'name' => 'Free Shipping',
+                'description' => 'Free shipping on orders over $50',
+                'type' => Discount::TYPE_FREE_SHIPPING,
+                'value' => 0,
+                'minimum_order' => 50.00,
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(60),
+            ],
+            [
+                'code' => 'FLASH20',
+                'name' => '20% Flash Sale',
+                'description' => 'Limited time 20% discount',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 20,
+                'usage_limit' => 100,
+                'per_customer_limit' => 1,
+                'is_active' => true,
+                'starts_at' => now()->subDays(1),
+                'expires_at' => now()->addDays(3),
+            ],
+        ];
+
+        foreach ($standardDiscounts as $discountData) {
+            Discount::firstOrCreate(
+                ['store_id' => $store->id, 'code' => $discountData['code']],
+                array_merge($discountData, ['store_id' => $store->id])
+            );
+        }
+
+        $this->command->info('  ✓ Seeded ' . count($standardDiscounts) . ' standard discounts');
+
+        // ========== BUY X GET Y PROMOTIONS ==========
+        $buyXGetYPromotion = Discount::firstOrCreate(
+            ['store_id' => $store->id, 'code' => 'BUY2GET1'],
+            [
+                'store_id' => $store->id,
+                'code' => 'BUY2GET1',
+                'name' => 'Buy 2 Get 1 Free',
+                'description' => 'Buy any 2 items and get the cheapest one free',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 100,
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(90),
+                'promotion_type' => Discount::PROMOTION_BUY_X_GET_Y,
+                'target_config' => [
+                    'buy_quantity' => 2,
+                    'get_quantity' => 1,
+                    'get_discount_percent' => 100,
+                    'max_applications' => null,
+                ],
+                'is_automatic' => false,
+                'display_message' => 'Buy 2, Get 1 Free! Applied at checkout.',
+                'badge_text' => 'BOGO',
+                'badge_color' => '#ff6b6b',
+            ]
+        );
+
+        $this->command->info('  ✓ Seeded Buy X Get Y promotion');
+
+        // ========== TIERED DISCOUNT PROMOTIONS ==========
+        $tieredPromotion = Discount::firstOrCreate(
+            ['store_id' => $store->id, 'code' => 'SPENDMORE'],
+            [
+                'store_id' => $store->id,
+                'code' => 'SPENDMORE',
+                'name' => 'Spend More Save More',
+                'description' => 'Save more as you spend more',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 0, // Calculated by tiers
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(90),
+                'promotion_type' => Discount::PROMOTION_TIERED,
+                'target_config' => [
+                    'tiers' => [
+                        ['threshold' => 50, 'discount_percent' => 5],
+                        ['threshold' => 100, 'discount_percent' => 10],
+                        ['threshold' => 200, 'discount_percent' => 15],
+                        ['threshold' => 500, 'discount_percent' => 20],
+                    ],
+                ],
+                'is_automatic' => true,
+                'display_message' => 'Spend $50+ save 5%, $100+ save 10%, $200+ save 15%, $500+ save 20%!',
+                'badge_text' => 'Save More',
+                'badge_color' => '#4caf50',
+            ]
+        );
+
+        // Add promotion rules for tiered discount
+        PromotionRule::firstOrCreate(
+            [
+                'store_id' => $store->id,
+                'discount_id' => $tieredPromotion->id,
+                'rule_type' => PromotionRule::RULE_CART_SUBTOTAL,
+            ],
+            [
+                'store_id' => $store->id,
+                'discount_id' => $tieredPromotion->id,
+                'rule_type' => PromotionRule::RULE_CART_SUBTOTAL,
+                'operator' => PromotionRule::OPERATOR_GREATER_THAN_OR_EQUAL,
+                'value' => '50',
+                'position' => 0,
+            ]
+        );
+
+        $this->command->info('  ✓ Seeded tiered discount promotion');
+
+        // ========== BUNDLE DISCOUNT ==========
+        if ($products->count() >= 3) {
+            $bundleProducts = $products->take(3)->pluck('id')->toArray();
+
+            Discount::firstOrCreate(
+                ['store_id' => $store->id, 'code' => 'BUNDLE3'],
+                [
+                    'store_id' => $store->id,
+                    'code' => 'BUNDLE3',
+                    'name' => 'Bundle & Save',
+                    'description' => 'Buy these 3 products together and save 25%',
+                    'type' => Discount::TYPE_PERCENTAGE,
+                    'value' => 25,
+                    'is_active' => true,
+                    'starts_at' => now()->subDays(7),
+                    'expires_at' => now()->addDays(90),
+                    'promotion_type' => Discount::PROMOTION_BUNDLE,
+                    'applies_to' => Discount::APPLIES_TO_SPECIFIC_PRODUCTS,
+                    'included_product_ids' => $bundleProducts,
+                    'target_config' => [
+                        'required_products' => $bundleProducts,
+                    ],
+                    'is_automatic' => true,
+                    'display_message' => 'Buy all 3 products and save 25%!',
+                    'badge_text' => 'Bundle Deal',
+                    'badge_color' => '#9c27b0',
+                ]
+            );
+
+            $this->command->info('  ✓ Seeded bundle discount promotion');
+        }
+
+        // ========== FREE GIFT PROMOTION ==========
+        if ($products->count() >= 1) {
+            $freeGiftProduct = $products->first()->id;
+
+            Discount::firstOrCreate(
+                ['store_id' => $store->id, 'code' => 'FREEGIFT100'],
+                [
+                    'store_id' => $store->id,
+                    'code' => 'FREEGIFT100',
+                    'name' => 'Free Gift on Orders $100+',
+                    'description' => 'Spend $100 and get a free gift',
+                    'type' => Discount::TYPE_PERCENTAGE,
+                    'value' => 0,
+                    'minimum_order' => 100.00,
+                    'is_active' => true,
+                    'starts_at' => now()->subDays(7),
+                    'expires_at' => now()->addDays(90),
+                    'promotion_type' => Discount::PROMOTION_FREE_GIFT,
+                    'target_config' => [
+                        'free_product_ids' => [$freeGiftProduct],
+                        'minimum_purchase' => 100,
+                    ],
+                    'is_automatic' => true,
+                    'display_message' => 'Free gift with orders over $100!',
+                    'badge_text' => 'Free Gift',
+                    'badge_color' => '#ff9800',
+                ]
+            );
+
+            $this->command->info('  ✓ Seeded free gift promotion');
+        }
+
+        // ========== FIRST ORDER DISCOUNT ==========
+        Discount::firstOrCreate(
+            ['store_id' => $store->id, 'code' => 'WELCOME15'],
+            [
+                'store_id' => $store->id,
+                'code' => 'WELCOME15',
+                'name' => 'Welcome Discount',
+                'description' => '15% off your first order',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 15,
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(365),
+                'first_order_only' => true,
+                'customer_eligibility' => Discount::ELIGIBILITY_NEW_CUSTOMERS,
+                'per_customer_limit' => 1,
+                'display_message' => 'Welcome! Enjoy 15% off your first order.',
+                'badge_text' => 'New Customer',
+                'badge_color' => '#2196f3',
+            ]
+        );
+
+        $this->command->info('  ✓ Seeded first order discount');
+
+        // ========== STACKABLE DISCOUNTS ==========
+        Discount::firstOrCreate(
+            ['store_id' => $store->id, 'code' => 'EXTRA5'],
+            [
+                'store_id' => $store->id,
+                'code' => 'EXTRA5',
+                'name' => 'Extra 5% Stackable',
+                'description' => 'Extra 5% that can be combined with other discounts',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 5,
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(30),
+                'is_stackable' => true,
+                'priority' => 10, // Applied last
+                'display_message' => 'Extra 5% discount applied!',
+            ]
+        );
+
+        $this->command->info('  ✓ Seeded stackable discount');
+
+        // ========== WEEKEND AUTOMATIC DISCOUNT ==========
+        $weekendDiscount = Discount::firstOrCreate(
+            ['store_id' => $store->id, 'code' => 'WEEKEND'],
+            [
+                'store_id' => $store->id,
+                'code' => 'WEEKEND',
+                'name' => 'Weekend Special',
+                'description' => 'Automatic 10% off on weekends',
+                'type' => Discount::TYPE_PERCENTAGE,
+                'value' => 10,
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(90),
+                'is_automatic' => true,
+                'minimum_order' => 25.00,
+                'display_message' => 'Weekend Special: 10% off orders $25+',
+                'badge_text' => 'Weekend',
+                'badge_color' => '#673ab7',
+            ]
+        );
+
+        // Add day of week rule (Saturday = 6, Sunday = 0)
+        PromotionRule::firstOrCreate(
+            [
+                'store_id' => $store->id,
+                'discount_id' => $weekendDiscount->id,
+                'rule_type' => PromotionRule::RULE_DAY_OF_WEEK,
+            ],
+            [
+                'store_id' => $store->id,
+                'discount_id' => $weekendDiscount->id,
+                'rule_type' => PromotionRule::RULE_DAY_OF_WEEK,
+                'operator' => PromotionRule::OPERATOR_IN,
+                'value' => '0,6', // Sunday, Saturday
+                'position' => 0,
+            ]
+        );
+
+        $this->command->info('  ✓ Seeded weekend automatic discount');
+
+        $totalPromotions = Discount::where('store_id', $store->id)->count();
+        $this->command->info("✓ Total promotions seeded: {$totalPromotions}");
     }
 }
