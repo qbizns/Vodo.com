@@ -123,6 +123,7 @@ Route::prefix('v1/commerce/plugins/review')->name('v1.commerce.plugins.review.')
 
 use VodoCommerce\Http\Controllers\Api\V2\AffiliateController;
 use VodoCommerce\Http\Controllers\Api\V2\BrandController;
+use VodoCommerce\Http\Controllers\Api\V2\CouponController;
 use VodoCommerce\Http\Controllers\Api\V2\CustomerController;
 use VodoCommerce\Http\Controllers\Api\V2\CustomerGroupController;
 use VodoCommerce\Http\Controllers\Api\V2\CustomerWalletController;
@@ -287,4 +288,14 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('tax-exemptions', [TaxRateController::class, 'storeExemption'])->name('tax-exemptions.store');
     Route::get('tax-exemptions/{exemption}', [TaxRateController::class, 'showExemption'])->name('tax-exemptions.show');
     Route::delete('tax-exemptions/{exemption}', [TaxRateController::class, 'destroyExemption'])->name('tax-exemptions.destroy');
+
+    // =========================================================================
+    // Phase 4.2: Coupons & Promotions
+    // =========================================================================
+
+    // Coupon Validation and Application
+    Route::post('coupons/validate', [CouponController::class, 'validate'])->name('coupons.validate');
+    Route::post('coupons/apply', [CouponController::class, 'apply'])->name('coupons.apply');
+    Route::post('coupons/remove', [CouponController::class, 'remove'])->name('coupons.remove');
+    Route::get('carts/{cart}/automatic-discounts', [CouponController::class, 'automatic'])->name('carts.automatic-discounts');
 });

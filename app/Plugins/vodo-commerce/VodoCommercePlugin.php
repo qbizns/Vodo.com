@@ -1329,6 +1329,54 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Phase 4.2: Coupon Usage Entity
+        $this->entityRegistry->register('commerce_coupon_usage', [
+            'table_name' => 'commerce_coupon_usages',
+            'model_class' => \VodoCommerce\Models\CouponUsage::class,
+            'labels' => ['singular' => 'Coupon Usage', 'plural' => 'Coupon Usages'],
+            'icon' => 'receipt',
+            'show_in_menu' => false,
+            'fields' => [
+                'discount_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_discount', 'display_field' => 'code'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'email'],
+                ],
+                'order_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_order', 'display_field' => 'id'],
+                ],
+                'discount_code' => ['type' => 'string', 'show_in_list' => true],
+                'discount_amount' => ['type' => 'money', 'show_in_list' => true],
+                'order_subtotal' => ['type' => 'money'],
+            ],
+        ], self::SLUG);
+
+        // Phase 4.2: Promotion Rule Entity
+        $this->entityRegistry->register('commerce_promotion_rule', [
+            'table_name' => 'commerce_promotion_rules',
+            'model_class' => \VodoCommerce\Models\PromotionRule::class,
+            'labels' => ['singular' => 'Promotion Rule', 'plural' => 'Promotion Rules'],
+            'icon' => 'filter',
+            'show_in_menu' => false,
+            'fields' => [
+                'discount_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_discount', 'display_field' => 'code'],
+                    'required' => true,
+                ],
+                'rule_type' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'operator' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'value' => ['type' => 'string', 'required' => true],
+                'metadata' => ['type' => 'json'],
+                'position' => ['type' => 'integer', 'default' => 0],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -1775,6 +1823,7 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_shipping_method', 'commerce_shipping_rate',
                 'commerce_tax_zone', 'commerce_tax_zone_location',
                 'commerce_tax_rate', 'commerce_tax_exemption',
+                'commerce_coupon_usage', 'commerce_promotion_rule',
             ];
 
             foreach ($entities as $entity) {
