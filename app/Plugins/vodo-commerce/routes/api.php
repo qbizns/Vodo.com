@@ -141,6 +141,8 @@ use VodoCommerce\Http\Controllers\Api\V2\ShippingMethodController;
 use VodoCommerce\Http\Controllers\Api\V2\ShippingZoneController;
 use VodoCommerce\Http\Controllers\Api\V2\TaxRateController;
 use VodoCommerce\Http\Controllers\Api\V2\TaxZoneController;
+use VodoCommerce\Http\Controllers\Api\V2\PaymentMethodController;
+use VodoCommerce\Http\Controllers\Api\V2\TransactionController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -298,4 +300,27 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('coupons/apply', [CouponController::class, 'apply'])->name('coupons.apply');
     Route::post('coupons/remove', [CouponController::class, 'remove'])->name('coupons.remove');
     Route::get('carts/{cart}/automatic-discounts', [CouponController::class, 'automatic'])->name('carts.automatic-discounts');
+
+    // =========================================================================
+    // Phase 5: Financial Management - Payment Methods & Transactions
+    // =========================================================================
+
+    // Payment Methods
+    Route::get('payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
+    Route::get('payment-methods/available', [PaymentMethodController::class, 'available'])->name('payment-methods.available');
+    Route::get('payment-methods/{id}', [PaymentMethodController::class, 'show'])->name('payment-methods.show');
+    Route::get('payment-methods/{id}/banks', [PaymentMethodController::class, 'banks'])->name('payment-methods.banks');
+    Route::post('payment-methods/{id}/calculate-fees', [PaymentMethodController::class, 'calculateFees'])->name('payment-methods.calculate-fees');
+    Route::post('payment-methods/{id}/test-connection', [PaymentMethodController::class, 'testConnection'])->name('payment-methods.test-connection');
+
+    // Transactions
+    Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('transactions/statistics', [TransactionController::class, 'statistics'])->name('transactions.statistics');
+    Route::get('transactions/revenue-by-payment-method', [TransactionController::class, 'revenueByPaymentMethod'])->name('transactions.revenue-by-payment-method');
+    Route::get('transactions/{id}', [TransactionController::class, 'show'])->name('transactions.show');
+    Route::put('transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
+    Route::post('transactions/{id}/process', [TransactionController::class, 'process'])->name('transactions.process');
+    Route::post('transactions/{id}/fail', [TransactionController::class, 'fail'])->name('transactions.fail');
+    Route::post('transactions/{id}/refund', [TransactionController::class, 'createRefund'])->name('transactions.refund');
+    Route::post('transactions/{id}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
 });

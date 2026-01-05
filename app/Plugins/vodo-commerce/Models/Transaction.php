@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use VodoCommerce\Database\Factories\TransactionFactory;
 use VodoCommerce\Traits\BelongsToStore;
 
 class Transaction extends Model
@@ -17,6 +18,14 @@ class Transaction extends Model
     use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_transactions';
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): TransactionFactory
+    {
+        return TransactionFactory::new();
+    }
 
     // Transaction Types
     public const TYPE_PAYMENT = 'payment';

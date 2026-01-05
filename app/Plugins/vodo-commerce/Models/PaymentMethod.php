@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use VodoCommerce\Database\Factories\PaymentMethodFactory;
 use VodoCommerce\Traits\BelongsToStore;
 
 class PaymentMethod extends Model
@@ -15,6 +16,14 @@ class PaymentMethod extends Model
     use BelongsToStore, HasFactory, SoftDeletes;
 
     protected $table = 'commerce_payment_methods';
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): PaymentMethodFactory
+    {
+        return PaymentMethodFactory::new();
+    }
 
     // Payment Method Types
     public const TYPE_ONLINE = 'online';
