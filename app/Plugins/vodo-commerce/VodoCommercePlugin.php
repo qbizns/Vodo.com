@@ -1503,6 +1503,64 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Cart Entity
+        $this->entityRegistry->register('commerce_cart', [
+            'table_name' => 'commerce_carts',
+            'model_class' => \VodoCommerce\Models\Cart::class,
+            'labels' => ['singular' => 'Shopping Cart', 'plural' => 'Shopping Carts'],
+            'icon' => 'shopping-cart',
+            'search_columns' => ['session_id', 'customer_email'],
+            'fields' => [
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'email'],
+                ],
+                'session_id' => ['type' => 'string', 'searchable' => true],
+                'currency' => ['type' => 'string', 'default' => 'USD', 'filterable' => true],
+                'subtotal' => ['type' => 'money', 'default' => 0, 'show_in_list' => true],
+                'discount_total' => ['type' => 'money', 'default' => 0],
+                'shipping_total' => ['type' => 'money', 'default' => 0],
+                'tax_total' => ['type' => 'money', 'default' => 0],
+                'total' => ['type' => 'money', 'default' => 0, 'show_in_list' => true],
+                'discount_codes' => ['type' => 'json'],
+                'shipping_method' => ['type' => 'string'],
+                'billing_address' => ['type' => 'json'],
+                'shipping_address' => ['type' => 'json'],
+                'notes' => ['type' => 'text'],
+                'meta' => ['type' => 'json'],
+                'expires_at' => ['type' => 'datetime', 'filterable' => true],
+            ],
+        ], self::SLUG);
+
+        // Cart Item Entity
+        $this->entityRegistry->register('commerce_cart_item', [
+            'table_name' => 'commerce_cart_items',
+            'model_class' => \VodoCommerce\Models\CartItem::class,
+            'labels' => ['singular' => 'Cart Item', 'plural' => 'Cart Items'],
+            'icon' => 'shopping-bag',
+            'show_in_menu' => false,
+            'fields' => [
+                'cart_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_cart'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity' => ['type' => 'integer', 'required' => true, 'default' => 1],
+                'unit_price' => ['type' => 'money', 'required' => true],
+                'options' => ['type' => 'json'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -1951,6 +2009,7 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_tax_rate', 'commerce_tax_exemption',
                 'commerce_coupon_usage', 'commerce_promotion_rule',
                 'commerce_payment_method', 'commerce_transaction',
+                'commerce_cart', 'commerce_cart_item',
             ];
 
             foreach ($entities as $entity) {

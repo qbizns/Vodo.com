@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace VodoCommerce\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 use VodoCommerce\Models\Affiliate;
 use VodoCommerce\Models\Brand;
+use VodoCommerce\Models\Cart;
+use VodoCommerce\Models\CartItem;
 use VodoCommerce\Models\Customer;
 use VodoCommerce\Models\CustomerGroup;
 use VodoCommerce\Models\DigitalProductCode;
@@ -80,6 +83,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 5: Financial Management - Payment Methods & Transactions
         $this->seedPaymentMethodsAndTransactions($store);
+
+        // Phase 6: Cart & Checkout
+        $this->seedCarts($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -1642,5 +1648,172 @@ class VodoCommerceSeeder extends Seeder
 
         $totalTransactions = Transaction::where('store_id', $store->id)->count();
         $this->command->info("  ✓ Seeded {$totalTransactions} transactions (including payments and refunds)");
+    }
+
+    protected function seedCarts(Store $store): void
+    {
+        $products = Product::where('store_id', $store->id)->get();
+        $customers = Customer::where('store_id', $store->id)->get();
+        $discounts = Discount::where('store_id', $store->id)->where('is_active', true)->get();
+
+        if ($products->isEmpty()) {
+            $this->command->warn('  ⚠ Skipping cart seeding - no products found');
+            return;
+        }
+
+        $cartsData = [
+            // Active cart with guest user
+            [
+                'customer_id' => null,
+                'session_id' => Str::uuid()->toString(),
+                'with_items' => 2,
+                'with_addresses' => false,
+                'with_discount' => false,
+                'with_shipping' => false,
+            ],
+            // Active cart with authenticated user, no addresses
+            [
+                'customer_id' => $customers->first()?->id,
+                'session_id' => null,
+                'with_items' => 3,
+                'with_addresses' => false,
+                'with_discount' => false,
+                'with_shipping' => false,
+            ],
+            // Cart with addresses ready for checkout
+            [
+                'customer_id' => $customers->skip(1)->first()?->id,
+                'session_id' => null,
+                'with_items' => 4,
+                'with_addresses' => true,
+                'with_discount' => true,
+                'with_shipping' => true,
+            ],
+            // Abandoned cart (guest)
+            [
+                'customer_id' => null,
+                'session_id' => Str::uuid()->toString(),
+                'with_items' => 1,
+                'with_addresses' => false,
+                'with_discount' => false,
+                'with_shipping' => false,
+                'abandoned' => true,
+            ],
+            // Abandoned cart (authenticated)
+            [
+                'customer_id' => $customers->skip(2)->first()?->id,
+                'session_id' => null,
+                'with_items' => 2,
+                'with_addresses' => true,
+                'with_discount' => true,
+                'with_shipping' => false,
+                'abandoned' => true,
+            ],
+            // Expired cart
+            [
+                'customer_id' => null,
+                'session_id' => Str::uuid()->toString(),
+                'with_items' => 1,
+                'with_addresses' => false,
+                'with_discount' => false,
+                'with_shipping' => false,
+                'expired' => true,
+            ],
+        ];
+
+        $createdCarts = 0;
+
+        foreach ($cartsData as $cartData) {
+            // Create cart
+            $cart = Cart::create([
+                'store_id' => $store->id,
+                'customer_id' => $cartData['customer_id'],
+                'session_id' => $cartData['session_id'],
+                'currency' => 'USD',
+                'subtotal' => 0,
+                'discount_total' => 0,
+                'shipping_total' => 0,
+                'tax_total' => 0,
+                'total' => 0,
+                'expires_at' => isset($cartData['expired']) && $cartData['expired']
+                    ? now()->subDays(2)
+                    : now()->addDays(7),
+                'updated_at' => isset($cartData['abandoned']) && $cartData['abandoned']
+                    ? now()->subHours(25)
+                    : now(),
+            ]);
+
+            // Add items to cart
+            $subtotal = 0;
+            for ($i = 0; $i < $cartData['with_items']; $i++) {
+                $product = $products->random();
+                $quantity = rand(1, 3);
+                $price = (float) $product->price;
+                $lineTotal = $price * $quantity;
+                $subtotal += $lineTotal;
+
+                CartItem::create([
+                    'cart_id' => $cart->id,
+                    'product_id' => $product->id,
+                    'variant_id' => null,
+                    'quantity' => $quantity,
+                    'unit_price' => $price,
+                    'options' => null,
+                    'meta' => null,
+                ]);
+            }
+
+            // Update cart subtotal and total
+            $cart->update(['subtotal' => $subtotal, 'total' => $subtotal]);
+
+            // Add addresses if specified
+            if ($cartData['with_addresses']) {
+                $cart->update([
+                    'shipping_address' => [
+                        'first_name' => 'John',
+                        'last_name' => 'Doe',
+                        'phone' => '+1234567890',
+                        'address1' => '123 Main St',
+                        'address2' => 'Apt 4B',
+                        'city' => 'New York',
+                        'state' => 'NY',
+                        'postal_code' => '10001',
+                        'country' => 'US',
+                    ],
+                    'billing_address' => [
+                        'first_name' => 'John',
+                        'last_name' => 'Doe',
+                        'email' => 'john.doe@example.com',
+                        'phone' => '+1234567890',
+                        'address1' => '123 Main St',
+                        'address2' => 'Apt 4B',
+                        'city' => 'New York',
+                        'state' => 'NY',
+                        'postal_code' => '10001',
+                        'country' => 'US',
+                    ],
+                ]);
+            }
+
+            // Apply discount if specified
+            if ($cartData['with_discount'] && $discounts->isNotEmpty()) {
+                $discount = $discounts->random();
+                $cart->update(['discount_codes' => [$discount->code]]);
+                $cart->recalculate();
+            }
+
+            // Add shipping if specified
+            if ($cartData['with_shipping']) {
+                $cart->update([
+                    'shipping_method' => 'standard',
+                    'shipping_total' => 9.99,
+                ]);
+                $cart->recalculate();
+            }
+
+            $createdCarts++;
+        }
+
+        $this->command->info("  ✓ Seeded {$createdCarts} carts (active, abandoned, and expired)");
     }
 }
