@@ -149,6 +149,8 @@ use VodoCommerce\Http\Controllers\Api\V2\InventoryLocationController;
 use VodoCommerce\Http\Controllers\Api\V2\InventoryController;
 use VodoCommerce\Http\Controllers\Api\V2\StockTransferController;
 use VodoCommerce\Http\Controllers\Api\V2\LowStockAlertController;
+use VodoCommerce\Http\Controllers\Api\V2\DashboardController;
+use VodoCommerce\Http\Controllers\Api\V2\ReportsController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -366,6 +368,25 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::get('inventory/alerts/statistics', [LowStockAlertController::class, 'statistics'])->name('inventory.alerts.statistics');
     Route::post('inventory/alerts/{id}/resolve', [LowStockAlertController::class, 'resolve'])->name('inventory.alerts.resolve');
     Route::post('inventory/alerts/bulk-resolve', [LowStockAlertController::class, 'bulkResolve'])->name('inventory.alerts.bulk-resolve');
+
+    // =========================================================================
+    // Phase 8: Analytics & Reporting
+    // =========================================================================
+
+    // Dashboard Metrics
+    Route::get('dashboard/overview', [DashboardController::class, 'overview'])->name('dashboard.overview');
+    Route::get('dashboard/revenue', [DashboardController::class, 'revenue'])->name('dashboard.revenue');
+    Route::get('dashboard/orders', [DashboardController::class, 'orders'])->name('dashboard.orders');
+    Route::get('dashboard/customers', [DashboardController::class, 'customers'])->name('dashboard.customers');
+    Route::get('dashboard/products', [DashboardController::class, 'products'])->name('dashboard.products');
+    Route::get('dashboard/inventory', [DashboardController::class, 'inventory'])->name('dashboard.inventory');
+
+    // Reports
+    Route::get('reports/sales', [ReportsController::class, 'sales'])->name('reports.sales');
+    Route::get('reports/best-sellers', [ReportsController::class, 'bestSellers'])->name('reports.best-sellers');
+    Route::get('reports/revenue-by-payment-method', [ReportsController::class, 'revenueByPaymentMethod'])->name('reports.revenue-by-payment-method');
+    Route::get('reports/customer-lifetime-value', [ReportsController::class, 'customerLifetimeValue'])->name('reports.customer-lifetime-value');
+    Route::get('reports/inventory-turnover', [ReportsController::class, 'inventoryTurnover'])->name('reports.inventory-turnover');
 });
 
 // =========================================================================
