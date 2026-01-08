@@ -18,6 +18,7 @@ use VodoCommerce\Models\OrderItem;
 use VodoCommerce\Models\OrderRefund;
 use VodoCommerce\Models\OrderStatusHistory;
 use VodoCommerce\Models\OrderTimelineEvent;
+use VodoCommerce\Models\PaymentMethod;
 use VodoCommerce\Models\Product;
 use VodoCommerce\Models\ProductImage;
 use VodoCommerce\Models\ProductOption;
@@ -32,6 +33,7 @@ use VodoCommerce\Models\Store;
 use VodoCommerce\Models\TaxExemption;
 use VodoCommerce\Models\TaxRate;
 use VodoCommerce\Models\TaxZone;
+use VodoCommerce\Models\Transaction;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -75,6 +77,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 4.2: Coupons & Promotions
         $this->seedPromotions($store);
+
+        // Phase 5: Financial Management - Payment Methods & Transactions
+        $this->seedPaymentMethodsAndTransactions($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -1369,5 +1374,273 @@ class VodoCommerceSeeder extends Seeder
 
         $totalPromotions = Discount::where('store_id', $store->id)->count();
         $this->command->info("✓ Total promotions seeded: {$totalPromotions}");
+    }
+
+    protected function seedPaymentMethodsAndTransactions(Store $store): void
+    {
+        // ========== PAYMENT METHODS ==========
+        $paymentMethods = [
+            [
+                'name' => 'Credit/Debit Card (Stripe)',
+                'slug' => 'stripe-card',
+                'type' => PaymentMethod::TYPE_ONLINE,
+                'provider' => PaymentMethod::PROVIDER_STRIPE,
+                'logo' => 'https://via.placeholder.com/200x100?text=Stripe',
+                'description' => 'Secure online payment via Stripe',
+                'configuration' => [
+                    'publishable_key' => 'pk_test_' . strtoupper(\Illuminate\Support\Str::random(24)),
+                    'secret_key' => 'sk_test_' . strtoupper(\Illuminate\Support\Str::random(24)),
+                ],
+                'supported_currencies' => ['USD', 'EUR', 'GBP'],
+                'supported_countries' => ['US', 'GB', 'CA', 'AU'],
+                'supported_payment_types' => ['card', 'apple_pay', 'google_pay'],
+                'fees' => [
+                    'fixed' => 0.30,
+                    'percentage' => 2.9,
+                ],
+                'is_active' => true,
+                'is_default' => true,
+                'display_order' => 1,
+            ],
+            [
+                'name' => 'PayPal',
+                'slug' => 'paypal',
+                'type' => PaymentMethod::TYPE_WALLET,
+                'provider' => PaymentMethod::PROVIDER_PAYPAL,
+                'logo' => 'https://via.placeholder.com/200x100?text=PayPal',
+                'description' => 'Pay with your PayPal account',
+                'configuration' => [
+                    'client_id' => strtoupper(\Illuminate\Support\Str::random(40)),
+                    'client_secret' => strtoupper(\Illuminate\Support\Str::random(40)),
+                ],
+                'supported_currencies' => ['USD', 'EUR', 'GBP'],
+                'supported_countries' => ['US', 'GB', 'CA', 'AU'],
+                'supported_payment_types' => ['paypal', 'venmo'],
+                'fees' => [
+                    'fixed' => 0.30,
+                    'percentage' => 2.9,
+                ],
+                'is_active' => true,
+                'is_default' => false,
+                'display_order' => 2,
+            ],
+            [
+                'name' => 'Cash on Delivery',
+                'slug' => 'cash-on-delivery',
+                'type' => PaymentMethod::TYPE_OFFLINE,
+                'provider' => PaymentMethod::PROVIDER_CUSTOM,
+                'logo' => 'https://via.placeholder.com/200x100?text=COD',
+                'description' => 'Pay with cash when the order is delivered',
+                'configuration' => [],
+                'supported_currencies' => ['USD'],
+                'supported_countries' => null,
+                'supported_payment_types' => ['cash'],
+                'fees' => [
+                    'fixed' => 2.00,
+                    'percentage' => 0,
+                ],
+                'is_active' => true,
+                'is_default' => false,
+                'display_order' => 3,
+            ],
+            [
+                'name' => 'Bank Transfer',
+                'slug' => 'bank-transfer',
+                'type' => PaymentMethod::TYPE_OFFLINE,
+                'provider' => PaymentMethod::PROVIDER_CUSTOM,
+                'logo' => 'https://via.placeholder.com/200x100?text=Bank+Transfer',
+                'description' => 'Direct bank transfer',
+                'configuration' => [
+                    'bank_name' => 'Demo Bank',
+                    'account_number' => '1234567890',
+                    'routing_number' => '021000021',
+                ],
+                'supported_currencies' => ['USD'],
+                'supported_countries' => null,
+                'supported_payment_types' => ['bank_transfer'],
+                'supported_banks' => ['Bank of America', 'Chase', 'Wells Fargo', 'Citibank'],
+                'fees' => [
+                    'fixed' => 0,
+                    'percentage' => 0,
+                ],
+                'minimum_amount' => 50.00,
+                'is_active' => true,
+                'is_default' => false,
+                'display_order' => 4,
+            ],
+            [
+                'name' => 'Moyasar (Saudi Arabia)',
+                'slug' => 'moyasar',
+                'type' => PaymentMethod::TYPE_ONLINE,
+                'provider' => PaymentMethod::PROVIDER_MOYASAR,
+                'logo' => 'https://via.placeholder.com/200x100?text=Moyasar',
+                'description' => 'Saudi payment gateway supporting Mada, Visa, Mastercard',
+                'configuration' => [
+                    'api_key' => 'pk_test_' . strtoupper(\Illuminate\Support\Str::random(32)),
+                    'secret_key' => 'sk_test_' . strtoupper(\Illuminate\Support\Str::random(32)),
+                ],
+                'supported_currencies' => ['SAR'],
+                'supported_countries' => ['SA'],
+                'supported_payment_types' => ['card', 'apple_pay', 'stcpay'],
+                'fees' => [
+                    'fixed' => 0,
+                    'percentage' => 2.65,
+                ],
+                'is_active' => true,
+                'is_default' => false,
+                'display_order' => 5,
+            ],
+        ];
+
+        $createdPaymentMethods = [];
+        foreach ($paymentMethods as $methodData) {
+            $method = PaymentMethod::firstOrCreate(
+                ['store_id' => $store->id, 'slug' => $methodData['slug']],
+                array_merge($methodData, ['store_id' => $store->id])
+            );
+            $createdPaymentMethods[$methodData['slug']] = $method;
+        }
+
+        $this->command->info('  ✓ Seeded ' . count($paymentMethods) . ' payment methods');
+
+        // ========== TRANSACTIONS ==========
+        $orders = Order::where('store_id', $store->id)->get();
+        $customers = Customer::where('store_id', $store->id)->get();
+
+        if ($orders->isEmpty() || $customers->isEmpty() || empty($createdPaymentMethods)) {
+            $this->command->warn('  ⚠ Skipping transaction seeding - no orders, customers, or payment methods found');
+            return;
+        }
+
+        $stripeMethod = $createdPaymentMethods['stripe-card'] ?? null;
+        $paypalMethod = $createdPaymentMethods['paypal'] ?? null;
+        $codMethod = $createdPaymentMethods['cash-on-delivery'] ?? null;
+
+        $transactionsData = [
+            // Completed card payment
+            [
+                'order' => $orders->where('status', 'completed')->first(),
+                'payment_method' => $stripeMethod,
+                'type' => Transaction::TYPE_PAYMENT,
+                'status' => Transaction::STATUS_COMPLETED,
+                'payment_method_type' => 'card',
+                'card_brand' => 'visa',
+                'card_last4' => '4242',
+            ],
+            // Pending PayPal payment
+            [
+                'order' => $orders->where('status', 'pending')->first(),
+                'payment_method' => $paypalMethod,
+                'type' => Transaction::TYPE_PAYMENT,
+                'status' => Transaction::STATUS_PENDING,
+                'payment_method_type' => 'wallet',
+                'wallet_provider' => 'paypal',
+            ],
+            // Completed COD payment
+            [
+                'order' => $orders->where('status', 'completed')->skip(1)->first(),
+                'payment_method' => $codMethod,
+                'type' => Transaction::TYPE_PAYMENT,
+                'status' => Transaction::STATUS_COMPLETED,
+                'payment_method_type' => 'cash',
+            ],
+            // Failed payment
+            [
+                'order' => $orders->where('status', 'cancelled')->first(),
+                'payment_method' => $stripeMethod,
+                'type' => Transaction::TYPE_PAYMENT,
+                'status' => Transaction::STATUS_FAILED,
+                'payment_method_type' => 'card',
+                'card_brand' => 'mastercard',
+                'card_last4' => '5555',
+                'failure_reason' => 'Insufficient funds',
+                'failure_code' => 'insufficient_funds',
+            ],
+        ];
+
+        $createdTransactions = [];
+        foreach ($transactionsData as $index => $txnData) {
+            $order = $txnData['order'];
+            $paymentMethod = $txnData['payment_method'];
+
+            if (!$order || !$paymentMethod) {
+                continue;
+            }
+
+            $amount = (float) $order->total;
+            $feeCalculation = $paymentMethod->calculateFees($amount);
+
+            $transaction = Transaction::firstOrCreate(
+                [
+                    'store_id' => $store->id,
+                    'order_id' => $order->id,
+                ],
+                [
+                    'store_id' => $store->id,
+                    'order_id' => $order->id,
+                    'customer_id' => $order->customer_id,
+                    'payment_method_id' => $paymentMethod->id,
+                    'external_id' => 'txn_' . strtoupper(\Illuminate\Support\Str::random(16)),
+                    'type' => $txnData['type'],
+                    'status' => $txnData['status'],
+                    'currency' => $order->currency,
+                    'amount' => $amount,
+                    'fee_amount' => $feeCalculation['fee_amount'],
+                    'net_amount' => $feeCalculation['net_amount'],
+                    'fees' => $feeCalculation['fee_breakdown'],
+                    'payment_method_type' => $txnData['payment_method_type'] ?? null,
+                    'card_brand' => $txnData['card_brand'] ?? null,
+                    'card_last4' => $txnData['card_last4'] ?? null,
+                    'wallet_provider' => $txnData['wallet_provider'] ?? null,
+                    'gateway_response' => [
+                        'id' => 'gw_' . strtoupper(\Illuminate\Support\Str::random(12)),
+                        'status' => $txnData['status'],
+                        'message' => $txnData['status'] === Transaction::STATUS_COMPLETED ? 'Payment successful' : 'Payment ' . $txnData['status'],
+                    ],
+                    'failure_reason' => $txnData['failure_reason'] ?? null,
+                    'failure_code' => $txnData['failure_code'] ?? null,
+                    'ip_address' => '192.168.1.' . rand(1, 255),
+                    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'is_test' => true,
+                    'processed_at' => $txnData['status'] === Transaction::STATUS_COMPLETED ? now()->subDays(rand(1, 7)) : null,
+                    'failed_at' => $txnData['status'] === Transaction::STATUS_FAILED ? now()->subDays(rand(1, 3)) : null,
+                ]
+            );
+
+            $createdTransactions[] = $transaction;
+
+            // Create a refund for one completed transaction
+            if ($index === 0 && $transaction->status === Transaction::STATUS_COMPLETED) {
+                $refundAmount = $amount * 0.5; // 50% refund
+
+                Transaction::firstOrCreate(
+                    [
+                        'parent_transaction_id' => $transaction->id,
+                    ],
+                    [
+                        'store_id' => $store->id,
+                        'order_id' => $order->id,
+                        'customer_id' => $order->customer_id,
+                        'payment_method_id' => $paymentMethod->id,
+                        'parent_transaction_id' => $transaction->id,
+                        'type' => Transaction::TYPE_REFUND,
+                        'status' => Transaction::STATUS_COMPLETED,
+                        'currency' => $order->currency,
+                        'amount' => $refundAmount,
+                        'fee_amount' => 0,
+                        'net_amount' => $refundAmount,
+                        'refund_reason' => 'Customer requested partial refund',
+                        'is_test' => true,
+                        'processed_at' => now()->subDays(rand(1, 3)),
+                    ]
+                );
+
+                // Update parent transaction
+                $transaction->increment('refunded_amount', $refundAmount);
+            }
+        }
+
+        $totalTransactions = Transaction::where('store_id', $store->id)->count();
+        $this->command->info("  ✓ Seeded {$totalTransactions} transactions (including payments and refunds)");
     }
 }

@@ -1377,6 +1377,132 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // Phase 5: Payment Method Entity
+        $this->entityRegistry->register('commerce_payment_method', [
+            'table_name' => 'commerce_payment_methods',
+            'model_class' => \VodoCommerce\Models\PaymentMethod::class,
+            'labels' => ['singular' => 'Payment Method', 'plural' => 'Payment Methods'],
+            'icon' => 'credit-card',
+            'search_columns' => ['name', 'slug', 'provider'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'slug' => ['type' => 'slug', 'required' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'online' => 'Online',
+                        'offline' => 'Offline',
+                        'wallet' => 'Wallet',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'provider' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'logo' => ['type' => 'image'],
+                'description' => ['type' => 'text'],
+                'configuration' => ['type' => 'json'],
+                'supported_currencies' => ['type' => 'json'],
+                'supported_countries' => ['type' => 'json'],
+                'supported_payment_types' => ['type' => 'json'],
+                'fees' => ['type' => 'json'],
+                'minimum_amount' => ['type' => 'money'],
+                'maximum_amount' => ['type' => 'money'],
+                'supported_banks' => ['type' => 'json'],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+                'is_default' => ['type' => 'boolean', 'default' => false],
+                'display_order' => ['type' => 'integer', 'default' => 0],
+            ],
+        ], self::SLUG);
+
+        // Phase 5: Transaction Entity
+        $this->entityRegistry->register('commerce_transaction', [
+            'table_name' => 'commerce_transactions',
+            'model_class' => \VodoCommerce\Models\Transaction::class,
+            'labels' => ['singular' => 'Transaction', 'plural' => 'Transactions'],
+            'icon' => 'receipt',
+            'search_columns' => ['transaction_id', 'reference_number', 'external_id'],
+            'fields' => [
+                'order_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_order', 'display_field' => 'order_number'],
+                    'show_in_list' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'email'],
+                ],
+                'payment_method_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_payment_method', 'display_field' => 'name'],
+                    'required' => true,
+                    'show_in_list' => true,
+                ],
+                'transaction_id' => ['type' => 'string', 'unique' => true, 'searchable' => true, 'show_in_list' => true],
+                'reference_number' => ['type' => 'string', 'searchable' => true],
+                'external_id' => ['type' => 'string', 'searchable' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'payment' => 'Payment',
+                        'refund' => 'Refund',
+                        'payout' => 'Payout',
+                        'fee' => 'Fee',
+                        'adjustment' => 'Adjustment',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'status' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'pending' => 'Pending',
+                        'processing' => 'Processing',
+                        'completed' => 'Completed',
+                        'failed' => 'Failed',
+                        'cancelled' => 'Cancelled',
+                        'refunded' => 'Refunded',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'payment_status' => [
+                    'type' => 'select',
+                    'config' => ['options' => [
+                        'authorized' => 'Authorized',
+                        'captured' => 'Captured',
+                        'settled' => 'Settled',
+                    ]],
+                    'filterable' => true,
+                ],
+                'currency' => ['type' => 'string', 'required' => true, 'filterable' => true, 'show_in_list' => true],
+                'amount' => ['type' => 'money', 'required' => true, 'show_in_list' => true],
+                'fee_amount' => ['type' => 'money', 'default' => 0],
+                'net_amount' => ['type' => 'money', 'required' => true],
+                'fees' => ['type' => 'json'],
+                'payment_method_type' => ['type' => 'string'],
+                'card_brand' => ['type' => 'string'],
+                'card_last4' => ['type' => 'string'],
+                'bank_name' => ['type' => 'string'],
+                'wallet_provider' => ['type' => 'string'],
+                'gateway_response' => ['type' => 'json'],
+                'failure_reason' => ['type' => 'string'],
+                'failure_code' => ['type' => 'string'],
+                'is_test' => ['type' => 'boolean', 'default' => false, 'filterable' => true],
+                'parent_transaction_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_transaction', 'display_field' => 'transaction_id'],
+                ],
+                'refunded_amount' => ['type' => 'money', 'default' => 0],
+                'refund_reason' => ['type' => 'text'],
+                'metadata' => ['type' => 'json'],
+                'notes' => ['type' => 'text'],
+                'processed_at' => ['type' => 'datetime'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -1824,6 +1950,7 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_tax_zone', 'commerce_tax_zone_location',
                 'commerce_tax_rate', 'commerce_tax_exemption',
                 'commerce_coupon_usage', 'commerce_promotion_rule',
+                'commerce_payment_method', 'commerce_transaction',
             ];
 
             foreach ($entities as $entity) {
