@@ -1561,6 +1561,225 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // =====================================================================
+        // Phase 7: Inventory Management Entities
+        // =====================================================================
+
+        // Inventory Location Entity
+        $this->entityRegistry->register('commerce_inventory_location', [
+            'table_name' => 'commerce_inventory_locations',
+            'model_class' => \VodoCommerce\Models\InventoryLocation::class,
+            'labels' => ['singular' => 'Inventory Location', 'plural' => 'Inventory Locations'],
+            'icon' => 'warehouse',
+            'search_columns' => ['name', 'code'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'code' => ['type' => 'string', 'required' => true, 'unique' => true, 'show_in_list' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => ['warehouse' => 'Warehouse', 'store' => 'Store', 'dropshipper' => 'Dropshipper']],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'address' => ['type' => 'text'],
+                'city' => ['type' => 'string'],
+                'state' => ['type' => 'string'],
+                'postal_code' => ['type' => 'string'],
+                'country' => ['type' => 'string'],
+                'contact_name' => ['type' => 'string'],
+                'contact_email' => ['type' => 'email'],
+                'contact_phone' => ['type' => 'string'],
+                'priority' => ['type' => 'integer', 'default' => 0],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+                'is_default' => ['type' => 'boolean', 'default' => false],
+                'settings' => ['type' => 'json'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Inventory Item Entity
+        $this->entityRegistry->register('commerce_inventory_item', [
+            'table_name' => 'commerce_inventory_items',
+            'model_class' => \VodoCommerce\Models\InventoryItem::class,
+            'labels' => ['singular' => 'Inventory Item', 'plural' => 'Inventory Items'],
+            'icon' => 'box',
+            'show_in_menu' => false,
+            'fields' => [
+                'location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'reserved_quantity' => ['type' => 'integer', 'default' => 0],
+                'reorder_point' => ['type' => 'integer'],
+                'reorder_quantity' => ['type' => 'integer'],
+                'bin_location' => ['type' => 'string'],
+                'unit_cost' => ['type' => 'money'],
+                'last_counted_at' => ['type' => 'datetime'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Stock Movement Entity
+        $this->entityRegistry->register('commerce_stock_movement', [
+            'table_name' => 'commerce_stock_movements',
+            'model_class' => \VodoCommerce\Models\StockMovement::class,
+            'labels' => ['singular' => 'Stock Movement', 'plural' => 'Stock Movements'],
+            'icon' => 'trending-up',
+            'search_columns' => ['reason'],
+            'fields' => [
+                'location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'in' => 'In',
+                        'out' => 'Out',
+                        'transfer_in' => 'Transfer In',
+                        'transfer_out' => 'Transfer Out',
+                        'adjustment' => 'Adjustment',
+                        'return' => 'Return',
+                        'damaged' => 'Damaged',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'quantity' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'quantity_before' => ['type' => 'integer'],
+                'quantity_after' => ['type' => 'integer'],
+                'reason' => ['type' => 'text', 'searchable' => true],
+                'unit_cost' => ['type' => 'money'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Stock Transfer Entity
+        $this->entityRegistry->register('commerce_stock_transfer', [
+            'table_name' => 'commerce_stock_transfers',
+            'model_class' => \VodoCommerce\Models\StockTransfer::class,
+            'labels' => ['singular' => 'Stock Transfer', 'plural' => 'Stock Transfers'],
+            'icon' => 'truck',
+            'search_columns' => ['transfer_number', 'notes'],
+            'fields' => [
+                'transfer_number' => ['type' => 'string', 'required' => true, 'unique' => true, 'show_in_list' => true],
+                'from_location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'to_location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'status' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'pending' => 'Pending',
+                        'in_transit' => 'In Transit',
+                        'completed' => 'Completed',
+                        'cancelled' => 'Cancelled',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'notes' => ['type' => 'text'],
+                'requested_at' => ['type' => 'datetime'],
+                'approved_at' => ['type' => 'datetime'],
+                'shipped_at' => ['type' => 'datetime'],
+                'received_at' => ['type' => 'datetime'],
+                'cancelled_at' => ['type' => 'datetime'],
+                'cancellation_reason' => ['type' => 'text'],
+                'tracking_number' => ['type' => 'string'],
+                'carrier' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Stock Transfer Item Entity
+        $this->entityRegistry->register('commerce_stock_transfer_item', [
+            'table_name' => 'commerce_stock_transfer_items',
+            'model_class' => \VodoCommerce\Models\StockTransferItem::class,
+            'labels' => ['singular' => 'Stock Transfer Item', 'plural' => 'Stock Transfer Items'],
+            'icon' => 'package',
+            'show_in_menu' => false,
+            'fields' => [
+                'transfer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_stock_transfer', 'display_field' => 'transfer_number'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity_requested' => ['type' => 'integer', 'required' => true],
+                'quantity_shipped' => ['type' => 'integer', 'default' => 0],
+                'quantity_received' => ['type' => 'integer', 'default' => 0],
+                'notes' => ['type' => 'text'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Low Stock Alert Entity
+        $this->entityRegistry->register('commerce_low_stock_alert', [
+            'table_name' => 'commerce_low_stock_alerts',
+            'model_class' => \VodoCommerce\Models\LowStockAlert::class,
+            'labels' => ['singular' => 'Low Stock Alert', 'plural' => 'Low Stock Alerts'],
+            'icon' => 'alert-triangle',
+            'fields' => [
+                'location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'threshold' => ['type' => 'integer', 'required' => true],
+                'current_quantity' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'is_resolved' => ['type' => 'boolean', 'default' => false, 'filterable' => true, 'show_in_list' => true],
+                'resolved_at' => ['type' => 'datetime'],
+                'resolution_notes' => ['type' => 'text'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -2010,6 +2229,9 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_coupon_usage', 'commerce_promotion_rule',
                 'commerce_payment_method', 'commerce_transaction',
                 'commerce_cart', 'commerce_cart_item',
+                'commerce_inventory_location', 'commerce_inventory_item',
+                'commerce_stock_movement', 'commerce_stock_transfer',
+                'commerce_stock_transfer_item', 'commerce_low_stock_alert',
             ];
 
             foreach ($entities as $entity) {

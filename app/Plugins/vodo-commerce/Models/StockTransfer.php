@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use VodoCommerce\Database\Factories\StockTransferFactory;
 use VodoCommerce\Traits\BelongsToStore;
 
 class StockTransfer extends Model
 {
-    use BelongsToStore;
+    use BelongsToStore, HasFactory;
+
+    protected static function newFactory(): StockTransferFactory
+    {
+        return StockTransferFactory::new();
+    }
 
     protected $table = 'commerce_stock_transfers';
 

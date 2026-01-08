@@ -4,11 +4,20 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use VodoCommerce\Database\Factories\InventoryItemFactory;
 
 class InventoryItem extends Model
 {
+    use HasFactory;
+
+    protected static function newFactory(): InventoryItemFactory
+    {
+        return InventoryItemFactory::new();
+    }
+
     protected $table = 'commerce_inventory_items';
 
     protected $fillable = [

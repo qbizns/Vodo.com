@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use VodoCommerce\Database\Factories\InventoryLocationFactory;
 use VodoCommerce\Traits\BelongsToStore;
 
 class InventoryLocation extends Model
 {
-    use BelongsToStore, SoftDeletes;
+    use BelongsToStore, HasFactory, SoftDeletes;
+
+    protected static function newFactory(): InventoryLocationFactory
+    {
+        return InventoryLocationFactory::new();
+    }
 
     protected $table = 'commerce_inventory_locations';
 

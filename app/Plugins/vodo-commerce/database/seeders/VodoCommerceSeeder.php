@@ -37,6 +37,11 @@ use VodoCommerce\Models\TaxExemption;
 use VodoCommerce\Models\TaxRate;
 use VodoCommerce\Models\TaxZone;
 use VodoCommerce\Models\Transaction;
+use VodoCommerce\Models\InventoryLocation;
+use VodoCommerce\Models\InventoryItem;
+use VodoCommerce\Models\StockMovement;
+use VodoCommerce\Models\StockTransfer;
+use VodoCommerce\Models\StockTransferItem;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -86,6 +91,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 6: Cart & Checkout
         $this->seedCarts($store);
+
+        // Phase 7: Inventory Management
+        $this->seedInventory($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -1815,5 +1823,178 @@ class VodoCommerceSeeder extends Seeder
         }
 
         $this->command->info("  ✓ Seeded {$createdCarts} carts (active, abandoned, and expired)");
+    }
+
+    protected function seedInventory(Store $store): void
+    {
+        $products = Product::where('store_id', $store->id)->get();
+
+        if ($products->isEmpty()) {
+            $this->command->warn('  ⚠ Skipping inventory seeding - no products found');
+            return;
+        }
+
+        // Create inventory locations
+        $mainWarehouse = InventoryLocation::create([
+            'store_id' => $store->id,
+            'name' => 'Main Warehouse',
+            'code' => 'WH-MAIN',
+            'type' => 'warehouse',
+            'address' => '1234 Warehouse Blvd',
+            'city' => 'Los Angeles',
+            'state' => 'CA',
+            'postal_code' => '90001',
+            'country' => 'US',
+            'contact_name' => 'John Smith',
+            'contact_email' => 'warehouse@example.com',
+            'contact_phone' => '(555) 123-4567',
+            'priority' => 0,
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+
+        $retailStore = InventoryLocation::create([
+            'store_id' => $store->id,
+            'name' => 'Retail Store - Downtown',
+            'code' => 'STR-001',
+            'type' => 'store',
+            'address' => '456 Main Street',
+            'city' => 'Los Angeles',
+            'state' => 'CA',
+            'postal_code' => '90015',
+            'country' => 'US',
+            'contact_name' => 'Jane Doe',
+            'contact_email' => 'store@example.com',
+            'contact_phone' => '(555) 987-6543',
+            'priority' => 50,
+            'is_active' => true,
+            'is_default' => false,
+        ]);
+
+        $this->command->info('  ✓ Created 2 inventory locations');
+
+        // Add inventory items
+        $itemsCreated = 0;
+        foreach ($products->take(20) as $product) {
+            // Main warehouse stock
+            InventoryItem::create([
+                'location_id' => $mainWarehouse->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity' => rand(50, 200),
+                'reserved_quantity' => rand(0, 10),
+                'reorder_point' => 20,
+                'reorder_quantity' => 50,
+                'bin_location' => 'A-' . rand(1, 10) . '-' . rand(1, 5),
+                'unit_cost' => $product->cost_price ?? ($product->price * 0.6),
+            ]);
+
+            // Retail store stock (smaller quantities)
+            InventoryItem::create([
+                'location_id' => $retailStore->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity' => rand(5, 30),
+                'reserved_quantity' => 0,
+                'reorder_point' => 5,
+                'reorder_quantity' => 20,
+                'bin_location' => 'R-' . rand(1, 5),
+                'unit_cost' => $product->cost_price ?? ($product->price * 0.6),
+            ]);
+
+            $itemsCreated += 2;
+        }
+
+        $this->command->info("  ✓ Created {$itemsCreated} inventory items");
+
+        // Create stock movements
+        $movements = [];
+        for ($i = 0; $i < 10; $i++) {
+            $product = $products->random();
+            $location = rand(0, 1) ? $mainWarehouse : $retailStore;
+
+            $movements[] = StockMovement::create([
+                'store_id' => $store->id,
+                'location_id' => $location->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'type' => $this->faker->randomElement(['in', 'out', 'adjustment']),
+                'quantity' => rand(1, 20),
+                'quantity_before' => rand(50, 100),
+                'quantity_after' => rand(40, 120),
+                'reason' => $this->faker->randomElement([
+                    'Received from supplier',
+                    'Sold to customer',
+                    'Damaged goods',
+                    'Inventory count adjustment',
+                    'Return from customer',
+                ]),
+                'created_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
+            ]);
+        }
+
+        $this->command->info('  ✓ Created 10 stock movements');
+
+        // Create stock transfers
+        $pendingTransfer = StockTransfer::create([
+            'store_id' => $store->id,
+            'transfer_number' => 'TRF-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
+            'from_location_id' => $mainWarehouse->id,
+            'to_location_id' => $retailStore->id,
+            'status' => 'pending',
+            'notes' => 'Replenish retail store inventory',
+            'requested_at' => now()->subDays(2),
+        ]);
+
+        for ($i = 0; $i < 3; $i++) {
+            $product = $products->random();
+            StockTransferItem::create([
+                'transfer_id' => $pendingTransfer->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity_requested' => rand(10, 30),
+                'quantity_shipped' => 0,
+                'quantity_received' => 0,
+            ]);
+        }
+
+        $completedTransfer = StockTransfer::create([
+            'store_id' => $store->id,
+            'transfer_number' => 'TRF-' . now()->subDays(10)->format('Ymd') . '-' . strtoupper(Str::random(6)),
+            'from_location_id' => $mainWarehouse->id,
+            'to_location_id' => $retailStore->id,
+            'status' => 'completed',
+            'notes' => 'Monthly stock transfer',
+            'requested_at' => now()->subDays(15),
+            'approved_at' => now()->subDays(14),
+            'shipped_at' => now()->subDays(12),
+            'received_at' => now()->subDays(10),
+            'tracking_number' => 'TRK' . rand(100000, 999999),
+            'carrier' => 'UPS',
+        ]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $product = $products->random();
+            $qty = rand(10, 30);
+            StockTransferItem::create([
+                'transfer_id' => $completedTransfer->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity_requested' => $qty,
+                'quantity_shipped' => $qty,
+                'quantity_received' => $qty,
+            ]);
+        }
+
+        $this->command->info('  ✓ Created 2 stock transfers with items');
+
+        $this->command->info('✓ Inventory seeding completed');
+    }
+
+    private $faker;
+
+    public function __construct()
+    {
+        $this->faker = \Faker\Factory::create();
     }
 }

@@ -145,6 +145,10 @@ use VodoCommerce\Http\Controllers\Api\V2\PaymentMethodController;
 use VodoCommerce\Http\Controllers\Api\V2\TransactionController;
 use VodoCommerce\Http\Controllers\Api\V2\CartController;
 use VodoCommerce\Http\Controllers\Api\V2\CheckoutController;
+use VodoCommerce\Http\Controllers\Api\V2\InventoryLocationController;
+use VodoCommerce\Http\Controllers\Api\V2\InventoryController;
+use VodoCommerce\Http\Controllers\Api\V2\StockTransferController;
+use VodoCommerce\Http\Controllers\Api\V2\LowStockAlertController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -325,6 +329,43 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('transactions/{id}/fail', [TransactionController::class, 'fail'])->name('transactions.fail');
     Route::post('transactions/{id}/refund', [TransactionController::class, 'createRefund'])->name('transactions.refund');
     Route::post('transactions/{id}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
+
+    // =========================================================================
+    // Phase 7: Inventory Management
+    // =========================================================================
+
+    // Inventory Locations
+    Route::get('inventory/locations', [InventoryLocationController::class, 'index'])->name('inventory.locations.index');
+    Route::post('inventory/locations', [InventoryLocationController::class, 'store'])->name('inventory.locations.store');
+    Route::get('inventory/locations/{id}', [InventoryLocationController::class, 'show'])->name('inventory.locations.show');
+    Route::put('inventory/locations/{id}', [InventoryLocationController::class, 'update'])->name('inventory.locations.update');
+    Route::delete('inventory/locations/{id}', [InventoryLocationController::class, 'destroy'])->name('inventory.locations.destroy');
+
+    // Inventory Items & Stock Operations
+    Route::get('inventory/items', [InventoryController::class, 'index'])->name('inventory.items.index');
+    Route::get('inventory/summary', [InventoryController::class, 'summary'])->name('inventory.summary');
+    Route::post('inventory/add-stock', [InventoryController::class, 'addStock'])->name('inventory.add-stock');
+    Route::post('inventory/remove-stock', [InventoryController::class, 'removeStock'])->name('inventory.remove-stock');
+    Route::post('inventory/adjust-stock', [InventoryController::class, 'adjustStock'])->name('inventory.adjust-stock');
+    Route::put('inventory/items/{id}/reorder-settings', [InventoryController::class, 'updateReorderSettings'])->name('inventory.items.reorder-settings');
+
+    // Stock Movements
+    Route::get('inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
+
+    // Stock Transfers
+    Route::get('inventory/transfers', [StockTransferController::class, 'index'])->name('inventory.transfers.index');
+    Route::post('inventory/transfers', [StockTransferController::class, 'store'])->name('inventory.transfers.store');
+    Route::get('inventory/transfers/{id}', [StockTransferController::class, 'show'])->name('inventory.transfers.show');
+    Route::post('inventory/transfers/{id}/approve', [StockTransferController::class, 'approve'])->name('inventory.transfers.approve');
+    Route::post('inventory/transfers/{id}/ship', [StockTransferController::class, 'ship'])->name('inventory.transfers.ship');
+    Route::post('inventory/transfers/{id}/receive', [StockTransferController::class, 'receive'])->name('inventory.transfers.receive');
+    Route::post('inventory/transfers/{id}/cancel', [StockTransferController::class, 'cancel'])->name('inventory.transfers.cancel');
+
+    // Low Stock Alerts
+    Route::get('inventory/alerts', [LowStockAlertController::class, 'index'])->name('inventory.alerts.index');
+    Route::get('inventory/alerts/statistics', [LowStockAlertController::class, 'statistics'])->name('inventory.alerts.statistics');
+    Route::post('inventory/alerts/{id}/resolve', [LowStockAlertController::class, 'resolve'])->name('inventory.alerts.resolve');
+    Route::post('inventory/alerts/bulk-resolve', [LowStockAlertController::class, 'bulkResolve'])->name('inventory.alerts.bulk-resolve');
 });
 
 // =========================================================================
