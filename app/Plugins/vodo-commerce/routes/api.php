@@ -143,6 +143,8 @@ use VodoCommerce\Http\Controllers\Api\V2\TaxRateController;
 use VodoCommerce\Http\Controllers\Api\V2\TaxZoneController;
 use VodoCommerce\Http\Controllers\Api\V2\PaymentMethodController;
 use VodoCommerce\Http\Controllers\Api\V2\TransactionController;
+use VodoCommerce\Http\Controllers\Api\V2\CartController;
+use VodoCommerce\Http\Controllers\Api\V2\CheckoutController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -323,4 +325,46 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('transactions/{id}/fail', [TransactionController::class, 'fail'])->name('transactions.fail');
     Route::post('transactions/{id}/refund', [TransactionController::class, 'createRefund'])->name('transactions.refund');
     Route::post('transactions/{id}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
+});
+
+// =========================================================================
+// Storefront API Routes (Phase 6: Cart & Checkout)
+// =========================================================================
+// These routes are accessible to both authenticated and guest users
+// Session tracking is handled via X-Session-Id header
+
+Route::prefix('storefront/v2')->middleware(['web'])->name('storefront.v2.')->group(function () {
+    // =========================================================================
+    // Cart Management
+    // =========================================================================
+
+    Route::get('cart', [CartController::class, 'show'])->name('cart.show');
+    Route::post('cart/items', [CartController::class, 'addItem'])->name('cart.addItem');
+    Route::put('cart/items/{item}', [CartController::class, 'updateItem'])->name('cart.updateItem');
+    Route::delete('cart/items/{item}', [CartController::class, 'removeItem'])->name('cart.removeItem');
+    Route::post('cart/discounts/apply', [CartController::class, 'applyDiscount'])->name('cart.applyDiscount');
+    Route::post('cart/discounts/remove', [CartController::class, 'removeDiscount'])->name('cart.removeDiscount');
+    Route::post('cart/billing-address', [CartController::class, 'setBillingAddress'])->name('cart.setBillingAddress');
+    Route::post('cart/shipping-address', [CartController::class, 'setShippingAddress'])->name('cart.setShippingAddress');
+    Route::post('cart/shipping-method', [CartController::class, 'setShippingMethod'])->name('cart.setShippingMethod');
+    Route::post('cart/notes', [CartController::class, 'setNotes'])->name('cart.setNotes');
+    Route::post('cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+    Route::get('cart/validate', [CartController::class, 'validate'])->name('cart.validate');
+    Route::get('cart/summary', [CartController::class, 'summary'])->name('cart.summary');
+    Route::post('cart/sync-prices', [CartController::class, 'syncPrices'])->name('cart.syncPrices');
+
+    // =========================================================================
+    // Checkout Process
+    // =========================================================================
+
+    Route::get('checkout/validate', [CheckoutController::class, 'validate'])->name('checkout.validate');
+    Route::get('checkout/shipping-rates', [CheckoutController::class, 'shippingRates'])->name('checkout.shippingRates');
+    Route::post('checkout/calculate-tax', [CheckoutController::class, 'calculateTax'])->name('checkout.calculateTax');
+    Route::get('checkout/payment-methods', [CheckoutController::class, 'paymentMethods'])->name('checkout.paymentMethods');
+    Route::post('checkout/create-order', [CheckoutController::class, 'createOrder'])->name('checkout.createOrder');
+    Route::post('checkout/orders/{orderNumber}/payment', [CheckoutController::class, 'initiatePayment'])->name('checkout.initiatePayment');
+    Route::get('checkout/summary', [CheckoutController::class, 'summary'])->name('checkout.summary');
+
+    // Webhook endpoint for payment gateways
+    Route::post('webhooks/payment/{gateway}', [CheckoutController::class, 'processWebhook'])->name('webhooks.payment');
 });

@@ -7,12 +7,21 @@ namespace VodoCommerce\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use VodoCommerce\Database\Factories\CartItemFactory;
 
 class CartItem extends Model
 {
     use HasFactory;
 
     protected $table = 'commerce_cart_items';
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): CartItemFactory
+    {
+        return CartItemFactory::new();
+    }
 
     protected $fillable = [
         'cart_id',
