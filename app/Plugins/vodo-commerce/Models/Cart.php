@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use VodoCommerce\Database\Factories\CartFactory;
 use VodoCommerce\Traits\BelongsToStore;
 
 class Cart extends Model
@@ -15,6 +16,14 @@ class Cart extends Model
     use BelongsToStore, HasFactory;
 
     protected $table = 'commerce_carts';
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): CartFactory
+    {
+        return CartFactory::new();
+    }
 
     protected $fillable = [
         'store_id',
