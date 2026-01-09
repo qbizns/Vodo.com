@@ -151,6 +151,9 @@ use VodoCommerce\Http\Controllers\Api\V2\StockTransferController;
 use VodoCommerce\Http\Controllers\Api\V2\LowStockAlertController;
 use VodoCommerce\Http\Controllers\Api\V2\DashboardController;
 use VodoCommerce\Http\Controllers\Api\V2\ReportsController;
+use VodoCommerce\Http\Controllers\Api\V2\WebhookSubscriptionController;
+use VodoCommerce\Http\Controllers\Api\V2\WebhookEventController as V2WebhookEventController;
+use VodoCommerce\Http\Controllers\Api\V2\WebhookLogController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -387,6 +390,32 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::get('reports/revenue-by-payment-method', [ReportsController::class, 'revenueByPaymentMethod'])->name('reports.revenue-by-payment-method');
     Route::get('reports/customer-lifetime-value', [ReportsController::class, 'customerLifetimeValue'])->name('reports.customer-lifetime-value');
     Route::get('reports/inventory-turnover', [ReportsController::class, 'inventoryTurnover'])->name('reports.inventory-turnover');
+
+    // =========================================================================
+    // Phase 9: Webhooks & Events System
+    // =========================================================================
+
+    // Webhook Subscriptions
+    Route::get('webhooks/subscriptions', [WebhookSubscriptionController::class, 'index'])->name('webhooks.subscriptions.index');
+    Route::post('webhooks/subscriptions', [WebhookSubscriptionController::class, 'store'])->name('webhooks.subscriptions.store');
+    Route::get('webhooks/subscriptions/{id}', [WebhookSubscriptionController::class, 'show'])->name('webhooks.subscriptions.show');
+    Route::put('webhooks/subscriptions/{id}', [WebhookSubscriptionController::class, 'update'])->name('webhooks.subscriptions.update');
+    Route::delete('webhooks/subscriptions/{id}', [WebhookSubscriptionController::class, 'destroy'])->name('webhooks.subscriptions.destroy');
+    Route::post('webhooks/subscriptions/{id}/test', [WebhookSubscriptionController::class, 'test'])->name('webhooks.subscriptions.test');
+    Route::post('webhooks/subscriptions/{id}/regenerate-secret', [WebhookSubscriptionController::class, 'regenerateSecret'])->name('webhooks.subscriptions.regenerate-secret');
+    Route::get('webhooks/statistics', [WebhookSubscriptionController::class, 'statistics'])->name('webhooks.statistics');
+
+    // Webhook Events
+    Route::get('webhooks/events', [V2WebhookEventController::class, 'index'])->name('webhooks.events.index');
+    Route::get('webhooks/events/{eventId}', [V2WebhookEventController::class, 'show'])->name('webhooks.events.show');
+    Route::post('webhooks/events/{eventId}/retry', [V2WebhookEventController::class, 'retry'])->name('webhooks.events.retry');
+    Route::post('webhooks/events/{eventId}/cancel', [V2WebhookEventController::class, 'cancel'])->name('webhooks.events.cancel');
+    Route::get('webhooks/events/pending-retries', [V2WebhookEventController::class, 'pendingRetries'])->name('webhooks.events.pending-retries');
+
+    // Webhook Logs
+    Route::get('webhooks/logs', [WebhookLogController::class, 'index'])->name('webhooks.logs.index');
+    Route::get('webhooks/logs/{id}', [WebhookLogController::class, 'show'])->name('webhooks.logs.show');
+    Route::get('webhooks/logs/statistics', [WebhookLogController::class, 'statistics'])->name('webhooks.logs.statistics');
 });
 
 // =========================================================================

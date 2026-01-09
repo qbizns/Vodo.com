@@ -1780,6 +1780,126 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // =====================================================================
+        // Phase 9: Webhooks & Events System Entities
+        // =====================================================================
+
+        // Webhook Subscription Entity
+        $this->entityRegistry->register('commerce_webhook_subscription', [
+            'table_name' => 'commerce_webhook_subscriptions',
+            'model_class' => \VodoCommerce\Models\WebhookSubscription::class,
+            'labels' => ['singular' => 'Webhook Subscription', 'plural' => 'Webhook Subscriptions'],
+            'icon' => 'globe',
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'url' => ['type' => 'url', 'required' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text'],
+                'events' => ['type' => 'json', 'required' => true],
+                'secret' => ['type' => 'string', 'required' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true, 'filterable' => true],
+                'timeout_seconds' => ['type' => 'integer', 'default' => 30],
+                'max_retry_attempts' => ['type' => 'integer', 'default' => 3],
+                'retry_delay_seconds' => ['type' => 'integer', 'default' => 60],
+                'custom_headers' => ['type' => 'json'],
+                'total_deliveries' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'successful_deliveries' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'failed_deliveries' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'last_delivery_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'last_success_at' => ['type' => 'datetime'],
+                'last_failure_at' => ['type' => 'datetime'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Webhook Event Entity
+        $this->entityRegistry->register('commerce_webhook_event', [
+            'table_name' => 'commerce_webhook_events',
+            'model_class' => \VodoCommerce\Models\WebhookEvent::class,
+            'labels' => ['singular' => 'Webhook Event', 'plural' => 'Webhook Events'],
+            'icon' => 'activity',
+            'fields' => [
+                'subscription_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_subscription', 'display_field' => 'name'],
+                ],
+                'event_type' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'event_id' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'payload' => ['type' => 'json', 'required' => true],
+                'status' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'delivered_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'failed_at' => ['type' => 'datetime'],
+                'next_retry_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'retry_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'max_retries' => ['type' => 'integer', 'default' => 3],
+                'last_error' => ['type' => 'text'],
+                'error_history' => ['type' => 'json'],
+                'processing_at' => ['type' => 'datetime'],
+                'processing_by' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Webhook Delivery Entity
+        $this->entityRegistry->register('commerce_webhook_delivery', [
+            'table_name' => 'commerce_webhook_deliveries',
+            'model_class' => \VodoCommerce\Models\WebhookDelivery::class,
+            'labels' => ['singular' => 'Webhook Delivery', 'plural' => 'Webhook Deliveries'],
+            'icon' => 'send',
+            'fields' => [
+                'event_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_event', 'display_field' => 'event_id'],
+                    'required' => true,
+                ],
+                'subscription_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_subscription', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'url' => ['type' => 'url', 'required' => true, 'show_in_list' => true],
+                'payload' => ['type' => 'json', 'required' => true],
+                'headers' => ['type' => 'json'],
+                'attempt_number' => ['type' => 'integer', 'default' => 1, 'show_in_list' => true],
+                'status' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'response_code' => ['type' => 'integer', 'show_in_list' => true],
+                'response_body' => ['type' => 'text'],
+                'response_headers' => ['type' => 'text'],
+                'error_message' => ['type' => 'text', 'show_in_list' => true],
+                'sent_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'completed_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'duration_ms' => ['type' => 'integer', 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Webhook Log Entity
+        $this->entityRegistry->register('commerce_webhook_log', [
+            'table_name' => 'commerce_webhook_logs',
+            'model_class' => \VodoCommerce\Models\WebhookLog::class,
+            'labels' => ['singular' => 'Webhook Log', 'plural' => 'Webhook Logs'],
+            'icon' => 'file-text',
+            'fields' => [
+                'subscription_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_subscription', 'display_field' => 'name'],
+                ],
+                'event_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_event', 'display_field' => 'event_id'],
+                ],
+                'delivery_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_delivery', 'display_field' => 'id'],
+                ],
+                'level' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'message' => ['type' => 'text', 'required' => true, 'show_in_list' => true],
+                'context' => ['type' => 'json'],
+                'category' => ['type' => 'string', 'show_in_list' => true, 'filterable' => true],
+                'action' => ['type' => 'string', 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 

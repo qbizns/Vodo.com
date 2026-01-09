@@ -42,6 +42,10 @@ use VodoCommerce\Models\InventoryItem;
 use VodoCommerce\Models\StockMovement;
 use VodoCommerce\Models\StockTransfer;
 use VodoCommerce\Models\StockTransferItem;
+use VodoCommerce\Models\WebhookSubscription;
+use VodoCommerce\Models\WebhookEvent;
+use VodoCommerce\Models\WebhookDelivery;
+use VodoCommerce\Models\WebhookLog;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -94,6 +98,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 7: Inventory Management
         $this->seedInventory($store);
+
+        // Phase 9: Webhooks & Events System
+        $this->seedWebhooks($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -1989,6 +1996,216 @@ class VodoCommerceSeeder extends Seeder
         $this->command->info('  ✓ Created 2 stock transfers with items');
 
         $this->command->info('✓ Inventory seeding completed');
+    }
+
+    protected function seedWebhooks(Store $store): void
+    {
+        $this->command->info('Seeding webhooks...');
+
+        // Create 2 active webhook subscriptions
+        $subscription1 = WebhookSubscription::create([
+            'store_id' => $store->id,
+            'name' => 'Order Notifications',
+            'url' => 'https://example.com/webhooks/orders',
+            'description' => 'Receives notifications for order-related events',
+            'events' => [
+                'order.created',
+                'order.updated',
+                'order.completed',
+                'order.cancelled',
+            ],
+            'secret' => 'whsec_' . Str::random(40),
+            'is_active' => true,
+            'timeout_seconds' => 30,
+            'max_retry_attempts' => 3,
+            'retry_delay_seconds' => 60,
+            'custom_headers' => [
+                'X-API-Version' => 'v2',
+            ],
+            'total_deliveries' => 45,
+            'successful_deliveries' => 42,
+            'failed_deliveries' => 3,
+            'last_delivery_at' => now()->subHours(2),
+            'last_success_at' => now()->subHours(2),
+            'last_failure_at' => now()->subDays(3),
+        ]);
+
+        $subscription2 = WebhookSubscription::create([
+            'store_id' => $store->id,
+            'name' => 'Product & Inventory Updates',
+            'url' => 'https://example.com/webhooks/products',
+            'description' => 'Receives notifications for product and inventory events',
+            'events' => [
+                'product.created',
+                'product.updated',
+                'product.deleted',
+                'inventory.low_stock',
+            ],
+            'secret' => 'whsec_' . Str::random(40),
+            'is_active' => true,
+            'timeout_seconds' => 30,
+            'max_retry_attempts' => 3,
+            'retry_delay_seconds' => 60,
+            'total_deliveries' => 28,
+            'successful_deliveries' => 27,
+            'failed_deliveries' => 1,
+            'last_delivery_at' => now()->subHours(5),
+            'last_success_at' => now()->subHours(5),
+            'last_failure_at' => now()->subWeek(),
+        ]);
+
+        $this->command->info('  ✓ Created 2 webhook subscriptions');
+
+        // Create some webhook events (pending, delivered, failed)
+        $event1 = WebhookEvent::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'event_type' => 'order.created',
+            'event_id' => 'evt_' . Str::uuid(),
+            'payload' => [
+                'order_id' => 123,
+                'order_number' => 'ORD-20260109-001',
+                'status' => 'pending',
+                'total' => 99.99,
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'status' => 'delivered',
+            'delivered_at' => now()->subHours(2),
+            'retry_count' => 0,
+            'max_retries' => 3,
+        ]);
+
+        $event2 = WebhookEvent::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'event_type' => 'order.completed',
+            'event_id' => 'evt_' . Str::uuid(),
+            'payload' => [
+                'order_id' => 124,
+                'order_number' => 'ORD-20260109-002',
+                'status' => 'completed',
+                'total' => 149.99,
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'status' => 'pending',
+            'next_retry_at' => now()->addMinutes(5),
+            'retry_count' => 0,
+            'max_retries' => 3,
+        ]);
+
+        $event3 = WebhookEvent::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription2->id,
+            'event_type' => 'product.updated',
+            'event_id' => 'evt_' . Str::uuid(),
+            'payload' => [
+                'product_id' => 456,
+                'product_name' => 'Updated Product',
+                'changes' => ['price', 'stock'],
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'status' => 'failed',
+            'failed_at' => now()->subHours(1),
+            'retry_count' => 3,
+            'max_retries' => 3,
+            'last_error' => 'Connection timeout after 30 seconds',
+            'error_history' => [
+                ['error' => 'Connection timeout', 'retry_count' => 0, 'timestamp' => now()->subHours(3)->toDateTimeString()],
+                ['error' => 'Connection timeout', 'retry_count' => 1, 'timestamp' => now()->subHours(2)->toDateTimeString()],
+                ['error' => 'Connection timeout', 'retry_count' => 2, 'timestamp' => now()->subHours(1)->toDateTimeString()],
+            ],
+        ]);
+
+        $this->command->info('  ✓ Created 3 webhook events');
+
+        // Create delivery records
+        $delivery1 = WebhookDelivery::create([
+            'event_id' => $event1->id,
+            'subscription_id' => $subscription1->id,
+            'url' => $subscription1->url,
+            'payload' => $event1->payload,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-Webhook-Signature' => hash_hmac('sha256', json_encode($event1->payload), $subscription1->secret),
+                'X-Webhook-Event-Id' => $event1->event_id,
+            ],
+            'attempt_number' => 1,
+            'status' => 'success',
+            'response_code' => 200,
+            'response_body' => '{"status":"received"}',
+            'sent_at' => now()->subHours(2),
+            'completed_at' => now()->subHours(2),
+            'duration_ms' => 234,
+        ]);
+
+        $delivery2 = WebhookDelivery::create([
+            'event_id' => $event3->id,
+            'subscription_id' => $subscription2->id,
+            'url' => $subscription2->url,
+            'payload' => $event3->payload,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-Webhook-Signature' => hash_hmac('sha256', json_encode($event3->payload), $subscription2->secret),
+                'X-Webhook-Event-Id' => $event3->event_id,
+            ],
+            'attempt_number' => 3,
+            'status' => 'timeout',
+            'error_message' => 'Connection timeout after 30 seconds',
+            'sent_at' => now()->subHours(1),
+            'completed_at' => now()->subHours(1),
+            'duration_ms' => 30000,
+        ]);
+
+        $this->command->info('  ✓ Created 2 webhook deliveries');
+
+        // Create webhook logs
+        WebhookLog::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'event_id' => $event1->id,
+            'delivery_id' => $delivery1->id,
+            'level' => 'info',
+            'message' => 'Webhook delivered successfully',
+            'context' => [
+                'event_type' => 'order.created',
+                'status_code' => 200,
+                'duration_ms' => 234,
+            ],
+            'category' => 'delivery',
+            'action' => 'sent',
+        ]);
+
+        WebhookLog::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription2->id,
+            'event_id' => $event3->id,
+            'delivery_id' => $delivery2->id,
+            'level' => 'error',
+            'message' => 'Webhook delivery failed after 3 attempts',
+            'context' => [
+                'event_type' => 'product.updated',
+                'error' => 'Connection timeout after 30 seconds',
+                'retry_count' => 3,
+            ],
+            'category' => 'delivery',
+            'action' => 'failed',
+        ]);
+
+        WebhookLog::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'level' => 'info',
+            'message' => 'Webhook subscription created',
+            'context' => [
+                'subscription_name' => $subscription1->name,
+                'events_count' => count($subscription1->events),
+            ],
+            'category' => 'configuration',
+            'action' => 'created',
+        ]);
+
+        $this->command->info('  ✓ Created 3 webhook logs');
+        $this->command->info('✓ Webhooks seeding completed');
     }
 
     private $faker;
