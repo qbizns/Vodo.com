@@ -156,6 +156,8 @@ use VodoCommerce\Http\Controllers\Api\V2\WebhookEventController as V2WebhookEven
 use VodoCommerce\Http\Controllers\Api\V2\WebhookLogController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\AdminReviewController;
+use VodoCommerce\Http\Controllers\Api\V2\WishlistController;
+use VodoCommerce\Http\Controllers\Api\V2\AdminWishlistController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -440,6 +442,29 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('reviews/{id}/response', [AdminReviewController::class, 'addResponse'])->name('reviews.response.add');
     Route::put('review-responses/{responseId}', [AdminReviewController::class, 'updateResponse'])->name('reviews.response.update');
     Route::delete('review-responses/{responseId}', [AdminReviewController::class, 'deleteResponse'])->name('reviews.response.delete');
+
+    // =========================================================================
+    // Phase 11: Wishlists & Favorites System (Admin)
+    // =========================================================================
+
+    // Wishlist Management
+    Route::get('wishlists', [AdminWishlistController::class, 'index'])->name('wishlists.index');
+    Route::get('wishlists/{wishlistId}', [AdminWishlistController::class, 'show'])->name('wishlists.show');
+    Route::put('wishlists/{wishlistId}', [AdminWishlistController::class, 'update'])->name('wishlists.update');
+    Route::delete('wishlists/{wishlistId}', [AdminWishlistController::class, 'destroy'])->name('wishlists.destroy');
+
+    // Wishlist Statistics & Analytics
+    Route::get('wishlists/statistics/overview', [AdminWishlistController::class, 'statistics'])->name('wishlists.statistics');
+    Route::get('wishlists/notifications/price-drops', [AdminWishlistController::class, 'priceDrops'])->name('wishlists.price-drops');
+    Route::get('wishlists/notifications/back-in-stock', [AdminWishlistController::class, 'backInStock'])->name('wishlists.back-in-stock');
+    Route::get('wishlists/analytics/popular-products', [AdminWishlistController::class, 'popularProducts'])->name('wishlists.popular-products');
+    Route::get('wishlists/events/upcoming', [AdminWishlistController::class, 'upcomingEvents'])->name('wishlists.upcoming-events');
+
+    // Bulk Actions
+    Route::post('wishlists/bulk-delete', [AdminWishlistController::class, 'bulkDelete'])->name('wishlists.bulk-delete');
+
+    // Export
+    Route::get('wishlists/export', [AdminWishlistController::class, 'export'])->name('wishlists.export');
 });
 
 // =========================================================================
@@ -493,4 +518,40 @@ Route::prefix('storefront/v2')->middleware(['web'])->name('storefront.v2.')->gro
     Route::get('products/{productId}/customers/{customerId}/can-review', [ProductReviewController::class, 'canReview'])->name('products.reviews.can-review');
     Route::post('products/{productId}/reviews', [ProductReviewController::class, 'store'])->name('products.reviews.store');
     Route::post('reviews/{reviewId}/vote', [ProductReviewController::class, 'vote'])->name('reviews.vote');
+
+    // =========================================================================
+    // Phase 11: Wishlists & Favorites System (Storefront)
+    // =========================================================================
+
+    // Wishlist CRUD
+    Route::get('wishlists', [WishlistController::class, 'index'])->name('wishlists.index');
+    Route::post('wishlists', [WishlistController::class, 'store'])->name('wishlists.store');
+    Route::get('wishlists/{identifier}', [WishlistController::class, 'show'])->name('wishlists.show');
+    Route::put('wishlists/{wishlistId}', [WishlistController::class, 'update'])->name('wishlists.update');
+    Route::delete('wishlists/{wishlistId}', [WishlistController::class, 'destroy'])->name('wishlists.destroy');
+
+    // Wishlist Items
+    Route::post('wishlists/{wishlistId}/items', [WishlistController::class, 'addItem'])->name('wishlists.items.add');
+    Route::put('wishlists/{wishlistId}/items/{itemId}', [WishlistController::class, 'updateItem'])->name('wishlists.items.update');
+    Route::delete('wishlists/{wishlistId}/items/{itemId}', [WishlistController::class, 'removeItem'])->name('wishlists.items.remove');
+    Route::post('wishlists/{wishlistId}/items/{itemId}/purchased', [WishlistController::class, 'markItemPurchased'])->name('wishlists.items.purchased');
+    Route::post('wishlists/{wishlistId}/items/reorder', [WishlistController::class, 'reorderItems'])->name('wishlists.items.reorder');
+
+    // Wishlist Collaborators
+    Route::post('wishlists/{wishlistId}/collaborators', [WishlistController::class, 'addCollaborator'])->name('wishlists.collaborators.add');
+    Route::delete('wishlists/{wishlistId}/collaborators/{collaboratorId}', [WishlistController::class, 'removeCollaborator'])->name('wishlists.collaborators.remove');
+    Route::put('wishlists/{wishlistId}/collaborators/{collaboratorId}', [WishlistController::class, 'updateCollaboratorPermission'])->name('wishlists.collaborators.update');
+
+    // Collaboration Invitations
+    Route::post('wishlist-invitations/{token}/accept', [WishlistController::class, 'acceptInvitation'])->name('wishlist-invitations.accept');
+    Route::post('wishlist-invitations/{token}/decline', [WishlistController::class, 'declineInvitation'])->name('wishlist-invitations.decline');
+
+    // Wishlist Utilities
+    Route::post('wishlists/{wishlistId}/verify-purchases', [WishlistController::class, 'verifyPurchases'])->name('wishlists.verify-purchases');
+    Route::get('wishlists/{wishlistId}/statistics', [WishlistController::class, 'statistics'])->name('wishlists.statistics');
+
+    // Discovery & Search
+    Route::get('wishlists/discover/popular', [WishlistController::class, 'popular'])->name('wishlists.popular');
+    Route::get('wishlists/discover/upcoming-events', [WishlistController::class, 'upcomingEvents'])->name('wishlists.upcoming-events');
+    Route::get('wishlists/search', [WishlistController::class, 'search'])->name('wishlists.search');
 });

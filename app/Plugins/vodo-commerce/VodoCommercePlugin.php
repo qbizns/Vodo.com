@@ -2010,6 +2010,133 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // =========================================================================
+        // Phase 11: Wishlists & Favorites System
+        // =========================================================================
+
+        // Wishlist Entity
+        $this->entityRegistry->register('commerce_wishlist', [
+            'table_name' => 'commerce_wishlists',
+            'model_class' => \VodoCommerce\Models\Wishlist::class,
+            'labels' => ['singular' => 'Wishlist', 'plural' => 'Wishlists'],
+            'icon' => 'heart',
+            'search_columns' => ['name', 'slug', 'description'],
+            'fields' => [
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                    'required' => true,
+                    'show_in_list' => true,
+                ],
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'slug' => ['type' => 'slug', 'required' => true],
+                'description' => ['type' => 'text'],
+                'visibility' => [
+                    'type' => 'select',
+                    'default' => 'private',
+                    'config' => ['options' => ['private' => 'Private', 'shared' => 'Shared', 'public' => 'Public']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'share_token' => ['type' => 'string'],
+                'is_default' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'allow_comments' => ['type' => 'boolean', 'default' => false],
+                'show_purchased_items' => ['type' => 'boolean', 'default' => true],
+                'event_type' => ['type' => 'string', 'filterable' => true],
+                'event_date' => ['type' => 'date'],
+                'items_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'views_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'last_viewed_at' => ['type' => 'datetime'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Wishlist Item Entity
+        $this->entityRegistry->register('commerce_wishlist_item', [
+            'table_name' => 'commerce_wishlist_items',
+            'model_class' => \VodoCommerce\Models\WishlistItem::class,
+            'labels' => ['singular' => 'Wishlist Item', 'plural' => 'Wishlist Items'],
+            'icon' => 'list',
+            'show_in_menu' => false,
+            'fields' => [
+                'wishlist_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_wishlist', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                    'show_in_list' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity' => ['type' => 'integer', 'default' => 1, 'show_in_list' => true],
+                'notes' => ['type' => 'text'],
+                'priority' => [
+                    'type' => 'select',
+                    'default' => 'medium',
+                    'config' => ['options' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'price_when_added' => ['type' => 'money', 'show_in_list' => true],
+                'is_purchased' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'quantity_purchased' => ['type' => 'integer', 'default' => 0],
+                'purchased_at' => ['type' => 'datetime'],
+                'purchased_by' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                ],
+                'notify_on_price_drop' => ['type' => 'boolean', 'default' => false],
+                'notify_on_back_in_stock' => ['type' => 'boolean', 'default' => false],
+                'display_order' => ['type' => 'integer', 'default' => 0],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Wishlist Collaborator Entity
+        $this->entityRegistry->register('commerce_wishlist_collaborator', [
+            'table_name' => 'commerce_wishlist_collaborators',
+            'model_class' => \VodoCommerce\Models\WishlistCollaborator::class,
+            'labels' => ['singular' => 'Wishlist Collaborator', 'plural' => 'Wishlist Collaborators'],
+            'icon' => 'users',
+            'show_in_menu' => false,
+            'fields' => [
+                'wishlist_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_wishlist', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                    'show_in_list' => true,
+                ],
+                'invited_email' => ['type' => 'string', 'show_in_list' => true],
+                'permission' => [
+                    'type' => 'select',
+                    'default' => 'view',
+                    'config' => ['options' => ['view' => 'View', 'edit' => 'Edit', 'manage' => 'Manage']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'status' => [
+                    'type' => 'select',
+                    'default' => 'pending',
+                    'config' => ['options' => ['pending' => 'Pending', 'accepted' => 'Accepted', 'declined' => 'Declined']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'invitation_token' => ['type' => 'string'],
+                'invited_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'responded_at' => ['type' => 'datetime'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 

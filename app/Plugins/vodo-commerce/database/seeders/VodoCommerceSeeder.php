@@ -50,6 +50,9 @@ use VodoCommerce\Models\ProductReview;
 use VodoCommerce\Models\ReviewImage;
 use VodoCommerce\Models\ReviewVote;
 use VodoCommerce\Models\ReviewResponse;
+use VodoCommerce\Models\Wishlist;
+use VodoCommerce\Models\WishlistItem;
+use VodoCommerce\Models\WishlistCollaborator;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -108,6 +111,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 10: Reviews & Ratings
         $this->seedReviews($store);
+
+        // Phase 11: Wishlists & Favorites
+        $this->seedWishlists($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -2322,6 +2328,149 @@ class VodoCommerceSeeder extends Seeder
 
         $this->command->info("  ✓ Created {$reviewsCreated} product reviews with images, votes, and responses");
         $this->command->info('✓ Reviews seeding completed');
+    }
+
+    protected function seedWishlists(Store $store): void
+    {
+        $this->command->info('Seeding wishlists...');
+
+        $customers = Customer::where('store_id', $store->id)->limit(10)->get();
+        $products = Product::where('store_id', $store->id)->get();
+
+        if ($customers->isEmpty() || $products->isEmpty()) {
+            $this->command->warn('  ⚠ Skipping wishlist seeding - no customers or products found');
+            return;
+        }
+
+        $wishlistsCreated = 0;
+
+        foreach ($customers as $customer) {
+            // Create 1-3 wishlists per customer
+            $wishlistCount = rand(1, 3);
+            $isFirstWishlist = true;
+
+            for ($i = 0; $i < $wishlistCount; $i++) {
+                $eventTypes = ['wedding', 'birthday', 'baby_shower', 'anniversary', 'holiday', null];
+                $eventType = $this->faker->randomElement($eventTypes);
+                $visibility = $this->faker->randomElement([
+                    Wishlist::VISIBILITY_PRIVATE,
+                    Wishlist::VISIBILITY_PRIVATE,
+                    Wishlist::VISIBILITY_SHARED,
+                    Wishlist::VISIBILITY_PUBLIC,
+                ]);
+
+                $name = $isFirstWishlist ? 'My Wishlist' : $this->faker->randomElement([
+                    'Holiday Gift Ideas',
+                    'Birthday Wishlist',
+                    'Dream Products',
+                    'Favorites Collection',
+                    'Wedding Registry',
+                    'Baby Shower Registry',
+                    'Home Essentials',
+                    'Tech Gadgets',
+                ]);
+
+                $wishlist = Wishlist::factory()
+                    ->for($store, 'store')
+                    ->for($customer, 'customer')
+                    ->create([
+                        'name' => $name,
+                        'visibility' => $visibility,
+                        'is_default' => $isFirstWishlist,
+                        'event_type' => $eventType,
+                        'event_date' => $eventType ? $this->faker->dateTimeBetween('now', '+6 months') : null,
+                        'allow_comments' => $this->faker->boolean(70),
+                        'show_purchased_items' => $this->faker->boolean(80),
+                    ]);
+
+                // Add 3-10 items to the wishlist
+                $itemCount = rand(3, 10);
+                $addedProducts = [];
+
+                for ($j = 0; $j < $itemCount; $j++) {
+                    $product = $products->random();
+
+                    // Skip if already added
+                    if (in_array($product->id, $addedProducts)) {
+                        continue;
+                    }
+                    $addedProducts[] = $product->id;
+
+                    $item = WishlistItem::factory()
+                        ->for($wishlist, 'wishlist')
+                        ->for($product, 'product')
+                        ->create([
+                            'quantity' => rand(1, 3),
+                            'priority' => $this->faker->randomElement([
+                                WishlistItem::PRIORITY_HIGH,
+                                WishlistItem::PRIORITY_MEDIUM,
+                                WishlistItem::PRIORITY_MEDIUM,
+                                WishlistItem::PRIORITY_LOW,
+                            ]),
+                            'price_when_added' => $product->price,
+                            'notify_on_price_drop' => $this->faker->boolean(40),
+                            'notify_on_back_in_stock' => $this->faker->boolean(30),
+                            'display_order' => $j,
+                        ]);
+
+                    // Mark some items as purchased
+                    if ($this->faker->boolean(25)) {
+                        $item->markAsPurchased($customer->id, rand(1, $item->quantity));
+                    }
+                }
+
+                // Update items count
+                $wishlist->update(['items_count' => $addedProducts->count()]);
+
+                // Add some views to public wishlists
+                if ($wishlist->isPublic() || $wishlist->isShared()) {
+                    $viewsCount = rand(5, 150);
+                    $wishlist->update([
+                        'views_count' => $viewsCount,
+                        'last_viewed_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
+                    ]);
+                }
+
+                // Add collaborators to shared/public wishlists
+                if (($wishlist->isShared() || $wishlist->isPublic()) && $this->faker->boolean(60)) {
+                    $collaboratorCount = rand(1, 3);
+                    $otherCustomers = $customers->reject(fn($c) => $c->id === $customer->id);
+
+                    for ($k = 0; $k < $collaboratorCount && $otherCustomers->isNotEmpty(); $k++) {
+                        $collaboratorCustomer = $otherCustomers->random();
+
+                        WishlistCollaborator::factory()
+                            ->for($wishlist, 'wishlist')
+                            ->for($collaboratorCustomer, 'customer')
+                            ->create([
+                                'invited_email' => null,
+                                'permission' => $this->faker->randomElement([
+                                    WishlistCollaborator::PERMISSION_VIEW,
+                                    WishlistCollaborator::PERMISSION_VIEW,
+                                    WishlistCollaborator::PERMISSION_EDIT,
+                                    WishlistCollaborator::PERMISSION_MANAGE,
+                                ]),
+                                'status' => $this->faker->randomElement([
+                                    WishlistCollaborator::STATUS_ACCEPTED,
+                                    WishlistCollaborator::STATUS_ACCEPTED,
+                                    WishlistCollaborator::STATUS_PENDING,
+                                ]),
+                                'invited_at' => $this->faker->dateTimeBetween('-60 days', '-1 day'),
+                                'responded_at' => $this->faker->dateTimeBetween('-60 days', 'now'),
+                            ]);
+
+                        // Remove this customer so we don't add them again
+                        $otherCustomers = $otherCustomers->reject(fn($c) => $c->id === $collaboratorCustomer->id);
+                    }
+                }
+
+                $wishlistsCreated++;
+                $isFirstWishlist = false;
+            }
+        }
+
+        $this->command->info("  ✓ Created {$wishlistsCreated} wishlists with items and collaborators");
+        $this->command->info('✓ Wishlists seeding completed');
     }
 
     private $faker;
