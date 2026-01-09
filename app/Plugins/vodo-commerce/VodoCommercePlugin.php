@@ -2137,6 +2137,106 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // =========================================================================
+        // Phase 12: SEO Management System
+        // =========================================================================
+
+        // SEO Metadata Entity
+        $this->entityRegistry->register('commerce_seo_metadata', [
+            'table_name' => 'commerce_seo_metadata',
+            'model_class' => \VodoCommerce\Models\SeoMetadata::class,
+            'labels' => ['singular' => 'SEO Metadata', 'plural' => 'SEO Metadata'],
+            'icon' => 'search',
+            'search_columns' => ['meta_title', 'meta_description', 'focus_keyword'],
+            'fields' => [
+                'entity_type' => ['type' => 'string', 'show_in_list' => true],
+                'entity_id' => ['type' => 'integer'],
+                'meta_title' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'meta_description' => ['type' => 'text', 'searchable' => true],
+                'focus_keyword' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'seo_score' => ['type' => 'integer', 'show_in_list' => true],
+                'robots_index' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true],
+                'is_indexed' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Redirects Entity
+        $this->entityRegistry->register('commerce_seo_redirect', [
+            'table_name' => 'commerce_seo_redirects',
+            'model_class' => \VodoCommerce\Models\SeoRedirect::class,
+            'labels' => ['singular' => 'SEO Redirect', 'plural' => 'SEO Redirects'],
+            'icon' => 'corner-up-right',
+            'search_columns' => ['from_url', 'to_url'],
+            'fields' => [
+                'from_url' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'to_url' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'redirect_type' => [
+                    'type' => 'select',
+                    'default' => '301',
+                    'config' => ['options' => ['301' => '301 Permanent', '302' => '302 Temporary', '307' => '307 Temporary', '308' => '308 Permanent']],
+                    'show_in_list' => true,
+                ],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true, 'filterable' => true],
+                'hit_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Sitemaps Entity
+        $this->entityRegistry->register('commerce_seo_sitemap', [
+            'table_name' => 'commerce_seo_sitemaps',
+            'model_class' => \VodoCommerce\Models\SeoSitemap::class,
+            'labels' => ['singular' => 'Sitemap Entry', 'plural' => 'Sitemap Entries'],
+            'icon' => 'map',
+            'search_columns' => ['loc'],
+            'fields' => [
+                'entity_type' => ['type' => 'string', 'show_in_list' => true],
+                'entity_id' => ['type' => 'integer'],
+                'loc' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'lastmod' => ['type' => 'datetime', 'show_in_list' => true],
+                'changefreq' => ['type' => 'string', 'show_in_list' => true],
+                'priority' => ['type' => 'decimal', 'show_in_list' => true],
+                'sitemap_type' => ['type' => 'string', 'filterable' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Audit Entity
+        $this->entityRegistry->register('commerce_seo_audit', [
+            'table_name' => 'commerce_seo_audits',
+            'model_class' => \VodoCommerce\Models\SeoAudit::class,
+            'labels' => ['singular' => 'SEO Audit', 'plural' => 'SEO Audits'],
+            'icon' => 'bar-chart',
+            'fields' => [
+                'entity_type' => ['type' => 'string', 'show_in_list' => true],
+                'entity_id' => ['type' => 'integer'],
+                'audit_type' => ['type' => 'string', 'filterable' => true, 'show_in_list' => true],
+                'overall_score' => ['type' => 'integer', 'show_in_list' => true],
+                'content_score' => ['type' => 'integer'],
+                'technical_score' => ['type' => 'integer'],
+                'performance_score' => ['type' => 'integer'],
+                'audited_at' => ['type' => 'datetime', 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Keywords Entity
+        $this->entityRegistry->register('commerce_seo_keyword', [
+            'table_name' => 'commerce_seo_keywords',
+            'model_class' => \VodoCommerce\Models\SeoKeyword::class,
+            'labels' => ['singular' => 'SEO Keyword', 'plural' => 'SEO Keywords'],
+            'icon' => 'key',
+            'search_columns' => ['keyword'],
+            'fields' => [
+                'keyword' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'keyword_type' => ['type' => 'string', 'show_in_list' => true, 'filterable' => true],
+                'search_volume' => ['type' => 'integer', 'show_in_list' => true],
+                'difficulty' => ['type' => 'integer', 'show_in_list' => true],
+                'current_rank' => ['type' => 'integer', 'show_in_list' => true],
+                'target_rank' => ['type' => 'integer'],
+                'optimization_score' => ['type' => 'integer', 'show_in_list' => true],
+                'is_tracking' => ['type' => 'boolean', 'default' => true, 'filterable' => true],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
