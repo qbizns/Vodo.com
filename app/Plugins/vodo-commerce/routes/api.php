@@ -145,6 +145,19 @@ use VodoCommerce\Http\Controllers\Api\V2\PaymentMethodController;
 use VodoCommerce\Http\Controllers\Api\V2\TransactionController;
 use VodoCommerce\Http\Controllers\Api\V2\CartController;
 use VodoCommerce\Http\Controllers\Api\V2\CheckoutController;
+use VodoCommerce\Http\Controllers\Api\V2\InventoryLocationController;
+use VodoCommerce\Http\Controllers\Api\V2\InventoryController;
+use VodoCommerce\Http\Controllers\Api\V2\StockTransferController;
+use VodoCommerce\Http\Controllers\Api\V2\LowStockAlertController;
+use VodoCommerce\Http\Controllers\Api\V2\DashboardController;
+use VodoCommerce\Http\Controllers\Api\V2\ReportsController;
+use VodoCommerce\Http\Controllers\Api\V2\WebhookSubscriptionController;
+use VodoCommerce\Http\Controllers\Api\V2\WebhookEventController as V2WebhookEventController;
+use VodoCommerce\Http\Controllers\Api\V2\WebhookLogController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductReviewController;
+use VodoCommerce\Http\Controllers\Api\V2\AdminReviewController;
+use VodoCommerce\Http\Controllers\Api\V2\WishlistController;
+use VodoCommerce\Http\Controllers\Api\V2\AdminWishlistController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -325,6 +338,133 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::post('transactions/{id}/fail', [TransactionController::class, 'fail'])->name('transactions.fail');
     Route::post('transactions/{id}/refund', [TransactionController::class, 'createRefund'])->name('transactions.refund');
     Route::post('transactions/{id}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
+
+    // =========================================================================
+    // Phase 7: Inventory Management
+    // =========================================================================
+
+    // Inventory Locations
+    Route::get('inventory/locations', [InventoryLocationController::class, 'index'])->name('inventory.locations.index');
+    Route::post('inventory/locations', [InventoryLocationController::class, 'store'])->name('inventory.locations.store');
+    Route::get('inventory/locations/{id}', [InventoryLocationController::class, 'show'])->name('inventory.locations.show');
+    Route::put('inventory/locations/{id}', [InventoryLocationController::class, 'update'])->name('inventory.locations.update');
+    Route::delete('inventory/locations/{id}', [InventoryLocationController::class, 'destroy'])->name('inventory.locations.destroy');
+
+    // Inventory Items & Stock Operations
+    Route::get('inventory/items', [InventoryController::class, 'index'])->name('inventory.items.index');
+    Route::get('inventory/summary', [InventoryController::class, 'summary'])->name('inventory.summary');
+    Route::post('inventory/add-stock', [InventoryController::class, 'addStock'])->name('inventory.add-stock');
+    Route::post('inventory/remove-stock', [InventoryController::class, 'removeStock'])->name('inventory.remove-stock');
+    Route::post('inventory/adjust-stock', [InventoryController::class, 'adjustStock'])->name('inventory.adjust-stock');
+    Route::put('inventory/items/{id}/reorder-settings', [InventoryController::class, 'updateReorderSettings'])->name('inventory.items.reorder-settings');
+
+    // Stock Movements
+    Route::get('inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
+
+    // Stock Transfers
+    Route::get('inventory/transfers', [StockTransferController::class, 'index'])->name('inventory.transfers.index');
+    Route::post('inventory/transfers', [StockTransferController::class, 'store'])->name('inventory.transfers.store');
+    Route::get('inventory/transfers/{id}', [StockTransferController::class, 'show'])->name('inventory.transfers.show');
+    Route::post('inventory/transfers/{id}/approve', [StockTransferController::class, 'approve'])->name('inventory.transfers.approve');
+    Route::post('inventory/transfers/{id}/ship', [StockTransferController::class, 'ship'])->name('inventory.transfers.ship');
+    Route::post('inventory/transfers/{id}/receive', [StockTransferController::class, 'receive'])->name('inventory.transfers.receive');
+    Route::post('inventory/transfers/{id}/cancel', [StockTransferController::class, 'cancel'])->name('inventory.transfers.cancel');
+
+    // Low Stock Alerts
+    Route::get('inventory/alerts', [LowStockAlertController::class, 'index'])->name('inventory.alerts.index');
+    Route::get('inventory/alerts/statistics', [LowStockAlertController::class, 'statistics'])->name('inventory.alerts.statistics');
+    Route::post('inventory/alerts/{id}/resolve', [LowStockAlertController::class, 'resolve'])->name('inventory.alerts.resolve');
+    Route::post('inventory/alerts/bulk-resolve', [LowStockAlertController::class, 'bulkResolve'])->name('inventory.alerts.bulk-resolve');
+
+    // =========================================================================
+    // Phase 8: Analytics & Reporting
+    // =========================================================================
+
+    // Dashboard Metrics
+    Route::get('dashboard/overview', [DashboardController::class, 'overview'])->name('dashboard.overview');
+    Route::get('dashboard/revenue', [DashboardController::class, 'revenue'])->name('dashboard.revenue');
+    Route::get('dashboard/orders', [DashboardController::class, 'orders'])->name('dashboard.orders');
+    Route::get('dashboard/customers', [DashboardController::class, 'customers'])->name('dashboard.customers');
+    Route::get('dashboard/products', [DashboardController::class, 'products'])->name('dashboard.products');
+    Route::get('dashboard/inventory', [DashboardController::class, 'inventory'])->name('dashboard.inventory');
+
+    // Reports
+    Route::get('reports/sales', [ReportsController::class, 'sales'])->name('reports.sales');
+    Route::get('reports/best-sellers', [ReportsController::class, 'bestSellers'])->name('reports.best-sellers');
+    Route::get('reports/revenue-by-payment-method', [ReportsController::class, 'revenueByPaymentMethod'])->name('reports.revenue-by-payment-method');
+    Route::get('reports/customer-lifetime-value', [ReportsController::class, 'customerLifetimeValue'])->name('reports.customer-lifetime-value');
+    Route::get('reports/inventory-turnover', [ReportsController::class, 'inventoryTurnover'])->name('reports.inventory-turnover');
+
+    // =========================================================================
+    // Phase 9: Webhooks & Events System
+    // =========================================================================
+
+    // Webhook Subscriptions
+    Route::get('webhooks/subscriptions', [WebhookSubscriptionController::class, 'index'])->name('webhooks.subscriptions.index');
+    Route::post('webhooks/subscriptions', [WebhookSubscriptionController::class, 'store'])->name('webhooks.subscriptions.store');
+    Route::get('webhooks/subscriptions/{id}', [WebhookSubscriptionController::class, 'show'])->name('webhooks.subscriptions.show');
+    Route::put('webhooks/subscriptions/{id}', [WebhookSubscriptionController::class, 'update'])->name('webhooks.subscriptions.update');
+    Route::delete('webhooks/subscriptions/{id}', [WebhookSubscriptionController::class, 'destroy'])->name('webhooks.subscriptions.destroy');
+    Route::post('webhooks/subscriptions/{id}/test', [WebhookSubscriptionController::class, 'test'])->name('webhooks.subscriptions.test');
+    Route::post('webhooks/subscriptions/{id}/regenerate-secret', [WebhookSubscriptionController::class, 'regenerateSecret'])->name('webhooks.subscriptions.regenerate-secret');
+    Route::get('webhooks/statistics', [WebhookSubscriptionController::class, 'statistics'])->name('webhooks.statistics');
+
+    // Webhook Events
+    Route::get('webhooks/events', [V2WebhookEventController::class, 'index'])->name('webhooks.events.index');
+    Route::get('webhooks/events/{eventId}', [V2WebhookEventController::class, 'show'])->name('webhooks.events.show');
+    Route::post('webhooks/events/{eventId}/retry', [V2WebhookEventController::class, 'retry'])->name('webhooks.events.retry');
+    Route::post('webhooks/events/{eventId}/cancel', [V2WebhookEventController::class, 'cancel'])->name('webhooks.events.cancel');
+    Route::get('webhooks/events/pending-retries', [V2WebhookEventController::class, 'pendingRetries'])->name('webhooks.events.pending-retries');
+
+    // Webhook Logs
+    Route::get('webhooks/logs', [WebhookLogController::class, 'index'])->name('webhooks.logs.index');
+    Route::get('webhooks/logs/{id}', [WebhookLogController::class, 'show'])->name('webhooks.logs.show');
+    Route::get('webhooks/logs/statistics', [WebhookLogController::class, 'statistics'])->name('webhooks.logs.statistics');
+
+    // =========================================================================
+    // Phase 10: Reviews & Ratings System (Admin)
+    // =========================================================================
+
+    // Admin Review Management
+    Route::get('reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+    Route::get('reviews/{id}', [AdminReviewController::class, 'show'])->name('reviews.show');
+    Route::post('reviews/{id}/approve', [AdminReviewController::class, 'approve'])->name('reviews.approve');
+    Route::post('reviews/{id}/reject', [AdminReviewController::class, 'reject'])->name('reviews.reject');
+    Route::post('reviews/{id}/flag', [AdminReviewController::class, 'flag'])->name('reviews.flag');
+    Route::post('reviews/{id}/toggle-featured', [AdminReviewController::class, 'toggleFeatured'])->name('reviews.toggle-featured');
+    Route::delete('reviews/{id}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    // Bulk Actions
+    Route::post('reviews/bulk-approve', [AdminReviewController::class, 'bulkApprove'])->name('reviews.bulk-approve');
+    Route::post('reviews/bulk-reject', [AdminReviewController::class, 'bulkReject'])->name('reviews.bulk-reject');
+
+    // Review Responses
+    Route::post('reviews/{id}/response', [AdminReviewController::class, 'addResponse'])->name('reviews.response.add');
+    Route::put('review-responses/{responseId}', [AdminReviewController::class, 'updateResponse'])->name('reviews.response.update');
+    Route::delete('review-responses/{responseId}', [AdminReviewController::class, 'deleteResponse'])->name('reviews.response.delete');
+
+    // =========================================================================
+    // Phase 11: Wishlists & Favorites System (Admin)
+    // =========================================================================
+
+    // Wishlist Management
+    Route::get('wishlists', [AdminWishlistController::class, 'index'])->name('wishlists.index');
+    Route::get('wishlists/{wishlistId}', [AdminWishlistController::class, 'show'])->name('wishlists.show');
+    Route::put('wishlists/{wishlistId}', [AdminWishlistController::class, 'update'])->name('wishlists.update');
+    Route::delete('wishlists/{wishlistId}', [AdminWishlistController::class, 'destroy'])->name('wishlists.destroy');
+
+    // Wishlist Statistics & Analytics
+    Route::get('wishlists/statistics/overview', [AdminWishlistController::class, 'statistics'])->name('wishlists.statistics');
+    Route::get('wishlists/notifications/price-drops', [AdminWishlistController::class, 'priceDrops'])->name('wishlists.price-drops');
+    Route::get('wishlists/notifications/back-in-stock', [AdminWishlistController::class, 'backInStock'])->name('wishlists.back-in-stock');
+    Route::get('wishlists/analytics/popular-products', [AdminWishlistController::class, 'popularProducts'])->name('wishlists.popular-products');
+    Route::get('wishlists/events/upcoming', [AdminWishlistController::class, 'upcomingEvents'])->name('wishlists.upcoming-events');
+
+    // Bulk Actions
+    Route::post('wishlists/bulk-delete', [AdminWishlistController::class, 'bulkDelete'])->name('wishlists.bulk-delete');
+
+    // Export
+    Route::get('wishlists/export', [AdminWishlistController::class, 'export'])->name('wishlists.export');
 });
 
 // =========================================================================
@@ -367,4 +507,51 @@ Route::prefix('storefront/v2')->middleware(['web'])->name('storefront.v2.')->gro
 
     // Webhook endpoint for payment gateways
     Route::post('webhooks/payment/{gateway}', [CheckoutController::class, 'processWebhook'])->name('webhooks.payment');
+
+    // =========================================================================
+    // Phase 10: Product Reviews (Storefront)
+    // =========================================================================
+
+    // Product Reviews
+    Route::get('products/{productId}/reviews', [ProductReviewController::class, 'index'])->name('products.reviews.index');
+    Route::get('products/{productId}/reviews/statistics', [ProductReviewController::class, 'statistics'])->name('products.reviews.statistics');
+    Route::get('products/{productId}/customers/{customerId}/can-review', [ProductReviewController::class, 'canReview'])->name('products.reviews.can-review');
+    Route::post('products/{productId}/reviews', [ProductReviewController::class, 'store'])->name('products.reviews.store');
+    Route::post('reviews/{reviewId}/vote', [ProductReviewController::class, 'vote'])->name('reviews.vote');
+
+    // =========================================================================
+    // Phase 11: Wishlists & Favorites System (Storefront)
+    // =========================================================================
+
+    // Wishlist CRUD
+    Route::get('wishlists', [WishlistController::class, 'index'])->name('wishlists.index');
+    Route::post('wishlists', [WishlistController::class, 'store'])->name('wishlists.store');
+    Route::get('wishlists/{identifier}', [WishlistController::class, 'show'])->name('wishlists.show');
+    Route::put('wishlists/{wishlistId}', [WishlistController::class, 'update'])->name('wishlists.update');
+    Route::delete('wishlists/{wishlistId}', [WishlistController::class, 'destroy'])->name('wishlists.destroy');
+
+    // Wishlist Items
+    Route::post('wishlists/{wishlistId}/items', [WishlistController::class, 'addItem'])->name('wishlists.items.add');
+    Route::put('wishlists/{wishlistId}/items/{itemId}', [WishlistController::class, 'updateItem'])->name('wishlists.items.update');
+    Route::delete('wishlists/{wishlistId}/items/{itemId}', [WishlistController::class, 'removeItem'])->name('wishlists.items.remove');
+    Route::post('wishlists/{wishlistId}/items/{itemId}/purchased', [WishlistController::class, 'markItemPurchased'])->name('wishlists.items.purchased');
+    Route::post('wishlists/{wishlistId}/items/reorder', [WishlistController::class, 'reorderItems'])->name('wishlists.items.reorder');
+
+    // Wishlist Collaborators
+    Route::post('wishlists/{wishlistId}/collaborators', [WishlistController::class, 'addCollaborator'])->name('wishlists.collaborators.add');
+    Route::delete('wishlists/{wishlistId}/collaborators/{collaboratorId}', [WishlistController::class, 'removeCollaborator'])->name('wishlists.collaborators.remove');
+    Route::put('wishlists/{wishlistId}/collaborators/{collaboratorId}', [WishlistController::class, 'updateCollaboratorPermission'])->name('wishlists.collaborators.update');
+
+    // Collaboration Invitations
+    Route::post('wishlist-invitations/{token}/accept', [WishlistController::class, 'acceptInvitation'])->name('wishlist-invitations.accept');
+    Route::post('wishlist-invitations/{token}/decline', [WishlistController::class, 'declineInvitation'])->name('wishlist-invitations.decline');
+
+    // Wishlist Utilities
+    Route::post('wishlists/{wishlistId}/verify-purchases', [WishlistController::class, 'verifyPurchases'])->name('wishlists.verify-purchases');
+    Route::get('wishlists/{wishlistId}/statistics', [WishlistController::class, 'statistics'])->name('wishlists.statistics');
+
+    // Discovery & Search
+    Route::get('wishlists/discover/popular', [WishlistController::class, 'popular'])->name('wishlists.popular');
+    Route::get('wishlists/discover/upcoming-events', [WishlistController::class, 'upcomingEvents'])->name('wishlists.upcoming-events');
+    Route::get('wishlists/search', [WishlistController::class, 'search'])->name('wishlists.search');
 });

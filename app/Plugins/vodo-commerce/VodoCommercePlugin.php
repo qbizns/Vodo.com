@@ -1561,6 +1561,682 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // =====================================================================
+        // Phase 7: Inventory Management Entities
+        // =====================================================================
+
+        // Inventory Location Entity
+        $this->entityRegistry->register('commerce_inventory_location', [
+            'table_name' => 'commerce_inventory_locations',
+            'model_class' => \VodoCommerce\Models\InventoryLocation::class,
+            'labels' => ['singular' => 'Inventory Location', 'plural' => 'Inventory Locations'],
+            'icon' => 'warehouse',
+            'search_columns' => ['name', 'code'],
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'code' => ['type' => 'string', 'required' => true, 'unique' => true, 'show_in_list' => true],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => ['warehouse' => 'Warehouse', 'store' => 'Store', 'dropshipper' => 'Dropshipper']],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'address' => ['type' => 'text'],
+                'city' => ['type' => 'string'],
+                'state' => ['type' => 'string'],
+                'postal_code' => ['type' => 'string'],
+                'country' => ['type' => 'string'],
+                'contact_name' => ['type' => 'string'],
+                'contact_email' => ['type' => 'email'],
+                'contact_phone' => ['type' => 'string'],
+                'priority' => ['type' => 'integer', 'default' => 0],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true, 'show_in_list' => true],
+                'is_default' => ['type' => 'boolean', 'default' => false],
+                'settings' => ['type' => 'json'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Inventory Item Entity
+        $this->entityRegistry->register('commerce_inventory_item', [
+            'table_name' => 'commerce_inventory_items',
+            'model_class' => \VodoCommerce\Models\InventoryItem::class,
+            'labels' => ['singular' => 'Inventory Item', 'plural' => 'Inventory Items'],
+            'icon' => 'box',
+            'show_in_menu' => false,
+            'fields' => [
+                'location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'reserved_quantity' => ['type' => 'integer', 'default' => 0],
+                'reorder_point' => ['type' => 'integer'],
+                'reorder_quantity' => ['type' => 'integer'],
+                'bin_location' => ['type' => 'string'],
+                'unit_cost' => ['type' => 'money'],
+                'last_counted_at' => ['type' => 'datetime'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Stock Movement Entity
+        $this->entityRegistry->register('commerce_stock_movement', [
+            'table_name' => 'commerce_stock_movements',
+            'model_class' => \VodoCommerce\Models\StockMovement::class,
+            'labels' => ['singular' => 'Stock Movement', 'plural' => 'Stock Movements'],
+            'icon' => 'trending-up',
+            'search_columns' => ['reason'],
+            'fields' => [
+                'location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'type' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'in' => 'In',
+                        'out' => 'Out',
+                        'transfer_in' => 'Transfer In',
+                        'transfer_out' => 'Transfer Out',
+                        'adjustment' => 'Adjustment',
+                        'return' => 'Return',
+                        'damaged' => 'Damaged',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'quantity' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'quantity_before' => ['type' => 'integer'],
+                'quantity_after' => ['type' => 'integer'],
+                'reason' => ['type' => 'text', 'searchable' => true],
+                'unit_cost' => ['type' => 'money'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Stock Transfer Entity
+        $this->entityRegistry->register('commerce_stock_transfer', [
+            'table_name' => 'commerce_stock_transfers',
+            'model_class' => \VodoCommerce\Models\StockTransfer::class,
+            'labels' => ['singular' => 'Stock Transfer', 'plural' => 'Stock Transfers'],
+            'icon' => 'truck',
+            'search_columns' => ['transfer_number', 'notes'],
+            'fields' => [
+                'transfer_number' => ['type' => 'string', 'required' => true, 'unique' => true, 'show_in_list' => true],
+                'from_location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'to_location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'status' => [
+                    'type' => 'select',
+                    'required' => true,
+                    'config' => ['options' => [
+                        'pending' => 'Pending',
+                        'in_transit' => 'In Transit',
+                        'completed' => 'Completed',
+                        'cancelled' => 'Cancelled',
+                    ]],
+                    'filterable' => true,
+                    'show_in_list' => true,
+                ],
+                'notes' => ['type' => 'text'],
+                'requested_at' => ['type' => 'datetime'],
+                'approved_at' => ['type' => 'datetime'],
+                'shipped_at' => ['type' => 'datetime'],
+                'received_at' => ['type' => 'datetime'],
+                'cancelled_at' => ['type' => 'datetime'],
+                'cancellation_reason' => ['type' => 'text'],
+                'tracking_number' => ['type' => 'string'],
+                'carrier' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Stock Transfer Item Entity
+        $this->entityRegistry->register('commerce_stock_transfer_item', [
+            'table_name' => 'commerce_stock_transfer_items',
+            'model_class' => \VodoCommerce\Models\StockTransferItem::class,
+            'labels' => ['singular' => 'Stock Transfer Item', 'plural' => 'Stock Transfer Items'],
+            'icon' => 'package',
+            'show_in_menu' => false,
+            'fields' => [
+                'transfer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_stock_transfer', 'display_field' => 'transfer_number'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity_requested' => ['type' => 'integer', 'required' => true],
+                'quantity_shipped' => ['type' => 'integer', 'default' => 0],
+                'quantity_received' => ['type' => 'integer', 'default' => 0],
+                'notes' => ['type' => 'text'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Low Stock Alert Entity
+        $this->entityRegistry->register('commerce_low_stock_alert', [
+            'table_name' => 'commerce_low_stock_alerts',
+            'model_class' => \VodoCommerce\Models\LowStockAlert::class,
+            'labels' => ['singular' => 'Low Stock Alert', 'plural' => 'Low Stock Alerts'],
+            'icon' => 'alert-triangle',
+            'fields' => [
+                'location_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_inventory_location', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'threshold' => ['type' => 'integer', 'required' => true],
+                'current_quantity' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'is_resolved' => ['type' => 'boolean', 'default' => false, 'filterable' => true, 'show_in_list' => true],
+                'resolved_at' => ['type' => 'datetime'],
+                'resolution_notes' => ['type' => 'text'],
+            ],
+        ], self::SLUG);
+
+        // =====================================================================
+        // Phase 9: Webhooks & Events System Entities
+        // =====================================================================
+
+        // Webhook Subscription Entity
+        $this->entityRegistry->register('commerce_webhook_subscription', [
+            'table_name' => 'commerce_webhook_subscriptions',
+            'model_class' => \VodoCommerce\Models\WebhookSubscription::class,
+            'labels' => ['singular' => 'Webhook Subscription', 'plural' => 'Webhook Subscriptions'],
+            'icon' => 'globe',
+            'fields' => [
+                'name' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'url' => ['type' => 'url', 'required' => true, 'show_in_list' => true],
+                'description' => ['type' => 'text'],
+                'events' => ['type' => 'json', 'required' => true],
+                'secret' => ['type' => 'string', 'required' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true, 'filterable' => true],
+                'timeout_seconds' => ['type' => 'integer', 'default' => 30],
+                'max_retry_attempts' => ['type' => 'integer', 'default' => 3],
+                'retry_delay_seconds' => ['type' => 'integer', 'default' => 60],
+                'custom_headers' => ['type' => 'json'],
+                'total_deliveries' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'successful_deliveries' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'failed_deliveries' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'last_delivery_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'last_success_at' => ['type' => 'datetime'],
+                'last_failure_at' => ['type' => 'datetime'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Webhook Event Entity
+        $this->entityRegistry->register('commerce_webhook_event', [
+            'table_name' => 'commerce_webhook_events',
+            'model_class' => \VodoCommerce\Models\WebhookEvent::class,
+            'labels' => ['singular' => 'Webhook Event', 'plural' => 'Webhook Events'],
+            'icon' => 'activity',
+            'fields' => [
+                'subscription_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_subscription', 'display_field' => 'name'],
+                ],
+                'event_type' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'event_id' => ['type' => 'string', 'required' => true, 'show_in_list' => true],
+                'payload' => ['type' => 'json', 'required' => true],
+                'status' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'delivered_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'failed_at' => ['type' => 'datetime'],
+                'next_retry_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'retry_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'max_retries' => ['type' => 'integer', 'default' => 3],
+                'last_error' => ['type' => 'text'],
+                'error_history' => ['type' => 'json'],
+                'processing_at' => ['type' => 'datetime'],
+                'processing_by' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Webhook Delivery Entity
+        $this->entityRegistry->register('commerce_webhook_delivery', [
+            'table_name' => 'commerce_webhook_deliveries',
+            'model_class' => \VodoCommerce\Models\WebhookDelivery::class,
+            'labels' => ['singular' => 'Webhook Delivery', 'plural' => 'Webhook Deliveries'],
+            'icon' => 'send',
+            'fields' => [
+                'event_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_event', 'display_field' => 'event_id'],
+                    'required' => true,
+                ],
+                'subscription_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_subscription', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'url' => ['type' => 'url', 'required' => true, 'show_in_list' => true],
+                'payload' => ['type' => 'json', 'required' => true],
+                'headers' => ['type' => 'json'],
+                'attempt_number' => ['type' => 'integer', 'default' => 1, 'show_in_list' => true],
+                'status' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'response_code' => ['type' => 'integer', 'show_in_list' => true],
+                'response_body' => ['type' => 'text'],
+                'response_headers' => ['type' => 'text'],
+                'error_message' => ['type' => 'text', 'show_in_list' => true],
+                'sent_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'completed_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'duration_ms' => ['type' => 'integer', 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Webhook Log Entity
+        $this->entityRegistry->register('commerce_webhook_log', [
+            'table_name' => 'commerce_webhook_logs',
+            'model_class' => \VodoCommerce\Models\WebhookLog::class,
+            'labels' => ['singular' => 'Webhook Log', 'plural' => 'Webhook Logs'],
+            'icon' => 'file-text',
+            'fields' => [
+                'subscription_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_subscription', 'display_field' => 'name'],
+                ],
+                'event_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_event', 'display_field' => 'event_id'],
+                ],
+                'delivery_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_webhook_delivery', 'display_field' => 'id'],
+                ],
+                'level' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'message' => ['type' => 'text', 'required' => true, 'show_in_list' => true],
+                'context' => ['type' => 'json'],
+                'category' => ['type' => 'string', 'show_in_list' => true, 'filterable' => true],
+                'action' => ['type' => 'string', 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // =====================================================================
+        // Phase 10: Reviews & Ratings System Entities
+        // =====================================================================
+
+        // Product Review Entity
+        $this->entityRegistry->register('commerce_product_review', [
+            'table_name' => 'commerce_product_reviews',
+            'model_class' => \VodoCommerce\Models\ProductReview::class,
+            'labels' => ['singular' => 'Product Review', 'plural' => 'Product Reviews'],
+            'icon' => 'star',
+            'fields' => [
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'order_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_order', 'display_field' => 'order_number'],
+                ],
+                'rating' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'title' => ['type' => 'string', 'show_in_list' => true],
+                'comment' => ['type' => 'text', 'required' => true],
+                'is_verified_purchase' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'status' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'is_featured' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'helpful_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'not_helpful_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'published_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'approved_at' => ['type' => 'datetime'],
+                'rejected_at' => ['type' => 'datetime'],
+                'rejection_reason' => ['type' => 'text'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Review Image Entity
+        $this->entityRegistry->register('commerce_review_image', [
+            'table_name' => 'commerce_review_images',
+            'model_class' => \VodoCommerce\Models\ReviewImage::class,
+            'labels' => ['singular' => 'Review Image', 'plural' => 'Review Images'],
+            'icon' => 'image',
+            'fields' => [
+                'review_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_review', 'display_field' => 'id'],
+                    'required' => true,
+                ],
+                'image_url' => ['type' => 'url', 'required' => true, 'show_in_list' => true],
+                'thumbnail_url' => ['type' => 'url'],
+                'display_order' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'alt_text' => ['type' => 'string'],
+                'width' => ['type' => 'integer'],
+                'height' => ['type' => 'integer'],
+                'file_size' => ['type' => 'integer'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Review Vote Entity
+        $this->entityRegistry->register('commerce_review_vote', [
+            'table_name' => 'commerce_review_votes',
+            'model_class' => \VodoCommerce\Models\ReviewVote::class,
+            'labels' => ['singular' => 'Review Vote', 'plural' => 'Review Votes'],
+            'icon' => 'thumbs-up',
+            'fields' => [
+                'review_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_review', 'display_field' => 'id'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                ],
+                'vote_type' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'ip_address' => ['type' => 'string'],
+                'user_agent' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Review Response Entity
+        $this->entityRegistry->register('commerce_review_response', [
+            'table_name' => 'commerce_review_responses',
+            'model_class' => \VodoCommerce\Models\ReviewResponse::class,
+            'labels' => ['singular' => 'Review Response', 'plural' => 'Review Responses'],
+            'icon' => 'message-square',
+            'fields' => [
+                'review_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_review', 'display_field' => 'id'],
+                    'required' => true,
+                ],
+                'responder_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'user', 'display_field' => 'name'],
+                ],
+                'response_text' => ['type' => 'text', 'required' => true, 'show_in_list' => true],
+                'is_public' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true, 'filterable' => true],
+                'published_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // =========================================================================
+        // Phase 11: Wishlists & Favorites System
+        // =========================================================================
+
+        // Wishlist Entity
+        $this->entityRegistry->register('commerce_wishlist', [
+            'table_name' => 'commerce_wishlists',
+            'model_class' => \VodoCommerce\Models\Wishlist::class,
+            'labels' => ['singular' => 'Wishlist', 'plural' => 'Wishlists'],
+            'icon' => 'heart',
+            'search_columns' => ['name', 'slug', 'description'],
+            'fields' => [
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                    'required' => true,
+                    'show_in_list' => true,
+                ],
+                'name' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'slug' => ['type' => 'slug', 'required' => true],
+                'description' => ['type' => 'text'],
+                'visibility' => [
+                    'type' => 'select',
+                    'default' => 'private',
+                    'config' => ['options' => ['private' => 'Private', 'shared' => 'Shared', 'public' => 'Public']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'share_token' => ['type' => 'string'],
+                'is_default' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'allow_comments' => ['type' => 'boolean', 'default' => false],
+                'show_purchased_items' => ['type' => 'boolean', 'default' => true],
+                'event_type' => ['type' => 'string', 'filterable' => true],
+                'event_date' => ['type' => 'date'],
+                'items_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'views_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'last_viewed_at' => ['type' => 'datetime'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Wishlist Item Entity
+        $this->entityRegistry->register('commerce_wishlist_item', [
+            'table_name' => 'commerce_wishlist_items',
+            'model_class' => \VodoCommerce\Models\WishlistItem::class,
+            'labels' => ['singular' => 'Wishlist Item', 'plural' => 'Wishlist Items'],
+            'icon' => 'list',
+            'show_in_menu' => false,
+            'fields' => [
+                'wishlist_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_wishlist', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                    'show_in_list' => true,
+                ],
+                'variant_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_variant', 'display_field' => 'name'],
+                ],
+                'quantity' => ['type' => 'integer', 'default' => 1, 'show_in_list' => true],
+                'notes' => ['type' => 'text'],
+                'priority' => [
+                    'type' => 'select',
+                    'default' => 'medium',
+                    'config' => ['options' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'price_when_added' => ['type' => 'money', 'show_in_list' => true],
+                'is_purchased' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'quantity_purchased' => ['type' => 'integer', 'default' => 0],
+                'purchased_at' => ['type' => 'datetime'],
+                'purchased_by' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                ],
+                'notify_on_price_drop' => ['type' => 'boolean', 'default' => false],
+                'notify_on_back_in_stock' => ['type' => 'boolean', 'default' => false],
+                'display_order' => ['type' => 'integer', 'default' => 0],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Wishlist Collaborator Entity
+        $this->entityRegistry->register('commerce_wishlist_collaborator', [
+            'table_name' => 'commerce_wishlist_collaborators',
+            'model_class' => \VodoCommerce\Models\WishlistCollaborator::class,
+            'labels' => ['singular' => 'Wishlist Collaborator', 'plural' => 'Wishlist Collaborators'],
+            'icon' => 'users',
+            'show_in_menu' => false,
+            'fields' => [
+                'wishlist_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_wishlist', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                    'show_in_list' => true,
+                ],
+                'invited_email' => ['type' => 'string', 'show_in_list' => true],
+                'permission' => [
+                    'type' => 'select',
+                    'default' => 'view',
+                    'config' => ['options' => ['view' => 'View', 'edit' => 'Edit', 'manage' => 'Manage']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'status' => [
+                    'type' => 'select',
+                    'default' => 'pending',
+                    'config' => ['options' => ['pending' => 'Pending', 'accepted' => 'Accepted', 'declined' => 'Declined']],
+                    'show_in_list' => true,
+                    'filterable' => true,
+                ],
+                'invitation_token' => ['type' => 'string'],
+                'invited_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'responded_at' => ['type' => 'datetime'],
+            ],
+        ], self::SLUG);
+
+        // =========================================================================
+        // Phase 12: SEO Management System
+        // =========================================================================
+
+        // SEO Metadata Entity
+        $this->entityRegistry->register('commerce_seo_metadata', [
+            'table_name' => 'commerce_seo_metadata',
+            'model_class' => \VodoCommerce\Models\SeoMetadata::class,
+            'labels' => ['singular' => 'SEO Metadata', 'plural' => 'SEO Metadata'],
+            'icon' => 'search',
+            'search_columns' => ['meta_title', 'meta_description', 'focus_keyword'],
+            'fields' => [
+                'entity_type' => ['type' => 'string', 'show_in_list' => true],
+                'entity_id' => ['type' => 'integer'],
+                'meta_title' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'meta_description' => ['type' => 'text', 'searchable' => true],
+                'focus_keyword' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'seo_score' => ['type' => 'integer', 'show_in_list' => true],
+                'robots_index' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true],
+                'is_indexed' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Redirects Entity
+        $this->entityRegistry->register('commerce_seo_redirect', [
+            'table_name' => 'commerce_seo_redirects',
+            'model_class' => \VodoCommerce\Models\SeoRedirect::class,
+            'labels' => ['singular' => 'SEO Redirect', 'plural' => 'SEO Redirects'],
+            'icon' => 'corner-up-right',
+            'search_columns' => ['from_url', 'to_url'],
+            'fields' => [
+                'from_url' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'to_url' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'redirect_type' => [
+                    'type' => 'select',
+                    'default' => '301',
+                    'config' => ['options' => ['301' => '301 Permanent', '302' => '302 Temporary', '307' => '307 Temporary', '308' => '308 Permanent']],
+                    'show_in_list' => true,
+                ],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true, 'filterable' => true],
+                'hit_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Sitemaps Entity
+        $this->entityRegistry->register('commerce_seo_sitemap', [
+            'table_name' => 'commerce_seo_sitemaps',
+            'model_class' => \VodoCommerce\Models\SeoSitemap::class,
+            'labels' => ['singular' => 'Sitemap Entry', 'plural' => 'Sitemap Entries'],
+            'icon' => 'map',
+            'search_columns' => ['loc'],
+            'fields' => [
+                'entity_type' => ['type' => 'string', 'show_in_list' => true],
+                'entity_id' => ['type' => 'integer'],
+                'loc' => ['type' => 'string', 'searchable' => true, 'show_in_list' => true],
+                'lastmod' => ['type' => 'datetime', 'show_in_list' => true],
+                'changefreq' => ['type' => 'string', 'show_in_list' => true],
+                'priority' => ['type' => 'decimal', 'show_in_list' => true],
+                'sitemap_type' => ['type' => 'string', 'filterable' => true],
+                'is_active' => ['type' => 'boolean', 'default' => true, 'filterable' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Audit Entity
+        $this->entityRegistry->register('commerce_seo_audit', [
+            'table_name' => 'commerce_seo_audits',
+            'model_class' => \VodoCommerce\Models\SeoAudit::class,
+            'labels' => ['singular' => 'SEO Audit', 'plural' => 'SEO Audits'],
+            'icon' => 'bar-chart',
+            'fields' => [
+                'entity_type' => ['type' => 'string', 'show_in_list' => true],
+                'entity_id' => ['type' => 'integer'],
+                'audit_type' => ['type' => 'string', 'filterable' => true, 'show_in_list' => true],
+                'overall_score' => ['type' => 'integer', 'show_in_list' => true],
+                'content_score' => ['type' => 'integer'],
+                'technical_score' => ['type' => 'integer'],
+                'performance_score' => ['type' => 'integer'],
+                'audited_at' => ['type' => 'datetime', 'show_in_list' => true],
+            ],
+        ], self::SLUG);
+
+        // SEO Keywords Entity
+        $this->entityRegistry->register('commerce_seo_keyword', [
+            'table_name' => 'commerce_seo_keywords',
+            'model_class' => \VodoCommerce\Models\SeoKeyword::class,
+            'labels' => ['singular' => 'SEO Keyword', 'plural' => 'SEO Keywords'],
+            'icon' => 'key',
+            'search_columns' => ['keyword'],
+            'fields' => [
+                'keyword' => ['type' => 'string', 'required' => true, 'searchable' => true, 'show_in_list' => true],
+                'keyword_type' => ['type' => 'string', 'show_in_list' => true, 'filterable' => true],
+                'search_volume' => ['type' => 'integer', 'show_in_list' => true],
+                'difficulty' => ['type' => 'integer', 'show_in_list' => true],
+                'current_rank' => ['type' => 'integer', 'show_in_list' => true],
+                'target_rank' => ['type' => 'integer'],
+                'optimization_score' => ['type' => 'integer', 'show_in_list' => true],
+                'is_tracking' => ['type' => 'boolean', 'default' => true, 'filterable' => true],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 
@@ -2010,6 +2686,9 @@ class VodoCommercePlugin extends BasePlugin
                 'commerce_coupon_usage', 'commerce_promotion_rule',
                 'commerce_payment_method', 'commerce_transaction',
                 'commerce_cart', 'commerce_cart_item',
+                'commerce_inventory_location', 'commerce_inventory_item',
+                'commerce_stock_movement', 'commerce_stock_transfer',
+                'commerce_stock_transfer_item', 'commerce_low_stock_alert',
             ];
 
             foreach ($entities as $entity) {

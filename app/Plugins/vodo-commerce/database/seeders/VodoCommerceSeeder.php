@@ -37,6 +37,22 @@ use VodoCommerce\Models\TaxExemption;
 use VodoCommerce\Models\TaxRate;
 use VodoCommerce\Models\TaxZone;
 use VodoCommerce\Models\Transaction;
+use VodoCommerce\Models\InventoryLocation;
+use VodoCommerce\Models\InventoryItem;
+use VodoCommerce\Models\StockMovement;
+use VodoCommerce\Models\StockTransfer;
+use VodoCommerce\Models\StockTransferItem;
+use VodoCommerce\Models\WebhookSubscription;
+use VodoCommerce\Models\WebhookEvent;
+use VodoCommerce\Models\WebhookDelivery;
+use VodoCommerce\Models\WebhookLog;
+use VodoCommerce\Models\ProductReview;
+use VodoCommerce\Models\ReviewImage;
+use VodoCommerce\Models\ReviewVote;
+use VodoCommerce\Models\ReviewResponse;
+use VodoCommerce\Models\Wishlist;
+use VodoCommerce\Models\WishlistItem;
+use VodoCommerce\Models\WishlistCollaborator;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -86,6 +102,18 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 6: Cart & Checkout
         $this->seedCarts($store);
+
+        // Phase 7: Inventory Management
+        $this->seedInventory($store);
+
+        // Phase 9: Webhooks & Events System
+        $this->seedWebhooks($store);
+
+        // Phase 10: Reviews & Ratings
+        $this->seedReviews($store);
+
+        // Phase 11: Wishlists & Favorites
+        $this->seedWishlists($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -1815,5 +1843,640 @@ class VodoCommerceSeeder extends Seeder
         }
 
         $this->command->info("  ✓ Seeded {$createdCarts} carts (active, abandoned, and expired)");
+    }
+
+    protected function seedInventory(Store $store): void
+    {
+        $products = Product::where('store_id', $store->id)->get();
+
+        if ($products->isEmpty()) {
+            $this->command->warn('  ⚠ Skipping inventory seeding - no products found');
+            return;
+        }
+
+        // Create inventory locations
+        $mainWarehouse = InventoryLocation::create([
+            'store_id' => $store->id,
+            'name' => 'Main Warehouse',
+            'code' => 'WH-MAIN',
+            'type' => 'warehouse',
+            'address' => '1234 Warehouse Blvd',
+            'city' => 'Los Angeles',
+            'state' => 'CA',
+            'postal_code' => '90001',
+            'country' => 'US',
+            'contact_name' => 'John Smith',
+            'contact_email' => 'warehouse@example.com',
+            'contact_phone' => '(555) 123-4567',
+            'priority' => 0,
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+
+        $retailStore = InventoryLocation::create([
+            'store_id' => $store->id,
+            'name' => 'Retail Store - Downtown',
+            'code' => 'STR-001',
+            'type' => 'store',
+            'address' => '456 Main Street',
+            'city' => 'Los Angeles',
+            'state' => 'CA',
+            'postal_code' => '90015',
+            'country' => 'US',
+            'contact_name' => 'Jane Doe',
+            'contact_email' => 'store@example.com',
+            'contact_phone' => '(555) 987-6543',
+            'priority' => 50,
+            'is_active' => true,
+            'is_default' => false,
+        ]);
+
+        $this->command->info('  ✓ Created 2 inventory locations');
+
+        // Add inventory items
+        $itemsCreated = 0;
+        foreach ($products->take(20) as $product) {
+            // Main warehouse stock
+            InventoryItem::create([
+                'location_id' => $mainWarehouse->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity' => rand(50, 200),
+                'reserved_quantity' => rand(0, 10),
+                'reorder_point' => 20,
+                'reorder_quantity' => 50,
+                'bin_location' => 'A-' . rand(1, 10) . '-' . rand(1, 5),
+                'unit_cost' => $product->cost_price ?? ($product->price * 0.6),
+            ]);
+
+            // Retail store stock (smaller quantities)
+            InventoryItem::create([
+                'location_id' => $retailStore->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity' => rand(5, 30),
+                'reserved_quantity' => 0,
+                'reorder_point' => 5,
+                'reorder_quantity' => 20,
+                'bin_location' => 'R-' . rand(1, 5),
+                'unit_cost' => $product->cost_price ?? ($product->price * 0.6),
+            ]);
+
+            $itemsCreated += 2;
+        }
+
+        $this->command->info("  ✓ Created {$itemsCreated} inventory items");
+
+        // Create stock movements
+        $movements = [];
+        for ($i = 0; $i < 10; $i++) {
+            $product = $products->random();
+            $location = rand(0, 1) ? $mainWarehouse : $retailStore;
+
+            $movements[] = StockMovement::create([
+                'store_id' => $store->id,
+                'location_id' => $location->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'type' => $this->faker->randomElement(['in', 'out', 'adjustment']),
+                'quantity' => rand(1, 20),
+                'quantity_before' => rand(50, 100),
+                'quantity_after' => rand(40, 120),
+                'reason' => $this->faker->randomElement([
+                    'Received from supplier',
+                    'Sold to customer',
+                    'Damaged goods',
+                    'Inventory count adjustment',
+                    'Return from customer',
+                ]),
+                'created_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
+            ]);
+        }
+
+        $this->command->info('  ✓ Created 10 stock movements');
+
+        // Create stock transfers
+        $pendingTransfer = StockTransfer::create([
+            'store_id' => $store->id,
+            'transfer_number' => 'TRF-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
+            'from_location_id' => $mainWarehouse->id,
+            'to_location_id' => $retailStore->id,
+            'status' => 'pending',
+            'notes' => 'Replenish retail store inventory',
+            'requested_at' => now()->subDays(2),
+        ]);
+
+        for ($i = 0; $i < 3; $i++) {
+            $product = $products->random();
+            StockTransferItem::create([
+                'transfer_id' => $pendingTransfer->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity_requested' => rand(10, 30),
+                'quantity_shipped' => 0,
+                'quantity_received' => 0,
+            ]);
+        }
+
+        $completedTransfer = StockTransfer::create([
+            'store_id' => $store->id,
+            'transfer_number' => 'TRF-' . now()->subDays(10)->format('Ymd') . '-' . strtoupper(Str::random(6)),
+            'from_location_id' => $mainWarehouse->id,
+            'to_location_id' => $retailStore->id,
+            'status' => 'completed',
+            'notes' => 'Monthly stock transfer',
+            'requested_at' => now()->subDays(15),
+            'approved_at' => now()->subDays(14),
+            'shipped_at' => now()->subDays(12),
+            'received_at' => now()->subDays(10),
+            'tracking_number' => 'TRK' . rand(100000, 999999),
+            'carrier' => 'UPS',
+        ]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $product = $products->random();
+            $qty = rand(10, 30);
+            StockTransferItem::create([
+                'transfer_id' => $completedTransfer->id,
+                'product_id' => $product->id,
+                'variant_id' => null,
+                'quantity_requested' => $qty,
+                'quantity_shipped' => $qty,
+                'quantity_received' => $qty,
+            ]);
+        }
+
+        $this->command->info('  ✓ Created 2 stock transfers with items');
+
+        $this->command->info('✓ Inventory seeding completed');
+    }
+
+    protected function seedWebhooks(Store $store): void
+    {
+        $this->command->info('Seeding webhooks...');
+
+        // Create 2 active webhook subscriptions
+        $subscription1 = WebhookSubscription::create([
+            'store_id' => $store->id,
+            'name' => 'Order Notifications',
+            'url' => 'https://example.com/webhooks/orders',
+            'description' => 'Receives notifications for order-related events',
+            'events' => [
+                'order.created',
+                'order.updated',
+                'order.completed',
+                'order.cancelled',
+            ],
+            'secret' => 'whsec_' . Str::random(40),
+            'is_active' => true,
+            'timeout_seconds' => 30,
+            'max_retry_attempts' => 3,
+            'retry_delay_seconds' => 60,
+            'custom_headers' => [
+                'X-API-Version' => 'v2',
+            ],
+            'total_deliveries' => 45,
+            'successful_deliveries' => 42,
+            'failed_deliveries' => 3,
+            'last_delivery_at' => now()->subHours(2),
+            'last_success_at' => now()->subHours(2),
+            'last_failure_at' => now()->subDays(3),
+        ]);
+
+        $subscription2 = WebhookSubscription::create([
+            'store_id' => $store->id,
+            'name' => 'Product & Inventory Updates',
+            'url' => 'https://example.com/webhooks/products',
+            'description' => 'Receives notifications for product and inventory events',
+            'events' => [
+                'product.created',
+                'product.updated',
+                'product.deleted',
+                'inventory.low_stock',
+            ],
+            'secret' => 'whsec_' . Str::random(40),
+            'is_active' => true,
+            'timeout_seconds' => 30,
+            'max_retry_attempts' => 3,
+            'retry_delay_seconds' => 60,
+            'total_deliveries' => 28,
+            'successful_deliveries' => 27,
+            'failed_deliveries' => 1,
+            'last_delivery_at' => now()->subHours(5),
+            'last_success_at' => now()->subHours(5),
+            'last_failure_at' => now()->subWeek(),
+        ]);
+
+        $this->command->info('  ✓ Created 2 webhook subscriptions');
+
+        // Create some webhook events (pending, delivered, failed)
+        $event1 = WebhookEvent::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'event_type' => 'order.created',
+            'event_id' => 'evt_' . Str::uuid(),
+            'payload' => [
+                'order_id' => 123,
+                'order_number' => 'ORD-20260109-001',
+                'status' => 'pending',
+                'total' => 99.99,
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'status' => 'delivered',
+            'delivered_at' => now()->subHours(2),
+            'retry_count' => 0,
+            'max_retries' => 3,
+        ]);
+
+        $event2 = WebhookEvent::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'event_type' => 'order.completed',
+            'event_id' => 'evt_' . Str::uuid(),
+            'payload' => [
+                'order_id' => 124,
+                'order_number' => 'ORD-20260109-002',
+                'status' => 'completed',
+                'total' => 149.99,
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'status' => 'pending',
+            'next_retry_at' => now()->addMinutes(5),
+            'retry_count' => 0,
+            'max_retries' => 3,
+        ]);
+
+        $event3 = WebhookEvent::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription2->id,
+            'event_type' => 'product.updated',
+            'event_id' => 'evt_' . Str::uuid(),
+            'payload' => [
+                'product_id' => 456,
+                'product_name' => 'Updated Product',
+                'changes' => ['price', 'stock'],
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'status' => 'failed',
+            'failed_at' => now()->subHours(1),
+            'retry_count' => 3,
+            'max_retries' => 3,
+            'last_error' => 'Connection timeout after 30 seconds',
+            'error_history' => [
+                ['error' => 'Connection timeout', 'retry_count' => 0, 'timestamp' => now()->subHours(3)->toDateTimeString()],
+                ['error' => 'Connection timeout', 'retry_count' => 1, 'timestamp' => now()->subHours(2)->toDateTimeString()],
+                ['error' => 'Connection timeout', 'retry_count' => 2, 'timestamp' => now()->subHours(1)->toDateTimeString()],
+            ],
+        ]);
+
+        $this->command->info('  ✓ Created 3 webhook events');
+
+        // Create delivery records
+        $delivery1 = WebhookDelivery::create([
+            'event_id' => $event1->id,
+            'subscription_id' => $subscription1->id,
+            'url' => $subscription1->url,
+            'payload' => $event1->payload,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-Webhook-Signature' => hash_hmac('sha256', json_encode($event1->payload), $subscription1->secret),
+                'X-Webhook-Event-Id' => $event1->event_id,
+            ],
+            'attempt_number' => 1,
+            'status' => 'success',
+            'response_code' => 200,
+            'response_body' => '{"status":"received"}',
+            'sent_at' => now()->subHours(2),
+            'completed_at' => now()->subHours(2),
+            'duration_ms' => 234,
+        ]);
+
+        $delivery2 = WebhookDelivery::create([
+            'event_id' => $event3->id,
+            'subscription_id' => $subscription2->id,
+            'url' => $subscription2->url,
+            'payload' => $event3->payload,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-Webhook-Signature' => hash_hmac('sha256', json_encode($event3->payload), $subscription2->secret),
+                'X-Webhook-Event-Id' => $event3->event_id,
+            ],
+            'attempt_number' => 3,
+            'status' => 'timeout',
+            'error_message' => 'Connection timeout after 30 seconds',
+            'sent_at' => now()->subHours(1),
+            'completed_at' => now()->subHours(1),
+            'duration_ms' => 30000,
+        ]);
+
+        $this->command->info('  ✓ Created 2 webhook deliveries');
+
+        // Create webhook logs
+        WebhookLog::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'event_id' => $event1->id,
+            'delivery_id' => $delivery1->id,
+            'level' => 'info',
+            'message' => 'Webhook delivered successfully',
+            'context' => [
+                'event_type' => 'order.created',
+                'status_code' => 200,
+                'duration_ms' => 234,
+            ],
+            'category' => 'delivery',
+            'action' => 'sent',
+        ]);
+
+        WebhookLog::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription2->id,
+            'event_id' => $event3->id,
+            'delivery_id' => $delivery2->id,
+            'level' => 'error',
+            'message' => 'Webhook delivery failed after 3 attempts',
+            'context' => [
+                'event_type' => 'product.updated',
+                'error' => 'Connection timeout after 30 seconds',
+                'retry_count' => 3,
+            ],
+            'category' => 'delivery',
+            'action' => 'failed',
+        ]);
+
+        WebhookLog::create([
+            'store_id' => $store->id,
+            'subscription_id' => $subscription1->id,
+            'level' => 'info',
+            'message' => 'Webhook subscription created',
+            'context' => [
+                'subscription_name' => $subscription1->name,
+                'events_count' => count($subscription1->events),
+            ],
+            'category' => 'configuration',
+            'action' => 'created',
+        ]);
+
+        $this->command->info('  ✓ Created 3 webhook logs');
+        $this->command->info('✓ Webhooks seeding completed');
+    }
+
+    protected function seedReviews(Store $store): void
+    {
+        $this->command->info('Seeding product reviews...');
+
+        // Get some products and customers
+        $products = Product::where('store_id', $store->id)->limit(5)->get();
+        $customers = Customer::where('store_id', $store->id)->limit(10)->get();
+
+        if ($products->isEmpty() || $customers->isEmpty()) {
+            $this->command->warn('  ⚠ No products or customers found, skipping reviews');
+            return;
+        }
+
+        $reviewsCreated = 0;
+
+        // Create reviews for each product
+        foreach ($products as $product) {
+            $reviewCount = rand(3, 8);
+
+            for ($i = 0; $i < $reviewCount; $i++) {
+                $customer = $customers->random();
+                $rating = $this->faker->randomElement([5, 5, 4, 4, 4, 3, 2]); // Weighted towards higher ratings
+
+                $review = ProductReview::create([
+                    'store_id' => $store->id,
+                    'product_id' => $product->id,
+                    'customer_id' => $customer->id,
+                    'order_id' => null,
+                    'rating' => $rating,
+                    'title' => $this->faker->sentence(6),
+                    'comment' => $this->faker->paragraphs(rand(1, 3), true),
+                    'is_verified_purchase' => $this->faker->boolean(70),
+                    'status' => $this->faker->randomElement([
+                        ProductReview::STATUS_APPROVED,
+                        ProductReview::STATUS_APPROVED,
+                        ProductReview::STATUS_APPROVED,
+                        ProductReview::STATUS_PENDING,
+                    ]),
+                    'is_featured' => $this->faker->boolean(20),
+                    'helpful_count' => rand(0, 25),
+                    'not_helpful_count' => rand(0, 5),
+                    'published_at' => $this->faker->dateTimeBetween('-90 days', 'now'),
+                    'approved_at' => $this->faker->dateTimeBetween('-90 days', 'now'),
+                ]);
+
+                // Add 1-3 images to some reviews
+                if ($this->faker->boolean(40)) {
+                    $imageCount = rand(1, 3);
+                    for ($j = 0; $j < $imageCount; $j++) {
+                        ReviewImage::create([
+                            'review_id' => $review->id,
+                            'image_url' => $this->faker->imageUrl(800, 600, 'product'),
+                            'thumbnail_url' => $this->faker->imageUrl(200, 200, 'product'),
+                            'display_order' => $j,
+                            'alt_text' => $this->faker->sentence(3),
+                            'width' => 800,
+                            'height' => 600,
+                            'file_size' => rand(50000, 500000),
+                        ]);
+                    }
+                }
+
+                // Add votes to some reviews
+                if ($this->faker->boolean(60)) {
+                    $voteCount = rand(1, 15);
+                    $votedCustomers = [];
+                    for ($k = 0; $k < $voteCount; $k++) {
+                        $voteCustomer = $customers->random();
+                        // Skip if this customer already voted on this review
+                        if (in_array($voteCustomer->id, $votedCustomers)) {
+                            continue;
+                        }
+                        $votedCustomers[] = $voteCustomer->id;
+
+                        ReviewVote::create([
+                            'review_id' => $review->id,
+                            'customer_id' => $voteCustomer->id,
+                            'vote_type' => $this->faker->randomElement([
+                                ReviewVote::TYPE_HELPFUL,
+                                ReviewVote::TYPE_HELPFUL,
+                                ReviewVote::TYPE_HELPFUL,
+                                ReviewVote::TYPE_NOT_HELPFUL,
+                            ]),
+                            'ip_address' => $this->faker->ipv4(),
+                            'user_agent' => $this->faker->userAgent(),
+                        ]);
+                    }
+                }
+
+                // Add merchant response to some reviews
+                if ($this->faker->boolean(30) && $review->status === ProductReview::STATUS_APPROVED) {
+                    ReviewResponse::create([
+                        'review_id' => $review->id,
+                        'store_id' => $store->id,
+                        'responder_id' => null,
+                        'response_text' => $this->faker->paragraphs(rand(1, 2), true),
+                        'is_public' => true,
+                        'published_at' => $this->faker->dateTimeBetween($review->created_at, 'now'),
+                    ]);
+                }
+
+                $reviewsCreated++;
+            }
+        }
+
+        $this->command->info("  ✓ Created {$reviewsCreated} product reviews with images, votes, and responses");
+        $this->command->info('✓ Reviews seeding completed');
+    }
+
+    protected function seedWishlists(Store $store): void
+    {
+        $this->command->info('Seeding wishlists...');
+
+        $customers = Customer::where('store_id', $store->id)->limit(10)->get();
+        $products = Product::where('store_id', $store->id)->get();
+
+        if ($customers->isEmpty() || $products->isEmpty()) {
+            $this->command->warn('  ⚠ Skipping wishlist seeding - no customers or products found');
+            return;
+        }
+
+        $wishlistsCreated = 0;
+
+        foreach ($customers as $customer) {
+            // Create 1-3 wishlists per customer
+            $wishlistCount = rand(1, 3);
+            $isFirstWishlist = true;
+
+            for ($i = 0; $i < $wishlistCount; $i++) {
+                $eventTypes = ['wedding', 'birthday', 'baby_shower', 'anniversary', 'holiday', null];
+                $eventType = $this->faker->randomElement($eventTypes);
+                $visibility = $this->faker->randomElement([
+                    Wishlist::VISIBILITY_PRIVATE,
+                    Wishlist::VISIBILITY_PRIVATE,
+                    Wishlist::VISIBILITY_SHARED,
+                    Wishlist::VISIBILITY_PUBLIC,
+                ]);
+
+                $name = $isFirstWishlist ? 'My Wishlist' : $this->faker->randomElement([
+                    'Holiday Gift Ideas',
+                    'Birthday Wishlist',
+                    'Dream Products',
+                    'Favorites Collection',
+                    'Wedding Registry',
+                    'Baby Shower Registry',
+                    'Home Essentials',
+                    'Tech Gadgets',
+                ]);
+
+                $wishlist = Wishlist::factory()
+                    ->for($store, 'store')
+                    ->for($customer, 'customer')
+                    ->create([
+                        'name' => $name,
+                        'visibility' => $visibility,
+                        'is_default' => $isFirstWishlist,
+                        'event_type' => $eventType,
+                        'event_date' => $eventType ? $this->faker->dateTimeBetween('now', '+6 months') : null,
+                        'allow_comments' => $this->faker->boolean(70),
+                        'show_purchased_items' => $this->faker->boolean(80),
+                    ]);
+
+                // Add 3-10 items to the wishlist
+                $itemCount = rand(3, 10);
+                $addedProducts = [];
+
+                for ($j = 0; $j < $itemCount; $j++) {
+                    $product = $products->random();
+
+                    // Skip if already added
+                    if (in_array($product->id, $addedProducts)) {
+                        continue;
+                    }
+                    $addedProducts[] = $product->id;
+
+                    $item = WishlistItem::factory()
+                        ->for($wishlist, 'wishlist')
+                        ->for($product, 'product')
+                        ->create([
+                            'quantity' => rand(1, 3),
+                            'priority' => $this->faker->randomElement([
+                                WishlistItem::PRIORITY_HIGH,
+                                WishlistItem::PRIORITY_MEDIUM,
+                                WishlistItem::PRIORITY_MEDIUM,
+                                WishlistItem::PRIORITY_LOW,
+                            ]),
+                            'price_when_added' => $product->price,
+                            'notify_on_price_drop' => $this->faker->boolean(40),
+                            'notify_on_back_in_stock' => $this->faker->boolean(30),
+                            'display_order' => $j,
+                        ]);
+
+                    // Mark some items as purchased
+                    if ($this->faker->boolean(25)) {
+                        $item->markAsPurchased($customer->id, rand(1, $item->quantity));
+                    }
+                }
+
+                // Update items count
+                $wishlist->update(['items_count' => $addedProducts->count()]);
+
+                // Add some views to public wishlists
+                if ($wishlist->isPublic() || $wishlist->isShared()) {
+                    $viewsCount = rand(5, 150);
+                    $wishlist->update([
+                        'views_count' => $viewsCount,
+                        'last_viewed_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
+                    ]);
+                }
+
+                // Add collaborators to shared/public wishlists
+                if (($wishlist->isShared() || $wishlist->isPublic()) && $this->faker->boolean(60)) {
+                    $collaboratorCount = rand(1, 3);
+                    $otherCustomers = $customers->reject(fn($c) => $c->id === $customer->id);
+
+                    for ($k = 0; $k < $collaboratorCount && $otherCustomers->isNotEmpty(); $k++) {
+                        $collaboratorCustomer = $otherCustomers->random();
+
+                        WishlistCollaborator::factory()
+                            ->for($wishlist, 'wishlist')
+                            ->for($collaboratorCustomer, 'customer')
+                            ->create([
+                                'invited_email' => null,
+                                'permission' => $this->faker->randomElement([
+                                    WishlistCollaborator::PERMISSION_VIEW,
+                                    WishlistCollaborator::PERMISSION_VIEW,
+                                    WishlistCollaborator::PERMISSION_EDIT,
+                                    WishlistCollaborator::PERMISSION_MANAGE,
+                                ]),
+                                'status' => $this->faker->randomElement([
+                                    WishlistCollaborator::STATUS_ACCEPTED,
+                                    WishlistCollaborator::STATUS_ACCEPTED,
+                                    WishlistCollaborator::STATUS_PENDING,
+                                ]),
+                                'invited_at' => $this->faker->dateTimeBetween('-60 days', '-1 day'),
+                                'responded_at' => $this->faker->dateTimeBetween('-60 days', 'now'),
+                            ]);
+
+                        // Remove this customer so we don't add them again
+                        $otherCustomers = $otherCustomers->reject(fn($c) => $c->id === $collaboratorCustomer->id);
+                    }
+                }
+
+                $wishlistsCreated++;
+                $isFirstWishlist = false;
+            }
+        }
+
+        $this->command->info("  ✓ Created {$wishlistsCreated} wishlists with items and collaborators");
+        $this->command->info('✓ Wishlists seeding completed');
+    }
+
+    private $faker;
+
+    public function __construct()
+    {
+        $this->faker = \Faker\Factory::create();
     }
 }
