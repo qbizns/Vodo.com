@@ -87,6 +87,7 @@ class VodoCommercePlugin extends BasePlugin
         $this->registerTheme();
         $this->registerWorkflowTriggers();
         $this->registerApiRoutes();
+        $this->registerPolicies();
         
         // Add themes directory to the view namespace for storefront views
         \Illuminate\Support\Facades\View::addNamespace('vodo-commerce', $this->basePath . '/Themes');
@@ -126,6 +127,32 @@ class VodoCommercePlugin extends BasePlugin
                 ]);
             }
         }
+    }
+
+    /**
+     * Register authorization policies for commerce resources.
+     * SECURITY: Ensures users can only access resources belonging to their stores.
+     */
+    protected function registerPolicies(): void
+    {
+        $gate = app(\Illuminate\Contracts\Auth\Access\Gate::class);
+
+        // Register Order policy
+        $gate->policy(\VodoCommerce\Models\Order::class, \VodoCommerce\Policies\OrderPolicy::class);
+
+        // Register WebhookSubscription policy
+        $gate->policy(\VodoCommerce\Models\WebhookSubscription::class, \VodoCommerce\Policies\WebhookSubscriptionPolicy::class);
+
+        // TODO: Register additional policies for other resources:
+        // - PaymentMethod, Transaction
+        // - Customer, CustomerGroup
+        // - Product, Category, Brand
+        // - ShippingMethod, TaxRate
+        // - Discount, CouponUsage
+        // - Inventory, StockTransfer
+        // - Wishlist, ProductReview
+
+        Log::debug('Commerce authorization policies registered');
     }
 
     /**

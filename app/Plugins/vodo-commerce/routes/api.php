@@ -159,7 +159,8 @@ use VodoCommerce\Http\Controllers\Api\V2\AdminReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\WishlistController;
 use VodoCommerce\Http\Controllers\Api\V2\AdminWishlistController;
 
-Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
+// SECURITY: Rate limiting applied to prevent API abuse
+Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('admin.v2.')->group(function () {
     // Brands
     Route::apiResource('brands', BrandController::class);
 
@@ -473,7 +474,8 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
 // These routes are accessible to both authenticated and guest users
 // Session tracking is handled via X-Session-Id header
 
-Route::prefix('storefront/v2')->middleware(['web'])->name('storefront.v2.')->group(function () {
+// SECURITY: Rate limiting for storefront API
+Route::prefix('storefront/v2')->middleware(['web', 'throttle:60,1'])->name('storefront.v2.')->group(function () {
     // =========================================================================
     // Cart Management
     // =========================================================================
@@ -482,7 +484,11 @@ Route::prefix('storefront/v2')->middleware(['web'])->name('storefront.v2.')->gro
     Route::post('cart/items', [CartController::class, 'addItem'])->name('cart.addItem');
     Route::put('cart/items/{item}', [CartController::class, 'updateItem'])->name('cart.updateItem');
     Route::delete('cart/items/{item}', [CartController::class, 'removeItem'])->name('cart.removeItem');
-    Route::post('cart/discounts/apply', [CartController::class, 'applyDiscount'])->name('cart.applyDiscount');
+
+    // SECURITY: Stricter rate limiting on discount codes to prevent brute force attacks
+    Route::post('cart/discounts/apply', [CartController::class, 'applyDiscount'])
+        ->middleware('throttle:10,1')
+        ->name('cart.applyDiscount');
     Route::post('cart/discounts/remove', [CartController::class, 'removeDiscount'])->name('cart.removeDiscount');
     Route::post('cart/billing-address', [CartController::class, 'setBillingAddress'])->name('cart.setBillingAddress');
     Route::post('cart/shipping-address', [CartController::class, 'setShippingAddress'])->name('cart.setShippingAddress');

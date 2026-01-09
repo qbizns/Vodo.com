@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VodoCommerce\Models;
 
+use Illuminate\Database\Eloquent\Casts\AsEncryptedArray;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -68,7 +69,9 @@ class PaymentMethod extends Model
     protected function casts(): array
     {
         return [
-            'configuration' => 'array',
+            // SECURITY: Encrypt payment credentials to comply with PCI DSS
+            'configuration' => AsEncryptedArray::class,
+            'webhook_secret' => 'encrypted',
             'supported_currencies' => 'array',
             'supported_countries' => 'array',
             'supported_payment_types' => 'array',
