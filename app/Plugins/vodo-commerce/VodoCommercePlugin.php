@@ -1900,6 +1900,116 @@ class VodoCommercePlugin extends BasePlugin
             ],
         ], self::SLUG);
 
+        // =====================================================================
+        // Phase 10: Reviews & Ratings System Entities
+        // =====================================================================
+
+        // Product Review Entity
+        $this->entityRegistry->register('commerce_product_review', [
+            'table_name' => 'commerce_product_reviews',
+            'model_class' => \VodoCommerce\Models\ProductReview::class,
+            'labels' => ['singular' => 'Product Review', 'plural' => 'Product Reviews'],
+            'icon' => 'star',
+            'fields' => [
+                'product_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                    'required' => true,
+                ],
+                'order_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_order', 'display_field' => 'order_number'],
+                ],
+                'rating' => ['type' => 'integer', 'required' => true, 'show_in_list' => true],
+                'title' => ['type' => 'string', 'show_in_list' => true],
+                'comment' => ['type' => 'text', 'required' => true],
+                'is_verified_purchase' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'status' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'is_featured' => ['type' => 'boolean', 'default' => false, 'show_in_list' => true, 'filterable' => true],
+                'helpful_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'not_helpful_count' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'published_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'approved_at' => ['type' => 'datetime'],
+                'rejected_at' => ['type' => 'datetime'],
+                'rejection_reason' => ['type' => 'text'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Review Image Entity
+        $this->entityRegistry->register('commerce_review_image', [
+            'table_name' => 'commerce_review_images',
+            'model_class' => \VodoCommerce\Models\ReviewImage::class,
+            'labels' => ['singular' => 'Review Image', 'plural' => 'Review Images'],
+            'icon' => 'image',
+            'fields' => [
+                'review_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_review', 'display_field' => 'id'],
+                    'required' => true,
+                ],
+                'image_url' => ['type' => 'url', 'required' => true, 'show_in_list' => true],
+                'thumbnail_url' => ['type' => 'url'],
+                'display_order' => ['type' => 'integer', 'default' => 0, 'show_in_list' => true],
+                'alt_text' => ['type' => 'string'],
+                'width' => ['type' => 'integer'],
+                'height' => ['type' => 'integer'],
+                'file_size' => ['type' => 'integer'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Review Vote Entity
+        $this->entityRegistry->register('commerce_review_vote', [
+            'table_name' => 'commerce_review_votes',
+            'model_class' => \VodoCommerce\Models\ReviewVote::class,
+            'labels' => ['singular' => 'Review Vote', 'plural' => 'Review Votes'],
+            'icon' => 'thumbs-up',
+            'fields' => [
+                'review_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_review', 'display_field' => 'id'],
+                    'required' => true,
+                ],
+                'customer_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_customer', 'display_field' => 'name'],
+                ],
+                'vote_type' => ['type' => 'string', 'required' => true, 'show_in_list' => true, 'filterable' => true],
+                'ip_address' => ['type' => 'string'],
+                'user_agent' => ['type' => 'string'],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
+        // Review Response Entity
+        $this->entityRegistry->register('commerce_review_response', [
+            'table_name' => 'commerce_review_responses',
+            'model_class' => \VodoCommerce\Models\ReviewResponse::class,
+            'labels' => ['singular' => 'Review Response', 'plural' => 'Review Responses'],
+            'icon' => 'message-square',
+            'fields' => [
+                'review_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'commerce_product_review', 'display_field' => 'id'],
+                    'required' => true,
+                ],
+                'responder_id' => [
+                    'type' => 'relation',
+                    'config' => ['entity' => 'user', 'display_field' => 'name'],
+                ],
+                'response_text' => ['type' => 'text', 'required' => true, 'show_in_list' => true],
+                'is_public' => ['type' => 'boolean', 'default' => true, 'show_in_list' => true, 'filterable' => true],
+                'published_at' => ['type' => 'datetime', 'show_in_list' => true],
+                'meta' => ['type' => 'json'],
+            ],
+        ], self::SLUG);
+
         Log::info('Vodo Commerce: Entities registered');
     }
 

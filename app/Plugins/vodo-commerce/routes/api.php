@@ -154,6 +154,8 @@ use VodoCommerce\Http\Controllers\Api\V2\ReportsController;
 use VodoCommerce\Http\Controllers\Api\V2\WebhookSubscriptionController;
 use VodoCommerce\Http\Controllers\Api\V2\WebhookEventController as V2WebhookEventController;
 use VodoCommerce\Http\Controllers\Api\V2\WebhookLogController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductReviewController;
+use VodoCommerce\Http\Controllers\Api\V2\AdminReviewController;
 
 Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->group(function () {
     // Brands
@@ -416,6 +418,28 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum'])->name('admin.v2.')->grou
     Route::get('webhooks/logs', [WebhookLogController::class, 'index'])->name('webhooks.logs.index');
     Route::get('webhooks/logs/{id}', [WebhookLogController::class, 'show'])->name('webhooks.logs.show');
     Route::get('webhooks/logs/statistics', [WebhookLogController::class, 'statistics'])->name('webhooks.logs.statistics');
+
+    // =========================================================================
+    // Phase 10: Reviews & Ratings System (Admin)
+    // =========================================================================
+
+    // Admin Review Management
+    Route::get('reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+    Route::get('reviews/{id}', [AdminReviewController::class, 'show'])->name('reviews.show');
+    Route::post('reviews/{id}/approve', [AdminReviewController::class, 'approve'])->name('reviews.approve');
+    Route::post('reviews/{id}/reject', [AdminReviewController::class, 'reject'])->name('reviews.reject');
+    Route::post('reviews/{id}/flag', [AdminReviewController::class, 'flag'])->name('reviews.flag');
+    Route::post('reviews/{id}/toggle-featured', [AdminReviewController::class, 'toggleFeatured'])->name('reviews.toggle-featured');
+    Route::delete('reviews/{id}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    // Bulk Actions
+    Route::post('reviews/bulk-approve', [AdminReviewController::class, 'bulkApprove'])->name('reviews.bulk-approve');
+    Route::post('reviews/bulk-reject', [AdminReviewController::class, 'bulkReject'])->name('reviews.bulk-reject');
+
+    // Review Responses
+    Route::post('reviews/{id}/response', [AdminReviewController::class, 'addResponse'])->name('reviews.response.add');
+    Route::put('review-responses/{responseId}', [AdminReviewController::class, 'updateResponse'])->name('reviews.response.update');
+    Route::delete('review-responses/{responseId}', [AdminReviewController::class, 'deleteResponse'])->name('reviews.response.delete');
 });
 
 // =========================================================================
@@ -458,4 +482,15 @@ Route::prefix('storefront/v2')->middleware(['web'])->name('storefront.v2.')->gro
 
     // Webhook endpoint for payment gateways
     Route::post('webhooks/payment/{gateway}', [CheckoutController::class, 'processWebhook'])->name('webhooks.payment');
+
+    // =========================================================================
+    // Phase 10: Product Reviews (Storefront)
+    // =========================================================================
+
+    // Product Reviews
+    Route::get('products/{productId}/reviews', [ProductReviewController::class, 'index'])->name('products.reviews.index');
+    Route::get('products/{productId}/reviews/statistics', [ProductReviewController::class, 'statistics'])->name('products.reviews.statistics');
+    Route::get('products/{productId}/customers/{customerId}/can-review', [ProductReviewController::class, 'canReview'])->name('products.reviews.can-review');
+    Route::post('products/{productId}/reviews', [ProductReviewController::class, 'store'])->name('products.reviews.store');
+    Route::post('reviews/{reviewId}/vote', [ProductReviewController::class, 'vote'])->name('reviews.vote');
 });

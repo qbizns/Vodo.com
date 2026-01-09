@@ -46,6 +46,10 @@ use VodoCommerce\Models\WebhookSubscription;
 use VodoCommerce\Models\WebhookEvent;
 use VodoCommerce\Models\WebhookDelivery;
 use VodoCommerce\Models\WebhookLog;
+use VodoCommerce\Models\ProductReview;
+use VodoCommerce\Models\ReviewImage;
+use VodoCommerce\Models\ReviewVote;
+use VodoCommerce\Models\ReviewResponse;
 
 class VodoCommerceSeeder extends Seeder
 {
@@ -101,6 +105,9 @@ class VodoCommerceSeeder extends Seeder
 
         // Phase 9: Webhooks & Events System
         $this->seedWebhooks($store);
+
+        // Phase 10: Reviews & Ratings
+        $this->seedReviews($store);
 
         $this->command->info('✓ Vodo Commerce seeding completed successfully!');
     }
@@ -2206,6 +2213,115 @@ class VodoCommerceSeeder extends Seeder
 
         $this->command->info('  ✓ Created 3 webhook logs');
         $this->command->info('✓ Webhooks seeding completed');
+    }
+
+    protected function seedReviews(Store $store): void
+    {
+        $this->command->info('Seeding product reviews...');
+
+        // Get some products and customers
+        $products = Product::where('store_id', $store->id)->limit(5)->get();
+        $customers = Customer::where('store_id', $store->id)->limit(10)->get();
+
+        if ($products->isEmpty() || $customers->isEmpty()) {
+            $this->command->warn('  ⚠ No products or customers found, skipping reviews');
+            return;
+        }
+
+        $reviewsCreated = 0;
+
+        // Create reviews for each product
+        foreach ($products as $product) {
+            $reviewCount = rand(3, 8);
+
+            for ($i = 0; $i < $reviewCount; $i++) {
+                $customer = $customers->random();
+                $rating = $this->faker->randomElement([5, 5, 4, 4, 4, 3, 2]); // Weighted towards higher ratings
+
+                $review = ProductReview::create([
+                    'store_id' => $store->id,
+                    'product_id' => $product->id,
+                    'customer_id' => $customer->id,
+                    'order_id' => null,
+                    'rating' => $rating,
+                    'title' => $this->faker->sentence(6),
+                    'comment' => $this->faker->paragraphs(rand(1, 3), true),
+                    'is_verified_purchase' => $this->faker->boolean(70),
+                    'status' => $this->faker->randomElement([
+                        ProductReview::STATUS_APPROVED,
+                        ProductReview::STATUS_APPROVED,
+                        ProductReview::STATUS_APPROVED,
+                        ProductReview::STATUS_PENDING,
+                    ]),
+                    'is_featured' => $this->faker->boolean(20),
+                    'helpful_count' => rand(0, 25),
+                    'not_helpful_count' => rand(0, 5),
+                    'published_at' => $this->faker->dateTimeBetween('-90 days', 'now'),
+                    'approved_at' => $this->faker->dateTimeBetween('-90 days', 'now'),
+                ]);
+
+                // Add 1-3 images to some reviews
+                if ($this->faker->boolean(40)) {
+                    $imageCount = rand(1, 3);
+                    for ($j = 0; $j < $imageCount; $j++) {
+                        ReviewImage::create([
+                            'review_id' => $review->id,
+                            'image_url' => $this->faker->imageUrl(800, 600, 'product'),
+                            'thumbnail_url' => $this->faker->imageUrl(200, 200, 'product'),
+                            'display_order' => $j,
+                            'alt_text' => $this->faker->sentence(3),
+                            'width' => 800,
+                            'height' => 600,
+                            'file_size' => rand(50000, 500000),
+                        ]);
+                    }
+                }
+
+                // Add votes to some reviews
+                if ($this->faker->boolean(60)) {
+                    $voteCount = rand(1, 15);
+                    $votedCustomers = [];
+                    for ($k = 0; $k < $voteCount; $k++) {
+                        $voteCustomer = $customers->random();
+                        // Skip if this customer already voted on this review
+                        if (in_array($voteCustomer->id, $votedCustomers)) {
+                            continue;
+                        }
+                        $votedCustomers[] = $voteCustomer->id;
+
+                        ReviewVote::create([
+                            'review_id' => $review->id,
+                            'customer_id' => $voteCustomer->id,
+                            'vote_type' => $this->faker->randomElement([
+                                ReviewVote::TYPE_HELPFUL,
+                                ReviewVote::TYPE_HELPFUL,
+                                ReviewVote::TYPE_HELPFUL,
+                                ReviewVote::TYPE_NOT_HELPFUL,
+                            ]),
+                            'ip_address' => $this->faker->ipv4(),
+                            'user_agent' => $this->faker->userAgent(),
+                        ]);
+                    }
+                }
+
+                // Add merchant response to some reviews
+                if ($this->faker->boolean(30) && $review->status === ProductReview::STATUS_APPROVED) {
+                    ReviewResponse::create([
+                        'review_id' => $review->id,
+                        'store_id' => $store->id,
+                        'responder_id' => null,
+                        'response_text' => $this->faker->paragraphs(rand(1, 2), true),
+                        'is_public' => true,
+                        'published_at' => $this->faker->dateTimeBetween($review->created_at, 'now'),
+                    ]);
+                }
+
+                $reviewsCreated++;
+            }
+        }
+
+        $this->command->info("  ✓ Created {$reviewsCreated} product reviews with images, votes, and responses");
+        $this->command->info('✓ Reviews seeding completed');
     }
 
     private $faker;
