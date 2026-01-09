@@ -44,12 +44,6 @@ class Order extends Model
         'payment_status',
         'fulfillment_status',
         'currency',
-        'subtotal',
-        'discount_total',
-        'shipping_total',
-        'tax_total',
-        'total',
-        'refund_total',
         'has_refunds',
         'billing_address',
         'shipping_address',
@@ -68,6 +62,16 @@ class Order extends Model
         'placed_at',
         'paid_at',
         'completed_at',
+    ];
+
+    // Financial fields protected from mass assignment to prevent price manipulation
+    protected $guarded = [
+        'subtotal',
+        'discount_total',
+        'shipping_total',
+        'tax_total',
+        'total',
+        'refund_total',
     ];
 
     protected function casts(): array

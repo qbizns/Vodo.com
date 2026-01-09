@@ -179,9 +179,25 @@ class Discount extends Model
         return min($discount, $orderTotal);
     }
 
-    public function incrementUsage(): void
+    /**
+     * Atomically increment usage count with limit check.
+     * Returns true if increment was successful, false if limit reached.
+     */
+    public function incrementUsage(): bool
     {
-        $this->increment('usage_count');
+        $affected = static::where('id', $this->id)
+            ->where(function ($query) {
+                $query->whereNull('usage_limit')
+                    ->orWhereRaw('usage_count < usage_limit');
+            })
+            ->update(['usage_count' => \Illuminate\Support\Facades\DB::raw('usage_count + 1')]);
+
+        if ($affected > 0) {
+            $this->refresh();
+            return true;
+        }
+
+        return false;
     }
 
     public function scopeActive($query)

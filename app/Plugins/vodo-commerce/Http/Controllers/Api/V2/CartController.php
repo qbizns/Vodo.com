@@ -15,16 +15,19 @@ use VodoCommerce\Models\Product;
 use VodoCommerce\Models\ProductVariant;
 use VodoCommerce\Models\Store;
 use VodoCommerce\Services\CartService;
+use VodoCommerce\Services\ShippingCalculationService;
 
 class CartController extends Controller
 {
     protected CartService $cartService;
+    protected ShippingCalculationService $shippingCalculationService;
     protected Store $store;
 
-    public function __construct()
+    public function __construct(ShippingCalculationService $shippingCalculationService)
     {
         $this->store = resolve_store();
         $this->cartService = new CartService($this->store);
+        $this->shippingCalculationService = $shippingCalculationService;
     }
 
     /**
@@ -318,13 +321,13 @@ class CartController extends Controller
     }
 
     /**
-     * Set shipping method.
+     * Set shipping method with server-side cost calculation.
+     * SECURITY: Cost is calculated server-side to prevent price manipulation.
      */
     public function setShippingMethod(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'method' => ['required', 'string'],
-            'cost' => ['required', 'numeric', 'min:0'],
+            'method_id' => ['required', 'integer', 'exists:commerce_shipping_methods,id'],
         ]);
 
         if ($validator->fails()) {
@@ -338,8 +341,37 @@ class CartController extends Controller
         $sessionId = $request->header('X-Session-Id') ?? $request->input('session_id');
         $customerId = $request->user()?->id;
 
-        $this->cartService->getCart($sessionId, $customerId);
-        $this->cartService->setShippingMethod($request->method, (float) $request->cost);
+        $cart = $this->cartService->getCart($sessionId, $customerId);
+        $cart->load(['items.product', 'items.variant']);
+
+        // Calculate shipping cost server-side
+        $shippingAddress = $cart->shipping_address ?? [];
+        $cartData = [
+            'subtotal' => $cart->subtotal,
+            'item_count' => $cart->getItemCount(),
+            'total_weight' => $cart->items->sum(function ($item) {
+                return ($item->product->weight ?? 0) * $item->quantity;
+            }),
+        ];
+
+        $cost = $this->shippingCalculationService->calculateShippingCost(
+            $this->store,
+            (int) $request->method_id,
+            $shippingAddress,
+            $cartData
+        );
+
+        if ($cost === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Selected shipping method is not available for your location or cart',
+            ], 422);
+        }
+
+        // Get method name for storage
+        $method = \VodoCommerce\Models\ShippingMethod::find($request->method_id);
+
+        $this->cartService->setShippingMethod($method->name, $cost);
 
         $cart = $this->cartService->getCart();
         $cart->load(['items.product', 'items.variant', 'customer']);

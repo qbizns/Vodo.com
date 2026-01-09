@@ -96,35 +96,50 @@ class Cart extends Model
             ->first();
     }
 
+    /**
+     * Recalculate cart totals with pessimistic locking to prevent race conditions.
+     */
     public function recalculate(): void
     {
-        $this->load('items.product', 'items.variant');
+        \Illuminate\Support\Facades\DB::transaction(function () {
+            // Lock cart row to prevent concurrent modifications
+            $cart = static::lockForUpdate()->find($this->id);
 
-        $subtotal = $this->items->sum(function (CartItem $item) {
-            return $item->getLineTotal();
-        });
+            if (!$cart) {
+                return;
+            }
 
-        $discountTotal = 0;
+            $cart->load('items.product', 'items.variant');
 
-        // Apply discount codes
-        if (!empty($this->discount_codes)) {
-            foreach ($this->discount_codes as $code) {
-                // Use withoutGlobalScopes to bypass store scope, then filter by store_id
-                $discount = Discount::withoutGlobalScopes()
-                    ->where('store_id', $this->store_id)
-                    ->where('code', $code)
-                    ->first();
-                if ($discount && $discount->isApplicable($subtotal, $this->customer_id)) {
-                    $discountTotal += $discount->calculateDiscount($subtotal);
+            $subtotal = $cart->items->sum(function (CartItem $item) {
+                return $item->getLineTotal();
+            });
+
+            $discountTotal = 0;
+
+            // Apply discount codes
+            if (!empty($cart->discount_codes)) {
+                foreach ($cart->discount_codes as $code) {
+                    // Use withoutGlobalScopes to bypass store scope, then filter by store_id
+                    $discount = Discount::withoutGlobalScopes()
+                        ->where('store_id', $cart->store_id)
+                        ->where('code', $code)
+                        ->first();
+                    if ($discount && $discount->isApplicable($subtotal, $cart->customer_id)) {
+                        $discountTotal += $discount->calculateDiscount($subtotal);
+                    }
                 }
             }
-        }
 
-        $this->update([
-            'subtotal' => $subtotal,
-            'discount_total' => $discountTotal,
-            'total' => $subtotal - $discountTotal + $this->shipping_total + $this->tax_total,
-        ]);
+            $cart->update([
+                'subtotal' => $subtotal,
+                'discount_total' => $discountTotal,
+                'total' => $subtotal - $discountTotal + $cart->shipping_total + $cart->tax_total,
+            ]);
+
+            // Refresh current instance with updated values
+            $this->refresh();
+        });
     }
 
     public function clear(): void
