@@ -165,6 +165,11 @@ use VodoCommerce\Http\Controllers\Api\V2\ProductAttributeController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductAttributeValueController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductBadgeController;
 use VodoCommerce\Http\Controllers\Api\V2\ProductVideoController;
+use VodoCommerce\Http\Controllers\Api\V2\VendorController;
+use VodoCommerce\Http\Controllers\Api\V2\VendorCommissionController;
+use VodoCommerce\Http\Controllers\Api\V2\VendorPayoutController;
+use VodoCommerce\Http\Controllers\Api\V2\VendorReviewController;
+use VodoCommerce\Http\Controllers\Api\V2\VendorMessageController;
 
 // SECURITY: Rate limiting applied to prevent API abuse
 Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('admin.v2.')->group(function () {
@@ -506,6 +511,58 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('
     Route::post('product-videos/{id}/view', [ProductVideoController::class, 'recordView'])->name('product-videos.view');
     Route::post('product-videos/{id}/play', [ProductVideoController::class, 'recordPlay'])->name('product-videos.play');
     Route::post('product-videos/{id}/watch-time', [ProductVideoController::class, 'updateWatchTime'])->name('product-videos.watch-time');
+
+    // =========================================================================
+    // Phase 15: Multi-Vendor Marketplace
+    // =========================================================================
+
+    // Vendors
+    Route::apiResource('vendors', VendorController::class);
+    Route::post('vendors/{id}/approve', [VendorController::class, 'approve'])->name('vendors.approve');
+    Route::post('vendors/{id}/activate', [VendorController::class, 'activate'])->name('vendors.activate');
+    Route::post('vendors/{id}/suspend', [VendorController::class, 'suspend'])->name('vendors.suspend');
+    Route::post('vendors/{id}/reject', [VendorController::class, 'reject'])->name('vendors.reject');
+    Route::post('vendors/{id}/verify', [VendorController::class, 'verify'])->name('vendors.verify');
+
+    // Vendor Commissions
+    Route::apiResource('vendor-commissions', VendorCommissionController::class)->only(['index', 'show']);
+    Route::post('vendor-commissions/{id}/approve', [VendorCommissionController::class, 'approve'])->name('vendor-commissions.approve');
+    Route::post('vendor-commissions/{id}/dispute', [VendorCommissionController::class, 'dispute'])->name('vendor-commissions.dispute');
+    Route::post('vendor-commissions/{id}/resolve-dispute', [VendorCommissionController::class, 'resolveDispute'])->name('vendor-commissions.resolve-dispute');
+    Route::post('vendor-commissions/{id}/refund', [VendorCommissionController::class, 'refund'])->name('vendor-commissions.refund');
+    Route::post('vendor-commissions/{id}/cancel', [VendorCommissionController::class, 'cancel'])->name('vendor-commissions.cancel');
+
+    // Vendor Payouts
+    Route::apiResource('vendor-payouts', VendorPayoutController::class);
+    Route::post('vendor-payouts/{id}/processing', [VendorPayoutController::class, 'markAsProcessing'])->name('vendor-payouts.processing');
+    Route::post('vendor-payouts/{id}/completed', [VendorPayoutController::class, 'markAsCompleted'])->name('vendor-payouts.completed');
+    Route::post('vendor-payouts/{id}/failed', [VendorPayoutController::class, 'markAsFailed'])->name('vendor-payouts.failed');
+    Route::post('vendor-payouts/{id}/cancel', [VendorPayoutController::class, 'cancel'])->name('vendor-payouts.cancel');
+    Route::post('vendor-payouts/{id}/retry', [VendorPayoutController::class, 'retry'])->name('vendor-payouts.retry');
+
+    // Vendor Reviews
+    Route::apiResource('vendor-reviews', VendorReviewController::class);
+    Route::post('vendor-reviews/{id}/approve', [VendorReviewController::class, 'approve'])->name('vendor-reviews.approve');
+    Route::post('vendor-reviews/{id}/reject', [VendorReviewController::class, 'reject'])->name('vendor-reviews.reject');
+    Route::post('vendor-reviews/{id}/flag', [VendorReviewController::class, 'flag'])->name('vendor-reviews.flag');
+    Route::post('vendor-reviews/{id}/unflag', [VendorReviewController::class, 'unflag'])->name('vendor-reviews.unflag');
+    Route::post('vendor-reviews/{id}/feature', [VendorReviewController::class, 'feature'])->name('vendor-reviews.feature');
+    Route::post('vendor-reviews/{id}/unfeature', [VendorReviewController::class, 'unfeature'])->name('vendor-reviews.unfeature');
+    Route::post('vendor-reviews/{id}/vendor-response', [VendorReviewController::class, 'addVendorResponse'])->name('vendor-reviews.vendor-response');
+    Route::post('vendor-reviews/{id}/admin-response', [VendorReviewController::class, 'addAdminResponse'])->name('vendor-reviews.admin-response');
+    Route::post('vendor-reviews/{id}/vote', [VendorReviewController::class, 'vote'])->name('vendor-reviews.vote');
+
+    // Vendor Messages
+    Route::apiResource('vendor-messages', VendorMessageController::class);
+    Route::post('vendor-messages/{id}/mark-read', [VendorMessageController::class, 'markAsRead'])->name('vendor-messages.mark-read');
+    Route::post('vendor-messages/{id}/mark-unread', [VendorMessageController::class, 'markAsUnread'])->name('vendor-messages.mark-unread');
+    Route::post('vendor-messages/{id}/in-progress', [VendorMessageController::class, 'markAsInProgress'])->name('vendor-messages.in-progress');
+    Route::post('vendor-messages/{id}/resolved', [VendorMessageController::class, 'markAsResolved'])->name('vendor-messages.resolved');
+    Route::post('vendor-messages/{id}/closed', [VendorMessageController::class, 'markAsClosed'])->name('vendor-messages.closed');
+    Route::post('vendor-messages/{id}/reopen', [VendorMessageController::class, 'reopen'])->name('vendor-messages.reopen');
+    Route::post('vendor-messages/{id}/priority', [VendorMessageController::class, 'setPriority'])->name('vendor-messages.priority');
+    Route::post('vendor-messages/{id}/attachment', [VendorMessageController::class, 'addAttachment'])->name('vendor-messages.attachment');
+    Route::post('vendor-messages/{id}/internal-note', [VendorMessageController::class, 'addInternalNote'])->name('vendor-messages.internal-note');
 });
 
 // =========================================================================
