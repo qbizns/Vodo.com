@@ -158,6 +158,13 @@ use VodoCommerce\Http\Controllers\Api\V2\ProductReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\AdminReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\WishlistController;
 use VodoCommerce\Http\Controllers\Api\V2\AdminWishlistController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductBundleController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductBundleItemController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductRecommendationController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductAttributeController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductAttributeValueController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductBadgeController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductVideoController;
 
 // SECURITY: Rate limiting applied to prevent API abuse
 Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('admin.v2.')->group(function () {
@@ -466,6 +473,39 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('
 
     // Export
     Route::get('wishlists/export', [AdminWishlistController::class, 'export'])->name('wishlists.export');
+
+    // =========================================================================
+    // Phase 14: Advanced Product Features
+    // =========================================================================
+
+    // Product Bundles
+    Route::apiResource('product-bundles', ProductBundleController::class);
+    Route::post('product-bundles/{id}/items', [ProductBundleController::class, 'addItem'])->name('product-bundles.items.add');
+    Route::delete('product-bundles/{bundleId}/items/{itemId}', [ProductBundleController::class, 'removeItem'])->name('product-bundles.items.remove');
+
+    // Product Bundle Items
+    Route::apiResource('product-bundle-items', ProductBundleItemController::class)->except(['store']);
+
+    // Product Recommendations
+    Route::apiResource('product-recommendations', ProductRecommendationController::class);
+    Route::post('product-recommendations/{id}/impression', [ProductRecommendationController::class, 'recordImpression'])->name('product-recommendations.impression');
+    Route::post('product-recommendations/{id}/click', [ProductRecommendationController::class, 'recordClick'])->name('product-recommendations.click');
+    Route::post('product-recommendations/{id}/conversion', [ProductRecommendationController::class, 'recordConversion'])->name('product-recommendations.conversion');
+
+    // Product Attributes
+    Route::apiResource('product-attributes', ProductAttributeController::class);
+
+    // Product Attribute Values
+    Route::apiResource('product-attribute-values', ProductAttributeValueController::class);
+
+    // Product Badges
+    Route::apiResource('product-badges', ProductBadgeController::class);
+
+    // Product Videos
+    Route::apiResource('product-videos', ProductVideoController::class);
+    Route::post('product-videos/{id}/view', [ProductVideoController::class, 'recordView'])->name('product-videos.view');
+    Route::post('product-videos/{id}/play', [ProductVideoController::class, 'recordPlay'])->name('product-videos.play');
+    Route::post('product-videos/{id}/watch-time', [ProductVideoController::class, 'updateWatchTime'])->name('product-videos.watch-time');
 });
 
 // =========================================================================
