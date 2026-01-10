@@ -170,6 +170,11 @@ use VodoCommerce\Http\Controllers\Api\V2\VendorCommissionController;
 use VodoCommerce\Http\Controllers\Api\V2\VendorPayoutController;
 use VodoCommerce\Http\Controllers\Api\V2\VendorReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\VendorMessageController;
+use VodoCommerce\Http\Controllers\Api\V2\Admin\EmailCampaignController;
+use VodoCommerce\Http\Controllers\Api\V2\Admin\EmailTemplateController;
+use VodoCommerce\Http\Controllers\Api\V2\Admin\EmailListController;
+use VodoCommerce\Http\Controllers\Api\V2\Admin\EmailListSubscriberController;
+use VodoCommerce\Http\Controllers\Api\V2\Admin\EmailSendController;
 
 // SECURITY: Rate limiting applied to prevent API abuse
 Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('admin.v2.')->group(function () {
@@ -563,6 +568,65 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('
     Route::post('vendor-messages/{id}/priority', [VendorMessageController::class, 'setPriority'])->name('vendor-messages.priority');
     Route::post('vendor-messages/{id}/attachment', [VendorMessageController::class, 'addAttachment'])->name('vendor-messages.attachment');
     Route::post('vendor-messages/{id}/internal-note', [VendorMessageController::class, 'addInternalNote'])->name('vendor-messages.internal-note');
+
+    // =========================================================================
+    // Phase 16: Email Marketing & Automation
+    // =========================================================================
+
+    // Email Campaigns
+    Route::apiResource('email-campaigns', EmailCampaignController::class);
+    Route::post('email-campaigns/{id}/schedule', [EmailCampaignController::class, 'schedule'])->name('email-campaigns.schedule');
+    Route::post('email-campaigns/{id}/send', [EmailCampaignController::class, 'send'])->name('email-campaigns.send');
+    Route::post('email-campaigns/{id}/pause', [EmailCampaignController::class, 'pause'])->name('email-campaigns.pause');
+    Route::post('email-campaigns/{id}/resume', [EmailCampaignController::class, 'resume'])->name('email-campaigns.resume');
+    Route::post('email-campaigns/{id}/cancel', [EmailCampaignController::class, 'cancel'])->name('email-campaigns.cancel');
+    Route::post('email-campaigns/{id}/select-ab-winner', [EmailCampaignController::class, 'selectAbTestWinner'])->name('email-campaigns.select-ab-winner');
+    Route::post('email-campaigns/{id}/conversion', [EmailCampaignController::class, 'recordConversion'])->name('email-campaigns.conversion');
+    Route::get('email-campaigns/{id}/analytics', [EmailCampaignController::class, 'analytics'])->name('email-campaigns.analytics');
+
+    // Email Templates
+    Route::apiResource('email-templates', EmailTemplateController::class);
+    Route::post('email-templates/{id}/render', [EmailTemplateController::class, 'render'])->name('email-templates.render');
+    Route::get('email-templates/{id}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
+    Route::post('email-templates/{id}/duplicate', [EmailTemplateController::class, 'duplicate'])->name('email-templates.duplicate');
+    Route::post('email-templates/{id}/set-default', [EmailTemplateController::class, 'setAsDefault'])->name('email-templates.set-default');
+    Route::post('email-templates/{id}/activate', [EmailTemplateController::class, 'activate'])->name('email-templates.activate');
+    Route::post('email-templates/{id}/deactivate', [EmailTemplateController::class, 'deactivate'])->name('email-templates.deactivate');
+
+    // Email Lists
+    Route::apiResource('email-lists', EmailListController::class);
+    Route::post('email-lists/{id}/subscribers', [EmailListController::class, 'addSubscriber'])->name('email-lists.subscribers.add');
+    Route::post('email-lists/{id}/sync', [EmailListController::class, 'syncDynamicList'])->name('email-lists.sync');
+    Route::post('email-lists/{id}/calculate-engagement', [EmailListController::class, 'calculateEngagementMetrics'])->name('email-lists.calculate-engagement');
+    Route::post('email-lists/{id}/clean-inactive', [EmailListController::class, 'cleanInactiveSubscribers'])->name('email-lists.clean-inactive');
+    Route::post('email-lists/{id}/import', [EmailListController::class, 'importSubscribers'])->name('email-lists.import');
+    Route::get('email-lists/{id}/export', [EmailListController::class, 'exportSubscribers'])->name('email-lists.export');
+    Route::get('email-lists/{id}/analytics', [EmailListController::class, 'analytics'])->name('email-lists.analytics');
+
+    // Email List Subscribers
+    Route::apiResource('email-list-subscribers', EmailListSubscriberController::class)->except(['store']);
+    Route::post('email-list-subscribers/{id}/confirm', [EmailListSubscriberController::class, 'confirm'])->name('email-list-subscribers.confirm');
+    Route::post('email-list-subscribers/{id}/unsubscribe', [EmailListSubscriberController::class, 'unsubscribe'])->name('email-list-subscribers.unsubscribe');
+    Route::post('email-list-subscribers/{id}/resubscribe', [EmailListSubscriberController::class, 'resubscribe'])->name('email-list-subscribers.resubscribe');
+    Route::post('email-list-subscribers/{id}/mark-bounced', [EmailListSubscriberController::class, 'markAsBounced'])->name('email-list-subscribers.mark-bounced');
+    Route::post('email-list-subscribers/{id}/mark-complained', [EmailListSubscriberController::class, 'markAsComplained'])->name('email-list-subscribers.mark-complained');
+    Route::post('email-list-subscribers/{id}/clean', [EmailListSubscriberController::class, 'clean'])->name('email-list-subscribers.clean');
+    Route::post('email-list-subscribers/{id}/preference', [EmailListSubscriberController::class, 'updatePreference'])->name('email-list-subscribers.preference');
+    Route::post('email-list-subscribers/{id}/opened', [EmailListSubscriberController::class, 'recordEmailOpened'])->name('email-list-subscribers.opened');
+    Route::post('email-list-subscribers/{id}/clicked', [EmailListSubscriberController::class, 'recordEmailClicked'])->name('email-list-subscribers.clicked');
+    Route::get('email-list-subscribers/{id}/analytics', [EmailListSubscriberController::class, 'analytics'])->name('email-list-subscribers.analytics');
+
+    // Email Sends
+    Route::apiResource('email-sends', EmailSendController::class)->only(['index', 'show', 'destroy']);
+    Route::post('email-sends/{id}/mark-sent', [EmailSendController::class, 'markAsSent'])->name('email-sends.mark-sent');
+    Route::post('email-sends/{id}/mark-delivered', [EmailSendController::class, 'markAsDelivered'])->name('email-sends.mark-delivered');
+    Route::post('email-sends/{id}/mark-failed', [EmailSendController::class, 'markAsFailed'])->name('email-sends.mark-failed');
+    Route::post('email-sends/{id}/mark-bounced', [EmailSendController::class, 'markAsBounced'])->name('email-sends.mark-bounced');
+    Route::post('email-sends/{id}/open', [EmailSendController::class, 'recordOpen'])->name('email-sends.open');
+    Route::post('email-sends/{id}/click', [EmailSendController::class, 'recordClick'])->name('email-sends.click');
+    Route::post('email-sends/{id}/conversion', [EmailSendController::class, 'recordConversion'])->name('email-sends.conversion');
+    Route::get('email-sends/{id}/analytics', [EmailSendController::class, 'analytics'])->name('email-sends.analytics');
+    Route::post('email-sends/bulk-delete', [EmailSendController::class, 'bulkDelete'])->name('email-sends.bulk-delete');
 });
 
 // =========================================================================
