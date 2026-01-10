@@ -293,6 +293,145 @@ class CommerceEvents
     /** Shipping webhook received */
     public const WEBHOOK_SHIPPING_RECEIVED = 'commerce.webhook.shipping_received';
 
+    // =========================================================================
+    // Subscription Events
+    // =========================================================================
+
+    /** Fired when a subscription plan is created */
+    public const SUBSCRIPTION_PLAN_CREATED = 'commerce.subscription.plan.created';
+
+    /** Fired when a subscription plan is updated */
+    public const SUBSCRIPTION_PLAN_UPDATED = 'commerce.subscription.plan.updated';
+
+    /** Fired when a subscription plan is deleted */
+    public const SUBSCRIPTION_PLAN_DELETED = 'commerce.subscription.plan.deleted';
+
+    /** Fired when a new subscription is created */
+    public const SUBSCRIPTION_CREATED = 'commerce.subscription.created';
+
+    /** Fired when a subscription trial starts */
+    public const SUBSCRIPTION_TRIAL_STARTED = 'commerce.subscription.trial_started';
+
+    /** Fired when a subscription trial is ending soon (3 days default) */
+    public const SUBSCRIPTION_TRIAL_ENDING = 'commerce.subscription.trial_ending';
+
+    /** Fired when a subscription trial ends */
+    public const SUBSCRIPTION_TRIAL_ENDED = 'commerce.subscription.trial_ended';
+
+    /** Fired when a subscription is activated (after trial or immediately) */
+    public const SUBSCRIPTION_ACTIVATED = 'commerce.subscription.activated';
+
+    /** Fired when a subscription is upgraded to a higher plan */
+    public const SUBSCRIPTION_UPGRADED = 'commerce.subscription.upgraded';
+
+    /** Fired when a subscription is downgraded to a lower plan */
+    public const SUBSCRIPTION_DOWNGRADED = 'commerce.subscription.downgraded';
+
+    /** Fired when a subscription plan is changed */
+    public const SUBSCRIPTION_PLAN_CHANGED = 'commerce.subscription.plan_changed';
+
+    /** Fired when a subscription is renewed for next billing period */
+    public const SUBSCRIPTION_RENEWED = 'commerce.subscription.renewed';
+
+    /** Fired when a subscription is paused */
+    public const SUBSCRIPTION_PAUSED = 'commerce.subscription.paused';
+
+    /** Fired when a paused subscription is resumed */
+    public const SUBSCRIPTION_RESUMED = 'commerce.subscription.resumed';
+
+    /** Fired when a subscription is cancelled */
+    public const SUBSCRIPTION_CANCELLED = 'commerce.subscription.cancelled';
+
+    /** Fired when a subscription expires */
+    public const SUBSCRIPTION_EXPIRED = 'commerce.subscription.expired';
+
+    /** Fired when a subscription payment succeeds */
+    public const SUBSCRIPTION_PAYMENT_SUCCEEDED = 'commerce.subscription.payment_succeeded';
+
+    /** Fired when a subscription payment fails */
+    public const SUBSCRIPTION_PAYMENT_FAILED = 'commerce.subscription.payment_failed';
+
+    /** Fired when a subscription becomes past due */
+    public const SUBSCRIPTION_PAST_DUE = 'commerce.subscription.past_due';
+
+    /** Fired when an item is added to a subscription */
+    public const SUBSCRIPTION_ITEM_ADDED = 'commerce.subscription.item_added';
+
+    /** Fired when an item is removed from a subscription */
+    public const SUBSCRIPTION_ITEM_REMOVED = 'commerce.subscription.item_removed';
+
+    /** Fired when an item's quantity is updated */
+    public const SUBSCRIPTION_ITEM_UPDATED = 'commerce.subscription.item_updated';
+
+    // =========================================================================
+    // Subscription Invoice Events
+    // =========================================================================
+
+    /** Fired when a subscription invoice is created */
+    public const SUBSCRIPTION_INVOICE_CREATED = 'commerce.subscription.invoice.created';
+
+    /** Fired when a subscription invoice is finalized and ready for payment */
+    public const SUBSCRIPTION_INVOICE_FINALIZED = 'commerce.subscription.invoice.finalized';
+
+    /** Fired when a subscription invoice is paid */
+    public const SUBSCRIPTION_INVOICE_PAID = 'commerce.subscription.invoice.paid';
+
+    /** Fired when a subscription invoice payment fails */
+    public const SUBSCRIPTION_INVOICE_FAILED = 'commerce.subscription.invoice.failed';
+
+    /** Fired when a subscription invoice is voided */
+    public const SUBSCRIPTION_INVOICE_VOIDED = 'commerce.subscription.invoice.voided';
+
+    /** Fired when a subscription invoice is refunded */
+    public const SUBSCRIPTION_INVOICE_REFUNDED = 'commerce.subscription.invoice.refunded';
+
+    /** Fired when a subscription invoice payment is retried */
+    public const SUBSCRIPTION_INVOICE_RETRY = 'commerce.subscription.invoice.retry';
+
+    // =========================================================================
+    // Subscription Usage Events
+    // =========================================================================
+
+    /** Fired when usage is recorded for a metered subscription item */
+    public const SUBSCRIPTION_USAGE_RECORDED = 'commerce.subscription.usage.recorded';
+
+    /** Fired when usage reaches a threshold (e.g., 80% of included units) */
+    public const SUBSCRIPTION_USAGE_THRESHOLD = 'commerce.subscription.usage.threshold';
+
+    /** Fired when usage exceeds included units */
+    public const SUBSCRIPTION_USAGE_OVERAGE = 'commerce.subscription.usage.overage';
+
+    /** Fired when usage is reset at the start of a new billing period */
+    public const SUBSCRIPTION_USAGE_RESET = 'commerce.subscription.usage.reset';
+
+    // =========================================================================
+    // Subscription Filters
+    // =========================================================================
+
+    /** Filter subscription data before creation */
+    public const FILTER_SUBSCRIPTION_DATA = 'commerce.filter.subscription_data';
+
+    /** Filter subscription plan features for a specific customer */
+    public const FILTER_SUBSCRIPTION_FEATURES = 'commerce.filter.subscription_features';
+
+    /** Filter proration amount for plan changes */
+    public const FILTER_PRORATION_AMOUNT = 'commerce.filter.proration_amount';
+
+    /** Filter subscription invoice line items before finalization */
+    public const FILTER_INVOICE_LINE_ITEMS = 'commerce.filter.invoice_line_items';
+
+    /** Filter subscription invoice totals before charging */
+    public const FILTER_INVOICE_TOTALS = 'commerce.filter.invoice_totals';
+
+    /** Filter usage charges for a billing period */
+    public const FILTER_USAGE_CHARGES = 'commerce.filter.usage_charges';
+
+    /** Filter available subscription plans for a customer */
+    public const FILTER_AVAILABLE_PLANS = 'commerce.filter.available_plans';
+
+    /** Filter subscription retry schedule for failed payments */
+    public const FILTER_RETRY_SCHEDULE = 'commerce.filter.retry_schedule';
+
     /**
      * Get all action events.
      *
@@ -367,6 +506,39 @@ class CommerceEvents
             'WEBHOOK_RECEIVED' => self::WEBHOOK_RECEIVED,
             'WEBHOOK_PAYMENT_RECEIVED' => self::WEBHOOK_PAYMENT_RECEIVED,
             'WEBHOOK_SHIPPING_RECEIVED' => self::WEBHOOK_SHIPPING_RECEIVED,
+            'SUBSCRIPTION_PLAN_CREATED' => self::SUBSCRIPTION_PLAN_CREATED,
+            'SUBSCRIPTION_PLAN_UPDATED' => self::SUBSCRIPTION_PLAN_UPDATED,
+            'SUBSCRIPTION_PLAN_DELETED' => self::SUBSCRIPTION_PLAN_DELETED,
+            'SUBSCRIPTION_CREATED' => self::SUBSCRIPTION_CREATED,
+            'SUBSCRIPTION_TRIAL_STARTED' => self::SUBSCRIPTION_TRIAL_STARTED,
+            'SUBSCRIPTION_TRIAL_ENDING' => self::SUBSCRIPTION_TRIAL_ENDING,
+            'SUBSCRIPTION_TRIAL_ENDED' => self::SUBSCRIPTION_TRIAL_ENDED,
+            'SUBSCRIPTION_ACTIVATED' => self::SUBSCRIPTION_ACTIVATED,
+            'SUBSCRIPTION_UPGRADED' => self::SUBSCRIPTION_UPGRADED,
+            'SUBSCRIPTION_DOWNGRADED' => self::SUBSCRIPTION_DOWNGRADED,
+            'SUBSCRIPTION_PLAN_CHANGED' => self::SUBSCRIPTION_PLAN_CHANGED,
+            'SUBSCRIPTION_RENEWED' => self::SUBSCRIPTION_RENEWED,
+            'SUBSCRIPTION_PAUSED' => self::SUBSCRIPTION_PAUSED,
+            'SUBSCRIPTION_RESUMED' => self::SUBSCRIPTION_RESUMED,
+            'SUBSCRIPTION_CANCELLED' => self::SUBSCRIPTION_CANCELLED,
+            'SUBSCRIPTION_EXPIRED' => self::SUBSCRIPTION_EXPIRED,
+            'SUBSCRIPTION_PAYMENT_SUCCEEDED' => self::SUBSCRIPTION_PAYMENT_SUCCEEDED,
+            'SUBSCRIPTION_PAYMENT_FAILED' => self::SUBSCRIPTION_PAYMENT_FAILED,
+            'SUBSCRIPTION_PAST_DUE' => self::SUBSCRIPTION_PAST_DUE,
+            'SUBSCRIPTION_ITEM_ADDED' => self::SUBSCRIPTION_ITEM_ADDED,
+            'SUBSCRIPTION_ITEM_REMOVED' => self::SUBSCRIPTION_ITEM_REMOVED,
+            'SUBSCRIPTION_ITEM_UPDATED' => self::SUBSCRIPTION_ITEM_UPDATED,
+            'SUBSCRIPTION_INVOICE_CREATED' => self::SUBSCRIPTION_INVOICE_CREATED,
+            'SUBSCRIPTION_INVOICE_FINALIZED' => self::SUBSCRIPTION_INVOICE_FINALIZED,
+            'SUBSCRIPTION_INVOICE_PAID' => self::SUBSCRIPTION_INVOICE_PAID,
+            'SUBSCRIPTION_INVOICE_FAILED' => self::SUBSCRIPTION_INVOICE_FAILED,
+            'SUBSCRIPTION_INVOICE_VOIDED' => self::SUBSCRIPTION_INVOICE_VOIDED,
+            'SUBSCRIPTION_INVOICE_REFUNDED' => self::SUBSCRIPTION_INVOICE_REFUNDED,
+            'SUBSCRIPTION_INVOICE_RETRY' => self::SUBSCRIPTION_INVOICE_RETRY,
+            'SUBSCRIPTION_USAGE_RECORDED' => self::SUBSCRIPTION_USAGE_RECORDED,
+            'SUBSCRIPTION_USAGE_THRESHOLD' => self::SUBSCRIPTION_USAGE_THRESHOLD,
+            'SUBSCRIPTION_USAGE_OVERAGE' => self::SUBSCRIPTION_USAGE_OVERAGE,
+            'SUBSCRIPTION_USAGE_RESET' => self::SUBSCRIPTION_USAGE_RESET,
         ];
     }
 
@@ -386,6 +558,14 @@ class CommerceEvents
             'FILTER_ORDER_DATA' => self::FILTER_ORDER_DATA,
             'FILTER_CHECKOUT_VALIDATION' => self::FILTER_CHECKOUT_VALIDATION,
             'FILTER_PRODUCT_SEARCH' => self::FILTER_PRODUCT_SEARCH,
+            'FILTER_SUBSCRIPTION_DATA' => self::FILTER_SUBSCRIPTION_DATA,
+            'FILTER_SUBSCRIPTION_FEATURES' => self::FILTER_SUBSCRIPTION_FEATURES,
+            'FILTER_PRORATION_AMOUNT' => self::FILTER_PRORATION_AMOUNT,
+            'FILTER_INVOICE_LINE_ITEMS' => self::FILTER_INVOICE_LINE_ITEMS,
+            'FILTER_INVOICE_TOTALS' => self::FILTER_INVOICE_TOTALS,
+            'FILTER_USAGE_CHARGES' => self::FILTER_USAGE_CHARGES,
+            'FILTER_AVAILABLE_PLANS' => self::FILTER_AVAILABLE_PLANS,
+            'FILTER_RETRY_SCHEDULE' => self::FILTER_RETRY_SCHEDULE,
         ];
     }
 }

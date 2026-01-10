@@ -158,6 +158,13 @@ use VodoCommerce\Http\Controllers\Api\V2\ProductReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\AdminReviewController;
 use VodoCommerce\Http\Controllers\Api\V2\WishlistController;
 use VodoCommerce\Http\Controllers\Api\V2\AdminWishlistController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductBundleController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductBundleItemController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductRecommendationController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductAttributeController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductAttributeValueController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductBadgeController;
+use VodoCommerce\Http\Controllers\Api\V2\ProductVideoController;
 
 // SECURITY: Rate limiting applied to prevent API abuse
 Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('admin.v2.')->group(function () {
@@ -466,6 +473,39 @@ Route::prefix('admin/v2')->middleware(['auth:sanctum', 'throttle:60,1'])->name('
 
     // Export
     Route::get('wishlists/export', [AdminWishlistController::class, 'export'])->name('wishlists.export');
+
+    // =========================================================================
+    // Phase 14: Advanced Product Features
+    // =========================================================================
+
+    // Product Bundles
+    Route::apiResource('product-bundles', ProductBundleController::class);
+    Route::post('product-bundles/{id}/items', [ProductBundleController::class, 'addItem'])->name('product-bundles.items.add');
+    Route::delete('product-bundles/{bundleId}/items/{itemId}', [ProductBundleController::class, 'removeItem'])->name('product-bundles.items.remove');
+
+    // Product Bundle Items
+    Route::apiResource('product-bundle-items', ProductBundleItemController::class)->except(['store']);
+
+    // Product Recommendations
+    Route::apiResource('product-recommendations', ProductRecommendationController::class);
+    Route::post('product-recommendations/{id}/impression', [ProductRecommendationController::class, 'recordImpression'])->name('product-recommendations.impression');
+    Route::post('product-recommendations/{id}/click', [ProductRecommendationController::class, 'recordClick'])->name('product-recommendations.click');
+    Route::post('product-recommendations/{id}/conversion', [ProductRecommendationController::class, 'recordConversion'])->name('product-recommendations.conversion');
+
+    // Product Attributes
+    Route::apiResource('product-attributes', ProductAttributeController::class);
+
+    // Product Attribute Values
+    Route::apiResource('product-attribute-values', ProductAttributeValueController::class);
+
+    // Product Badges
+    Route::apiResource('product-badges', ProductBadgeController::class);
+
+    // Product Videos
+    Route::apiResource('product-videos', ProductVideoController::class);
+    Route::post('product-videos/{id}/view', [ProductVideoController::class, 'recordView'])->name('product-videos.view');
+    Route::post('product-videos/{id}/play', [ProductVideoController::class, 'recordPlay'])->name('product-videos.play');
+    Route::post('product-videos/{id}/watch-time', [ProductVideoController::class, 'updateWatchTime'])->name('product-videos.watch-time');
 });
 
 // =========================================================================
@@ -560,4 +600,36 @@ Route::prefix('storefront/v2')->middleware(['web', 'throttle:60,1'])->name('stor
     Route::get('wishlists/discover/popular', [WishlistController::class, 'popular'])->name('wishlists.popular');
     Route::get('wishlists/discover/upcoming-events', [WishlistController::class, 'upcomingEvents'])->name('wishlists.upcoming-events');
     Route::get('wishlists/search', [WishlistController::class, 'search'])->name('wishlists.search');
+
+    // =========================================================================
+    // Phase 13: Subscriptions & Recurring Billing
+    // =========================================================================
+
+    // Subscription Plans
+    Route::apiResource('subscription-plans', \VodoCommerce\Http\Controllers\Api\V2\SubscriptionPlanController::class);
+
+    // Subscriptions
+    Route::apiResource('subscriptions', \VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class);
+    Route::post('subscriptions/{id}/change-plan', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
+    Route::post('subscriptions/{id}/pause', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'pause'])->name('subscriptions.pause');
+    Route::post('subscriptions/{id}/resume', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'resume'])->name('subscriptions.resume');
+    Route::post('subscriptions/{id}/cancel', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
+
+    // Subscription Items
+    Route::post('subscriptions/{id}/items', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'addItem'])->name('subscriptions.items.add');
+    Route::delete('subscriptions/{subscriptionId}/items/{itemId}', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'removeItem'])->name('subscriptions.items.remove');
+
+    // Usage Recording (for metered billing)
+    Route::post('subscriptions/{subscriptionId}/items/{itemId}/usage', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'recordUsage'])->name('subscriptions.items.usage');
+
+    // Subscription Invoices & Usage
+    Route::get('subscriptions/{id}/invoices', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'invoices'])->name('subscriptions.invoices');
+    Route::get('subscriptions/{id}/usage', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'usage'])->name('subscriptions.usage');
+
+    // Subscription Invoices Management
+    Route::apiResource('subscription-invoices', \VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class)->only(['index', 'show']);
+    Route::post('subscription-invoices/{id}/retry', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'retry'])->name('subscription-invoices.retry');
+    Route::post('subscription-invoices/{id}/void', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'void'])->name('subscription-invoices.void');
+    Route::post('subscription-invoices/{id}/refund', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'refund'])->name('subscription-invoices.refund');
+    Route::post('subscription-invoices/retry-all', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'retryAll'])->name('subscription-invoices.retry-all');
 });
