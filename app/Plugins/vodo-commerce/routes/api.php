@@ -560,4 +560,36 @@ Route::prefix('storefront/v2')->middleware(['web', 'throttle:60,1'])->name('stor
     Route::get('wishlists/discover/popular', [WishlistController::class, 'popular'])->name('wishlists.popular');
     Route::get('wishlists/discover/upcoming-events', [WishlistController::class, 'upcomingEvents'])->name('wishlists.upcoming-events');
     Route::get('wishlists/search', [WishlistController::class, 'search'])->name('wishlists.search');
+
+    // =========================================================================
+    // Phase 13: Subscriptions & Recurring Billing
+    // =========================================================================
+
+    // Subscription Plans
+    Route::apiResource('subscription-plans', \VodoCommerce\Http\Controllers\Api\V2\SubscriptionPlanController::class);
+
+    // Subscriptions
+    Route::apiResource('subscriptions', \VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class);
+    Route::post('subscriptions/{id}/change-plan', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
+    Route::post('subscriptions/{id}/pause', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'pause'])->name('subscriptions.pause');
+    Route::post('subscriptions/{id}/resume', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'resume'])->name('subscriptions.resume');
+    Route::post('subscriptions/{id}/cancel', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
+
+    // Subscription Items
+    Route::post('subscriptions/{id}/items', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'addItem'])->name('subscriptions.items.add');
+    Route::delete('subscriptions/{subscriptionId}/items/{itemId}', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'removeItem'])->name('subscriptions.items.remove');
+
+    // Usage Recording (for metered billing)
+    Route::post('subscriptions/{subscriptionId}/items/{itemId}/usage', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'recordUsage'])->name('subscriptions.items.usage');
+
+    // Subscription Invoices & Usage
+    Route::get('subscriptions/{id}/invoices', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'invoices'])->name('subscriptions.invoices');
+    Route::get('subscriptions/{id}/usage', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionController::class, 'usage'])->name('subscriptions.usage');
+
+    // Subscription Invoices Management
+    Route::apiResource('subscription-invoices', \VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class)->only(['index', 'show']);
+    Route::post('subscription-invoices/{id}/retry', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'retry'])->name('subscription-invoices.retry');
+    Route::post('subscription-invoices/{id}/void', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'void'])->name('subscription-invoices.void');
+    Route::post('subscription-invoices/{id}/refund', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'refund'])->name('subscription-invoices.refund');
+    Route::post('subscription-invoices/retry-all', [\VodoCommerce\Http\Controllers\Api\V2\SubscriptionInvoiceController::class, 'retryAll'])->name('subscription-invoices.retry-all');
 });
