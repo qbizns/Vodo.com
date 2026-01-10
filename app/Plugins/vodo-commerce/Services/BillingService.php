@@ -7,6 +7,7 @@ namespace VodoCommerce\Services;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use VodoCommerce\Events\CommerceEvents;
 use VodoCommerce\Models\Subscription;
 use VodoCommerce\Models\SubscriptionInvoice;
 use VodoCommerce\Models\SubscriptionEvent;
@@ -156,6 +157,9 @@ class BillingService
             $usage->markAsBilled($invoice->id);
         }
 
+        // Fire event for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_INVOICE_CREATED, $invoice, $subscription);
+
         return $invoice;
     }
 
@@ -207,6 +211,10 @@ class BillingService
                 $subscription->update(['failed_payment_count' => 0]);
             }
 
+            // Fire events for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_INVOICE_PAID, $invoice, $subscription, $transaction);
+            do_action(CommerceEvents::SUBSCRIPTION_PAYMENT_SUCCEEDED, $subscription, $invoice, $transaction);
+
         } catch (\Exception $e) {
             $transaction->markAsFailed($e->getMessage());
             throw $e;
@@ -232,6 +240,11 @@ class BillingService
         // Update subscription
         $subscription->markAsPastDue();
 
+        // Fire events for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_INVOICE_FAILED, $invoice, $subscription, $error);
+        do_action(CommerceEvents::SUBSCRIPTION_PAYMENT_FAILED, $subscription, $invoice, $error);
+        do_action(CommerceEvents::SUBSCRIPTION_PAST_DUE, $subscription, $invoice);
+
         // Check if we should cancel after too many failures
         if ($subscription->failed_payment_count >= 4) {
             $subscription->cancel(
@@ -256,6 +269,9 @@ class BillingService
         ];
 
         foreach ($invoices as $invoice) {
+            // Fire event before retry for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_INVOICE_RETRY, $invoice, $invoice->subscription);
+
             try {
                 $this->chargeInvoice($invoice);
                 $results['processed']++;
@@ -283,6 +299,9 @@ class BillingService
         $count = 0;
 
         foreach ($subscriptions as $subscription) {
+            // Fire event for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_TRIAL_ENDING, $subscription, $subscription->trial_ends_at);
+
             // TODO: Send email notification to customer
             // This should integrate with email service
 

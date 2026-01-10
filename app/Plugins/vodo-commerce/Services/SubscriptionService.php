@@ -6,6 +6,7 @@ namespace VodoCommerce\Services;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use VodoCommerce\Events\CommerceEvents;
 use VodoCommerce\Models\Customer;
 use VodoCommerce\Models\Store;
 use VodoCommerce\Models\Subscription;
@@ -86,6 +87,13 @@ class SubscriptionService
                 );
             }
 
+            // Fire events for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_CREATED, $subscription, $plan, $customer, $items);
+
+            if ($isTrial) {
+                do_action(CommerceEvents::SUBSCRIPTION_TRIAL_STARTED, $subscription, $trialEndsAt);
+            }
+
             return $subscription;
         });
     }
@@ -142,6 +150,15 @@ class SubscriptionService
                 ]
             );
 
+            // Fire events for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_PLAN_CHANGED, $subscription, $oldPlan, $newPlan, $prorationAmount);
+
+            if ($isUpgrade) {
+                do_action(CommerceEvents::SUBSCRIPTION_UPGRADED, $subscription, $oldPlan, $newPlan);
+            } else {
+                do_action(CommerceEvents::SUBSCRIPTION_DOWNGRADED, $subscription, $oldPlan, $newPlan);
+            }
+
             return $subscription->fresh();
         });
     }
@@ -152,6 +169,9 @@ class SubscriptionService
     public function pauseSubscription(Subscription $subscription, ?Carbon $resumeAt = null): Subscription
     {
         $subscription->pause($resumeAt);
+
+        // Fire event for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_PAUSED, $subscription, $resumeAt);
 
         return $subscription->fresh();
     }
@@ -176,6 +196,9 @@ class SubscriptionService
             'next_billing_date' => $periodEnd,
         ]);
 
+        // Fire event for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_RESUMED, $subscription);
+
         return $subscription->fresh();
     }
 
@@ -190,6 +213,9 @@ class SubscriptionService
         ?int $cancelledById = null
     ): Subscription {
         $subscription->cancel($immediately, $reason, $cancelledByType, $cancelledById);
+
+        // Fire event for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_CANCELLED, $subscription, $immediately, $reason, $cancelledByType, $cancelledById);
 
         return $subscription->fresh();
     }
@@ -219,6 +245,10 @@ class SubscriptionService
                     SubscriptionEvent::EVENT_TRIAL_ENDED,
                     'Trial period ended'
                 );
+
+                // Fire event for plugin extensibility
+                do_action(CommerceEvents::SUBSCRIPTION_TRIAL_ENDED, $subscription);
+                do_action(CommerceEvents::SUBSCRIPTION_ACTIVATED, $subscription);
             }
 
             // Update billing period
@@ -238,6 +268,9 @@ class SubscriptionService
                 SubscriptionEvent::EVENT_RENEWED,
                 "Subscription renewed for period {$newPeriodStart->format('Y-m-d')} to {$newPeriodEnd->format('Y-m-d')}"
             );
+
+            // Fire events for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_RENEWED, $subscription, $newPeriodStart, $newPeriodEnd);
 
             return $subscription->fresh();
         });
@@ -271,7 +304,12 @@ class SubscriptionService
             $itemData['included_units'] = $meteredConfig['included_units'] ?? null;
         }
 
-        return $subscription->items()->create($itemData);
+        $item = $subscription->items()->create($itemData);
+
+        // Fire event for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_ITEM_ADDED, $subscription, $item);
+
+        return $item;
     }
 
     /**
@@ -279,7 +317,15 @@ class SubscriptionService
      */
     public function removeItem(SubscriptionItem $item): bool
     {
-        return $item->delete();
+        $subscription = $item->subscription;
+        $deleted = $item->delete();
+
+        if ($deleted) {
+            // Fire event for plugin extensibility
+            do_action(CommerceEvents::SUBSCRIPTION_ITEM_REMOVED, $subscription, $item);
+        }
+
+        return $deleted;
     }
 
     /**
@@ -295,7 +341,24 @@ class SubscriptionService
             throw new \RuntimeException('Cannot record usage for non-metered item');
         }
 
-        return $item->recordUsage($quantity, $metric, $action);
+        $previousUsage = $item->current_usage;
+        $usage = $item->recordUsage($quantity, $metric, $action);
+        $subscription = $item->subscription;
+
+        // Fire event for plugin extensibility
+        do_action(CommerceEvents::SUBSCRIPTION_USAGE_RECORDED, $subscription, $item, $usage);
+
+        // Check for threshold warnings (80% of included units)
+        if ($item->included_units && $previousUsage < ($item->included_units * 0.8) && $item->current_usage >= ($item->included_units * 0.8)) {
+            do_action(CommerceEvents::SUBSCRIPTION_USAGE_THRESHOLD, $subscription, $item, 80);
+        }
+
+        // Check for overage
+        if ($item->included_units && $previousUsage <= $item->included_units && $item->current_usage > $item->included_units) {
+            do_action(CommerceEvents::SUBSCRIPTION_USAGE_OVERAGE, $subscription, $item);
+        }
+
+        return $usage;
     }
 
     /**
