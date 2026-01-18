@@ -1,0 +1,203 @@
+/**
+ * TailwindPlus Customizer - Panel Component
+ * ==========================================
+ */
+
+.panel {
+    width: var(--panel-width);
+    background-color: var(--color-white);
+    border-right: 1px solid var(--color-gray-200);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width var(--transition-normal) var(--transition-timing);
+    overflow: hidden;
+}
+
+[dir="rtl"] .panel {
+    border-right: none;
+    border-left: 1px solid var(--color-gray-200);
+}
+
+/* Collapsed state */
+.panel.is-collapsed {
+    width: 0;
+    min-width: 0;
+    border: none;
+}
+
+/* Panel header */
+.panel__header {
+    padding: var(--spacing-4);
+    padding-bottom: var(--spacing-2);
+    border-bottom: 1px solid var(--color-gray-100);
+}
+
+.panel__title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-800);
+    margin-bottom: var(--spacing-1);
+    text-align: right;
+}
+
+.panel__description {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-500);
+    line-height: var(--line-height-relaxed);
+    text-align: right;
+}
+
+.panel__help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-size: var(--font-size-sm);
+    color: var(--color-teal);
+    margin-top: var(--spacing-2);
+    flex-direction: row-reverse;
+}
+
+.panel__help-link:hover {
+    text-decoration: underline;
+}
+
+/* Panel search bar */
+.panel__search {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-2) var(--spacing-4);
+    border-bottom: 1px solid var(--color-gray-100);
+}
+
+.panel__search-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-600);
+}
+
+.panel__search-btn {
+    color: var(--color-gray-400);
+}
+
+.panel__search-btn:hover {
+    color: var(--color-gray-600);
+}
+
+/* Panel body */
+.panel__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-4);
+}
+
+/* Panel footer */
+.panel__footer {
+    padding: var(--spacing-4);
+    padding-top: var(--spacing-2);
+    border-top: 1px solid var(--color-gray-100);
+    background-color: var(--color-white);
+}
+
+/* Save button */
+.panel__save-btn {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-4);
+    background-color: var(--color-save-btn);
+    color: var(--color-teal);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border-radius: var(--border-radius-md);
+    transition: background-color var(--transition-fast) var(--transition-timing);
+}
+
+.panel__save-btn:hover {
+    background-color: var(--color-save-btn-hover);
+}
+
+/* Panel sections */
+.panel__section {
+    display: none;
+}
+
+.panel__section.is-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    animation: fadeIn var(--transition-fast) var(--transition-timing);
+}
+
+/* Section header */
+.panel__section-header {
+    background-color: var(--color-gray-50);
+    padding: var(--spacing-2) var(--spacing-3);
+    margin: var(--spacing-1) calc(var(--spacing-4) * -1);
+    margin-top: var(--spacing-2);
+}
+
+.panel__section-header-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-500);
+}
+
+/* Section divider (blue) */
+.panel__section-divider {
+    background-color: var(--color-section-blue);
+    color: var(--color-white);
+    padding: var(--spacing-2) var(--spacing-4);
+    margin: var(--spacing-3) 0;
+    border-radius: var(--border-radius-md);
+}
+
+.panel__section-divider-text {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+/* Add button */
+.panel__add-btn {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-4);
+    border: 1px dashed var(--color-gray-300);
+    border-radius: var(--border-radius-md);
+    color: var(--color-teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-1);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-3);
+    transition: all var(--transition-fast) var(--transition-timing);
+}
+
+.panel__add-btn:hover {
+    border-color: var(--color-teal);
+    background-color: var(--color-mint-light);
+}
+
+.panel__add-btn .icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Warning banner */
+.panel__warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background-color: var(--color-warning-bg);
+    border: 1px solid var(--color-warning-border);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-3);
+}
+
+.panel__warning-icon {
+    color: var(--color-warning-text);
+}
+
+.panel__warning-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-warning-text);
+}

@@ -1,0 +1,116 @@
+/**
+ * TailwindPlus Customizer - Main Stylesheet
+ * ==========================================
+ * Entry point for all CSS styles
+ * 
+ * @version 1.0.0
+ * @author Macber LTD
+ */
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@import './base/variables.css';
+@import './base/reset.css';
+@import './base/utilities.css';
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+@import './components/toolbar.css';
+@import './components/panel.css';
+@import './components/panel-navigator.css';
+@import './components/edit-panel.css';
+@import './components/layers.css';
+@import './components/modal.css';
+@import './components/preview.css';
+@import './components/controls.css';
+@import './components/fields.css';
+@import './components/overlay-panel.css';
+
+/* ============================================
+   LAYOUT - Main App Structure
+   ============================================ */
+.app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* RTL Layout: Preview | Panel | Toolbar (left to right) */
+[dir="rtl"] .app {
+    flex-direction: row;
+}
+
+/* LTR Layout: Toolbar | Panel | Preview (left to right) */
+[dir="ltr"] .app {
+    flex-direction: row-reverse;
+}
+
+/* Sidebar collapsed state */
+.app.is-sidebar-collapsed .panel {
+    width: 0;
+    min-width: 0;
+    border: none;
+    overflow: hidden;
+}
+
+/* ============================================
+   JQUERY UI OVERRIDES
+   ============================================ */
+/* Reset jQuery UI styles that conflict */
+.ui-state-default,
+.ui-widget-content .ui-state-default,
+.ui-widget-header .ui-state-default {
+    border: none;
+    background: none;
+    font-weight: normal;
+    color: inherit;
+}
+
+.ui-sortable-handle {
+    touch-action: none;
+    -ms-touch-action: none;
+}
+
+/* Ensure proper cursor on drag handle */
+.ui-sortable .layer-item__drag {
+    cursor: grab;
+}
+
+.ui-sortable-helper .layer-item__drag,
+.ui-sortable .layer-item__drag:active {
+    cursor: grabbing;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+    .toolbar,
+    .panel,
+    .modal-overlay {
+        display: none !important;
+    }
+    
+    .preview {
+        width: 100% !important;
+    }
+    
+    .preview__topbar {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

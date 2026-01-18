@@ -1,0 +1,294 @@
+/**
+ * TailwindPlus Customizer - Layers Component
+ * ===========================================
+ */
+
+.layers {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    min-height: 50px;
+}
+
+/* Layer item */
+.layer-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) var(--spacing-3);
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background-color 0.15s ease, 
+                border-color 0.15s ease, 
+                box-shadow 0.15s ease,
+                opacity 0.15s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.layer-item:hover {
+    background-color: var(--color-gray-50);
+    border-color: var(--color-gray-300);
+}
+
+.layer-item.is-selected {
+    border-color: var(--color-teal);
+    background-color: var(--color-mint-light);
+}
+
+.layer-item.is-hidden {
+    opacity: 0.5;
+}
+
+.layer-item.is-locked {
+    background-color: var(--color-gray-50);
+}
+
+/* Drag handle */
+.layer-item__drag {
+    color: var(--color-gray-300);
+    cursor: grab;
+    padding: var(--spacing-1);
+    flex-shrink: 0;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.layer-item__drag:hover {
+    color: var(--color-gray-500);
+}
+
+.layer-item__drag:active {
+    cursor: grabbing;
+}
+
+.layer-item__drag .icon {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+}
+
+/* Visibility toggle */
+.layer-item__visibility {
+    color: var(--color-gray-400);
+    padding: var(--spacing-1);
+    flex-shrink: 0;
+    transition: color var(--transition-fast) var(--transition-timing);
+}
+
+.layer-item__visibility:hover {
+    color: var(--color-gray-600);
+}
+
+.layer-item__visibility .icon {
+    width: 16px;
+    height: 16px;
+}
+
+.layer-item.is-hidden .layer-item__visibility {
+    color: var(--color-gray-300);
+}
+
+/* Layer icon */
+.layer-item__icon {
+    color: var(--color-gray-400);
+    flex-shrink: 0;
+}
+
+.layer-item__icon .icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Layer name */
+.layer-item__name {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-700);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Layer actions */
+.layer-item__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    opacity: 0;
+    transition: opacity var(--transition-fast) var(--transition-timing);
+}
+
+.layer-item:hover .layer-item__actions {
+    opacity: 1;
+}
+
+.layer-item__action {
+    color: var(--color-gray-300);
+    padding: var(--spacing-1);
+    transition: color var(--transition-fast) var(--transition-timing);
+}
+
+.layer-item__action:hover {
+    color: var(--color-gray-500);
+}
+
+.layer-item__action--delete:hover {
+    color: var(--color-error);
+}
+
+.layer-item__action .icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Sortable placeholder */
+.layer-item--placeholder {
+    background-color: var(--color-mint-light) !important;
+    border: 2px dashed var(--color-teal) !important;
+    border-radius: var(--border-radius-md);
+    visibility: visible !important;
+}
+
+.layer-item--placeholder * {
+    visibility: hidden !important;
+}
+
+/* Sortable helper (dragging) */
+.layer-item--dragging {
+    background-color: var(--color-white) !important;
+    box-shadow: var(--shadow-drag) !important;
+    border-radius: var(--border-radius-md) !important;
+    border-color: var(--color-teal) !important;
+    z-index: 1000 !important;
+    transform: scale(1.02);
+}
+
+/* jQuery UI sortable specific */
+.ui-sortable-handle {
+    touch-action: none;
+}
+
+.ui-sortable-helper {
+    background-color: var(--color-white) !important;
+    box-shadow: var(--shadow-drag) !important;
+    border: 1px solid var(--color-teal) !important;
+    opacity: 0.95 !important;
+}
+
+.ui-sortable-placeholder {
+    background-color: var(--color-mint-light) !important;
+    border: 2px dashed var(--color-teal) !important;
+    visibility: visible !important;
+    border-radius: var(--border-radius-md);
+}
+
+/* Empty state */
+.layers__empty {
+    text-align: center;
+    padding: var(--spacing-8) var(--spacing-4);
+    color: var(--color-gray-400);
+}
+
+.layers__empty-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto var(--spacing-3);
+    opacity: 0.5;
+}
+
+.layers__empty-title {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-1);
+}
+
+.layers__empty-text {
+    font-size: var(--font-size-xs);
+}
+
+/* Navigation item (for non-sortable lists) */
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    text-align: right;
+    border-bottom: 1px solid var(--color-gray-100);
+    transition: background-color var(--transition-fast) var(--transition-timing);
+}
+
+.nav-item:last-child {
+    border-bottom: none;
+}
+
+.nav-item:hover {
+    background-color: var(--color-gray-50);
+}
+
+.nav-item__content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.nav-item__icon {
+    color: var(--color-gray-400);
+}
+
+.nav-item__icon .icon {
+    width: 20px;
+    height: 20px;
+}
+
+.nav-item__label {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-700);
+}
+
+.nav-item__arrow {
+    color: var(--color-gray-400);
+}
+
+.nav-item__arrow .icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Editable list item */
+.editable-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--border-radius-md);
+    margin-bottom: var(--spacing-2);
+}
+
+.editable-item__label {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-700);
+    text-align: right;
+}
+
+.editable-item__action {
+    color: var(--color-gray-300);
+    padding: var(--spacing-1);
+}
+
+.editable-item__action:hover {
+    color: var(--color-gray-500);
+}
+
+.editable-item__action .icon {
+    width: 16px;
+    height: 16px;
+}

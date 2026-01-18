@@ -1,0 +1,119 @@
+/**
+ * TailwindPlus Customizer - Toolbar Component
+ * ============================================
+ */
+
+.toolbar {
+    width: var(--toolbar-width);
+    background-color: var(--color-white);
+    border-right: 1px solid var(--color-gray-100);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: var(--spacing-2);
+    flex-shrink: 0;
+}
+
+[dir="rtl"] .toolbar {
+    border-right: none;
+    border-left: 1px solid var(--color-gray-100);
+}
+
+.toolbar__btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-gray-400);
+    border-radius: var(--border-radius-md);
+    transition: all var(--transition-fast) var(--transition-timing);
+    position: relative;
+    margin-bottom: var(--spacing-1);
+}
+
+.toolbar__btn:hover {
+    color: var(--color-teal);
+    background-color: var(--color-gray-50);
+}
+
+.toolbar__btn.is-active {
+    color: var(--color-teal);
+}
+
+/* Active indicator bar */
+.toolbar__btn.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    background-color: var(--color-teal);
+    border-radius: 0 2px 2px 0;
+}
+
+[dir="rtl"] .toolbar__btn.is-active::before {
+    left: auto;
+    right: 0;
+    border-radius: 2px 0 0 2px;
+}
+
+/* Notification dot */
+.toolbar__btn-dot {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-warning);
+    border-radius: var(--border-radius-full);
+}
+
+[dir="rtl"] .toolbar__btn-dot {
+    left: auto;
+    right: 6px;
+}
+
+/* Tooltip */
+.toolbar__btn[data-tooltip] {
+    position: relative;
+}
+
+.toolbar__btn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: var(--spacing-2);
+    padding: var(--spacing-1) var(--spacing-2);
+    background-color: var(--color-gray-800);
+    color: var(--color-white);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    border-radius: var(--border-radius-sm);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-fast) var(--transition-timing);
+    pointer-events: none;
+}
+
+[dir="rtl"] .toolbar__btn[data-tooltip]::after {
+    right: auto;
+    left: 100%;
+    margin-right: 0;
+    margin-left: var(--spacing-2);
+}
+
+.toolbar__btn[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Icon styling */
+.toolbar__btn .icon {
+    width: 20px;
+    height: 20px;
+}

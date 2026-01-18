@@ -1,0 +1,43 @@
+{
+    "name": "tailwindplus-customizer",
+    "version": "1.0.0",
+    "description": "Visual page builder and customizer for ecommerce stores with RTL support",
+    "author": "Macber LTD",
+    "license": "MIT",
+    "type": "module",
+    "main": "assets/js/main.js",
+    "scripts": {
+        "start": "npx serve -l 3000",
+        "dev": "npx serve -l 3000 --cors",
+        "build:css": "postcss assets/css/main.css -o dist/css/main.css",
+        "build": "npm run build:css"
+    },
+    "keywords": [
+        "customizer",
+        "page-builder",
+        "ecommerce",
+        "tailwind",
+        "rtl",
+        "arabic"
+    ],
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "devDependencies": {
+        "postcss": "^8.4.31",
+        "postcss-cli": "^10.1.0",
+        "postcss-import": "^15.1.0",
+        "autoprefixer": "^10.4.16",
+        "cssnano": "^6.0.1",
+        "serve": "^14.2.1"
+    },
+    "browserslist": [
+        "> 1%",
+        "last 2 versions",
+        "not dead"
+    ]
+}

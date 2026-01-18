@@ -1,0 +1,295 @@
+/**
+ * TailwindPlus Customizer - Edit Panel & Component Library
+ * =========================================================
+ */
+
+/* ============================================
+   EDIT PANEL
+   ============================================ */
+.edit-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Body - Scrollable area */
+.edit-panel__body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--spacing-4);
+    min-height: 0;
+}
+
+/* Thin scrollbar */
+.edit-panel__body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.edit-panel__body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.edit-panel__body::-webkit-scrollbar-thumb {
+    background-color: var(--color-gray-300);
+    border-radius: 4px;
+}
+
+.edit-panel__body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-gray-400);
+}
+
+.edit-panel__fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-5);
+}
+
+.edit-panel__field {
+    /* Field wrapper */
+}
+
+.edit-panel__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    color: var(--color-gray-400);
+    text-align: center;
+    padding: var(--spacing-8);
+    gap: var(--spacing-3);
+}
+
+.edit-panel__empty svg {
+    opacity: 0.5;
+}
+
+.edit-panel__empty p {
+    font-size: var(--font-size-sm);
+}
+
+/* Footer - Sticky at bottom */
+.edit-panel__footer {
+    flex-shrink: 0;
+    padding: var(--spacing-4);
+    background-color: var(--color-white);
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.edit-panel__save {
+    width: 100%;
+    padding: var(--spacing-3) var(--spacing-4);
+    background-color: var(--color-teal);
+    color: var(--color-white);
+    font-weight: 500;
+    font-size: var(--font-size-base);
+    border-radius: var(--border-radius-md);
+    transition: all var(--transition-fast);
+}
+
+.edit-panel__save:hover:not(:disabled) {
+    background-color: var(--color-teal-dark);
+}
+
+.edit-panel__save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+/* ============================================
+   COMPONENT LIBRARY PANEL
+   ============================================ */
+.component-library {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Search */
+.component-library__search {
+    position: relative;
+    padding: var(--spacing-4);
+    padding-bottom: var(--spacing-3);
+    flex-shrink: 0;
+}
+
+.component-library__search-input {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    padding-right: var(--spacing-10);
+    font-size: var(--font-size-sm);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--border-radius-md);
+    background-color: var(--color-white);
+    transition: border-color var(--transition-fast);
+}
+
+[dir="rtl"] .component-library__search-input {
+    padding-right: var(--spacing-3);
+    padding-left: var(--spacing-10);
+}
+
+.component-library__search-input:focus {
+    outline: none;
+    border-color: var(--color-teal);
+}
+
+.component-library__search-icon {
+    position: absolute;
+    top: 50%;
+    right: calc(var(--spacing-4) + var(--spacing-3));
+    transform: translateY(-50%);
+    color: var(--color-gray-400);
+    pointer-events: none;
+}
+
+[dir="rtl"] .component-library__search-icon {
+    right: auto;
+    left: calc(var(--spacing-4) + var(--spacing-3));
+}
+
+/* Categories */
+.component-library__categories {
+    display: flex;
+    gap: var(--spacing-2);
+    padding: 0 var(--spacing-4);
+    padding-bottom: var(--spacing-3);
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.component-library__categories::-webkit-scrollbar {
+    height: 0;
+}
+
+.component-library__category {
+    padding: var(--spacing-1) var(--spacing-3);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--color-gray-600);
+    background-color: var(--color-gray-100);
+    border-radius: var(--border-radius-full);
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+}
+
+.component-library__category:hover {
+    background-color: var(--color-gray-200);
+}
+
+.component-library__category.is-active {
+    background-color: var(--color-teal);
+    color: var(--color-white);
+}
+
+/* Grid */
+.component-library__grid {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--spacing-4);
+    padding-top: var(--spacing-2);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-3);
+    align-content: start;
+    min-height: 0;
+}
+
+/* Thin scrollbar */
+.component-library__grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.component-library__grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.component-library__grid::-webkit-scrollbar-thumb {
+    background-color: var(--color-gray-300);
+    border-radius: 4px;
+}
+
+/* Empty State */
+.component-library__empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    color: var(--color-gray-400);
+    text-align: center;
+    gap: var(--spacing-2);
+}
+
+.component-library__empty svg {
+    opacity: 0.3;
+}
+
+.component-library__empty p {
+    font-size: var(--font-size-sm);
+}
+
+/* Component Card */
+.component-card {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.component-card:hover {
+    border-color: var(--color-teal);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.component-card__preview {
+    aspect-ratio: 16 / 10;
+    background-color: var(--color-gray-50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.component-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.component-card__placeholder {
+    color: var(--color-gray-300);
+}
+
+.component-card__info {
+    padding: var(--spacing-2) var(--spacing-3);
+    text-align: right;
+}
+
+.component-card__name {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--color-gray-900);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.component-card__desc {
+    font-size: 10px;
+    color: var(--color-gray-500);
+    margin: 2px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

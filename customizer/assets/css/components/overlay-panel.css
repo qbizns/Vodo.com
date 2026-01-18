@@ -1,0 +1,181 @@
+/**
+ * TailwindPlus Customizer - Overlay Panel
+ * ========================================
+ * Sliding overlay panel that appears on top of main panel
+ */
+
+/* Overlay backdrop - invisible, just for click handling */
+.overlay-panel-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: transparent;
+    z-index: var(--z-modal-backdrop);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.overlay-panel-backdrop.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Overlay panel container */
+.overlay-panel {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 750px;
+    max-width: calc(100vw - 345px);
+    background-color: var(--color-white);
+    z-index: var(--z-modal);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-xl);
+    transition: transform var(--transition-slow) var(--transition-timing);
+}
+
+/* RTL: Panel slides from left, positioned at edge of main panel */
+[dir="rtl"] .overlay-panel {
+    left: 345px; /* toolbar (44px) + panel (300px) + 1px border */
+    right: auto;
+    transform: translateX(-100%);
+    border-right: 1px solid var(--color-gray-200);
+}
+
+[dir="rtl"] .overlay-panel.is-visible {
+    transform: translateX(0);
+}
+
+/* LTR: Panel slides from right, positioned at edge of main panel */
+[dir="ltr"] .overlay-panel {
+    right: 345px; /* toolbar (44px) + panel (300px) + 1px border */
+    left: auto;
+    transform: translateX(100%);
+    border-left: 1px solid var(--color-gray-200);
+}
+
+[dir="ltr"] .overlay-panel.is-visible {
+    transform: translateX(0);
+}
+
+/* Header */
+.overlay-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-4);
+    border-bottom: 1px solid var(--color-gray-200);
+    background-color: var(--color-white);
+    flex-shrink: 0;
+}
+
+.overlay-panel__title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-900);
+    margin: 0;
+}
+
+.overlay-panel__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius-md);
+    color: var(--color-gray-500);
+    transition: all var(--transition-fast);
+}
+
+.overlay-panel__close:hover {
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-700);
+}
+
+/* Content */
+.overlay-panel__content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Animation keyframes */
+@keyframes overlaySlideIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes overlaySlideOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* Override component grid for wider overlay */
+.overlay-panel .component-library__grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-4);
+}
+
+/* Ensure card text is visible */
+.overlay-panel .component-card__info {
+    padding: var(--spacing-3);
+}
+
+.overlay-panel .component-card__name {
+    font-size: var(--font-size-sm);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.4;
+}
+
+.overlay-panel .component-card__desc {
+    font-size: var(--font-size-xs);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .overlay-panel .component-library__grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .overlay-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    [dir="rtl"] .overlay-panel {
+        left: 0;
+    }
+    
+    [dir="ltr"] .overlay-panel {
+        right: 0;
+    }
+    
+    .overlay-panel .component-library__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
